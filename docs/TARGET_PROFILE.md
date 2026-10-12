@@ -76,4 +76,15 @@ Runner Vision (red world highlights and ghost runner line), objective/waypoint m
 
 ## Engine and hooks
 
-*(filled in during Stage 0 recon — all assumed until the game visibly reacts)*
+| Item | Value | Status | How found |
+|---|---|---|---|
+| Exe packing | Denuvo + EA Activation64 wrapper. Static import table hidden (only Activation64 + delay-load d3d12 visible) | confirmed | dumpbin |
+| Graphics API | **D3D11** (d3d11.dll + dxgi.dll loaded; no d3d12 loaded). Swapchain 1920x1080, fmt 28 (R8G8B8A8_UNORM), 3 buffers, fullscreen | confirmed | runtime module list + Present hook |
+| DLL search policy | System DLLs (version, dinput8, winmm, dxgi) always load from System32. App-folder proxies of system DLLs are ignored | confirmed | version.dll proxy test, 2026-10-13 |
+| Entry method | **Proxy of NvCameraSDK64.dll** (game-folder Ansel library, loaded at module #70, before d3d11 at #74). Original moved to `mecvr\NvCameraSDK64_orig.dll` and forwarded | confirmed | game loaded it: log + window title |
+| NvCameraSDK64 exports | getConfiguration, getConfigurationSize, getSessionConfigurationSize, getVersion, setConfiguration, setStopSessionCallback, setUpdateCameraFunc, stopSession, updateCamera | confirmed | dumpbin |
+| Ansel calls at main menu | getVersion x2, setConfiguration x1. updateCamera not called at the menu | confirmed | proxy call counters |
+| Ansel calls in gameplay | unknown | assumed | PLAYTEST-0 item 4 |
+| Backup door | Engine.BuildInfo_Win64_retail.dll (export getBuildInfo, loaded at #87, after d3d11) | confirmed | dumpbin |
+| Frame rate (flat, menu) | ~145–200 fps uncapped at 1080p | confirmed | Present hook |
+| Camera object, view/projection | unknown | assumed | Stage 1 |
