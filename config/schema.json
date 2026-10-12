@@ -3,6 +3,7 @@
   "version": 1,
   "settings": {
     "features.vr_enabled":        { "type": "bool",  "default": true,  "section": "Features",    "label": "VR enabled (off = launch flat)" },
+    "features.present_hook":      { "type": "bool",  "default": true,  "section": "Features",    "label": "Stage 0: render hook (frame counter)" },
     "diagnostics.log_level":      { "type": "enum",  "values": ["error", "warn", "info", "debug", "trace"], "default": "info", "section": "Diagnostics", "label": "Log level" },
     "diagnostics.assertions":     { "type": "bool",  "default": true,  "section": "Diagnostics", "label": "In-game self-checks" },
     "input.dominant_hand":        { "type": "enum",  "values": ["right", "left"], "default": "right", "section": "Input", "label": "Dominant hand" },

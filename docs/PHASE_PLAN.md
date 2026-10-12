@@ -19,11 +19,11 @@ Mode: agentic | Gate: hard | Prerequisites (before Stage 0)
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
 - [x] Git initialized
-- [ ] Steam auto-update set to "only update when I launch it"
-- [ ] SteamVR over Steam Link verified with a native VR game
+- [x] Steam auto-update set to "only update when I launch it" (user, 2026-10-13)
+- [x] SteamVR over Steam Link verified with a native VR game (user)
 - [ ] Save games backed up
 - [x] Game restore path: Steam "Verify integrity of game files". The mod only *adds* files, so uninstall = delete them, then verify
-- [ ] EULA/modding policy acknowledged by user
+- [x] EULA/modding policy acknowledged by user (2026-10-13)
 - [x] Other mods: none
 - [ ] Python 3 (optional, for helper scripts) — install when needed
 - [ ] RenderDoc — install at Stage 2
@@ -34,6 +34,15 @@ Mode: agentic | Gate: hard | Prerequisites (before Stage 0)
 Effort: S/M/L. Game-specific criteria are marked ★.
 
 ### Stage 0 — Recon and entry (S)
+
+#### Stage 0 brief
+Goal: our code runs inside the game, logs, can be switched off, and leaves the game restorable.
+Findings so far: exe is packed (Denuvo + EA Activation64); static imports are hidden. At runtime the game loads WINMM (#38), VERSION (#39), DINPUT8 (#66), NvCameraSDK64 (#70), d3d11 (#74), dxgi (#75) — none of them KnownDLLs. DX11 confirmed; no d3d12 loaded.
+Unknowns: does the EA/Denuvo loader honour the app-folder search order for version.dll, or load it from System32 explicitly?
+Hypotheses: H1 a `version.dll` proxy in the game folder is loaded before d3d11 (rung 3). H2 fallback: same binary renamed to `dinput8.dll`.
+Plan: one proxy DLL (`mecvr`) exporting both version.dll and dinput8.dll sets, forwarding to System32 → logger → exe version check → safe mode → config load/validate/hot-reload → change window title as visible proof → hook IDXGISwapChain::Present (MinHook) and log frame rate.
+Verify: log file shows load + Present hook frame count; game window title changes; deleting the file restores stock.
+Risk: Denuvo integrity checks on loaded modules (unlikely, ReShade-style proxies are common); Steam overlay also hooks Present.
 - [ ] Engine and DX11 confirmed from the running process
 - [ ] Entry: proxy DLL the game loads by name (rung 3). No official API or managed loader exists. Denuvo is left untouched
 - [ ] Log file written from inside the game; log line visible
