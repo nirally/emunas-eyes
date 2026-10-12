@@ -1,0 +1,5 @@
+{
+  "$comment": "Action -> control per controller family. Code refers to actions only, never buttons. Filled in at Stage 3.",
+  "families": ["touch", "index", "vive", "vive_focus", "pico", "wmr", "psvr2", "frame", "generic"],
+  "actions": {}
+}

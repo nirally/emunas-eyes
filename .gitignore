@@ -1,0 +1,8 @@
+build/
+out/
+*.user
+*.suo
+.vs/
+*.log
+docs/playtests/reports/*
+!docs/playtests/reports/.gitkeep

@@ -1,0 +1,17 @@
+{
+  "$comment": "Every tunable lives here: type, range, default, menu section. The in-VR menu and config validation both read this file.",
+  "version": 1,
+  "settings": {
+    "features.vr_enabled":        { "type": "bool",  "default": true,  "section": "Features",    "label": "VR enabled (off = launch flat)" },
+    "diagnostics.log_level":      { "type": "enum",  "values": ["error", "warn", "info", "debug", "trace"], "default": "info", "section": "Diagnostics", "label": "Log level" },
+    "diagnostics.assertions":     { "type": "bool",  "default": true,  "section": "Diagnostics", "label": "In-game self-checks" },
+    "input.dominant_hand":        { "type": "enum",  "values": ["right", "left"], "default": "right", "section": "Input", "label": "Dominant hand" },
+    "comfort.turn_mode":          { "type": "enum",  "values": ["smooth", "snap"], "default": "smooth", "section": "Comfort", "label": "Turn mode" },
+    "comfort.smooth_turn_speed":  { "type": "float", "min": 30, "max": 360, "default": 120, "unit": "deg/s", "section": "Comfort", "label": "Smooth turn speed" },
+    "comfort.snap_turn_angle":    { "type": "float", "min": 15, "max": 90, "default": 30, "unit": "deg", "section": "Comfort", "label": "Snap turn angle" },
+    "comfort.vignette_strength":  { "type": "float", "min": 0, "max": 1, "default": 0.3, "section": "Comfort", "label": "Vignette strength" },
+    "comfort.play_mode":          { "type": "enum",  "values": ["standing", "seated"], "default": "standing", "section": "Comfort", "label": "Play mode" },
+    "rendering.render_scale":     { "type": "float", "min": 0.5, "max": 1.5, "default": 1.0, "section": "Rendering", "label": "Render scale" },
+    "rendering.world_scale":      { "type": "float", "min": 0.5, "max": 2.0, "default": 1.0, "section": "Rendering", "label": "World scale" }
+  }
+}

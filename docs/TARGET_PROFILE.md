@@ -1,0 +1,79 @@
+# Target Profile — Mirror's Edge Catalyst VR
+
+Every entry is marked **confirmed** (checked on this PC or by the user) or **assumed** (not yet verified).
+
+## User and setup (from the setup wizard, 2026-10-13)
+
+| Item | Value | Status |
+|---|---|---|
+| Game | Mirror's Edge Catalyst, Steam (appid 1233570), launched via EA app | confirmed (detected) |
+| Install path | `E:\SteamLibrary\steamapps\common\Mirrors Edge Catalyst` (23.4 GB) | confirmed (detected) |
+| Exe version | MirrorsEdgeCatalyst.exe 1.0.3.47248, Steam buildid 10351434 | confirmed (detected) |
+| Auto-update | Steam AutoUpdateBehavior=0 (always update) — **must be changed before Stage 0** | confirmed (detected) |
+| Other mods | None — vanilla Steam install, no loader/proxy DLLs present | confirmed (detected + user) |
+| Online | Mod targets offline/single-player use only; user accepted | confirmed (user) |
+| OS | Windows 11 Pro 10.0.26300 | confirmed (detected) |
+| GPU / CPU / RAM | GTX 1080 Ti / i7-10700 / 32 GB | confirmed (detected) |
+| Headset | Meta Quest 2, Touch controllers | confirmed (user) |
+| Connection | Steam Link (wireless) → SteamVR | confirmed (user) |
+| Active OpenXR runtime | SteamVR (`steamxr_win64.json`); Meta runtime also installed (`E:\Meta Horizon`) | confirmed (detected) |
+| Controller family to test first | Meta Touch (Quest 2) | confirmed (user) |
+| Environment mode | agentic (Claude Code) | confirmed (user) |
+| Code comfort | Can follow instructions — explain once, do the technical work | confirmed (user) |
+| Modding experience | None | confirmed (user) |
+| Headset session length | Up to 1 hour (scripts still kept ≤15 items) | confirmed (user) |
+| Game familiarity | Very experienced Catalyst player; will flag anything that feels off | confirmed (user) |
+
+## Preferences
+
+| Item | Value | Status |
+|---|---|---|
+| Gate mode | Hard gate for Stages 0–4, then revisit | confirmed (user) |
+| Combat | Physical punching: bring controller to enemy with real punch motion → hit | confirmed (user) |
+| Locomotion | Loves smooth locomotion; **hates snap** → smooth turn default, snap turn available but off | confirmed (user) |
+| Play stance | Standing, seated supported | confirmed (user) |
+| Handedness | Right-handed; left-handed fully supported | confirmed (user) |
+
+## Game description (user-confirmed, Screen 3)
+
+- First-person; cutscenes use cinematic, often third-person, cameras.
+- Melee only (punches, kicks, momentum attacks); no player firearms.
+- Parkour core: wall-run, vault, slide, climb, ledge grab, bar swing, ziplines, MAG Rope (swing/pull), quick turns, rolls. No vehicles, no swimming.
+- Many cinematic cutscenes and scripted camera moments (takedowns, set pieces). No lock-on.
+- UI fairly clean: Runner Vision, objective markers, health/focus, prompts; heavy map/menu UI.
+
+## Game dossier (research 2026-10-13)
+
+**Engine and platform**
+- Frostbite 3 (2016 build). Install layout (`Data/`, `Patch/`, `Engine.BuildInfo_Win64_retail.dll`) matches Frostbite. — confirmed (on-disk evidence)
+- DirectX 11 renderer (the Helix 3D Vision fix targets DX11). — assumed, verify in Stage 0
+- No further patches expected; EA shut down the game's servers on 2023-12-08. — confirmed (Wikipedia)
+
+**DRM, anti-cheat, online**
+- Steam version uses **Denuvo** (anti-tamper copy protection) plus an EA account login through the EA app. — confirmed (Steam community, multiple reports)
+- No multiplayer anti-cheat found. Online features (leaderboards, user-made time trials, social) are dead since the server shutdown. — confirmed
+- Reports say the game can hang on a loading screen after the intro while it looks for the dead servers. Community workaround: block the game's network access. — assumed; see Q-001
+- **Rules for this project:** we don't touch Denuvo, the license token or the EA login. The mod loads *alongside* the game. Prefer hooks that don't patch game code bytes (data edits through Frosty, vtable hooks, and D3D11/DXGI hooks), because patched code inside Denuvo-protected regions is fragile. — decision
+
+**Modding landscape**
+- **Frosty Tool Suite / Frosty Mod Manager:** the established data-modding tool. It supports Catalyst, including the Steam version (Mod Manager 1.0.6+ with platform launching). Mods are `.fbmod` data edits. — confirmed
+- **Camera On Head (Nexus #332):** a data-only mod that moves the camera to Faith's animated head joint (`Skeleton_Faith` camera position plus `CameraForwardAxis` in `FaithCharacter`). This shows the camera rig is **data-driven and editable through Frosty**, a big help for Stage 1. Known issues: vertical angle stays locked, some camera shakes missing. — confirmed (mod page)
+- **FOV:** set in game options on Steam. Uses *vertical* FOV. Older FOV-unlock mods go up to 120. — confirmed
+- **Helix Mod 3D Vision fix (DX11):** stereo shader fixes for shadows, lights, reflections, sky/sun/moon, lens flares. The HUD is one shader/texture and can't be split. Requires motion blur off. This is a **map of which effects break in stereo** for Stage 2. — confirmed
+- **OpenGameCamera** (MIT): open-source Frostbite free-camera with reverse-engineered SDK classes and DebugRenderer hooks. Targets SWBF2, not Catalyst; its approach transfers. — confirmed
+- **BF2VR** (GPL-3.0, archived 2023): Frostbite VR mod for Battlefront II. Camera via GameRenderer/RenderView, alternate-eye rendering, ViGEm gamepad emulation, OpenXR. Shows the Frostbite camera path is reachable. Alternate-eye stereo is a low rung we won't copy. — confirmed
+- **Mirror's Edge (2008) VR mod** (letsgosportsteam): a different game and engine (UE3). Useful for parkour comfort ideas only. — confirmed
+- **VorpX:** commercial, fake 3D only. Not a real conversion. — confirmed
+- **No existing VR mod for Catalyst.** — confirmed (search 2026-10-13)
+
+**Systems that take over the camera** (all need Stage 1 handling)
+Head bob, landing dips, rolls, wall-run tilt (camera *roll*), quick-turn 180, bar swings, ladders/pipes, ledge climbs, ziplines, MAG Rope swing/pull, slides, takedowns/finishers, death and fall camera, scripted set pieces, cinematic cutscenes, Gridnode/hack sequences, loading transitions.
+
+**UI surface**
+Runner Vision (red world highlights and ghost runner line), objective/waypoint markers, health/shield (focus), prompts, time-trial timers, damage indicators, big map and menu screens. Helix found the HUD is one shader, so per-element splitting needs a deeper hook. — assumed
+
+**Accessibility features to preserve:** subtitles, remapping, FOV slider, HUD element toggles. — assumed
+
+## Engine and hooks
+
+*(filled in during Stage 0 recon — all assumed until the game visibly reacts)*

@@ -1,0 +1,13 @@
+{
+  "game": { "name": "Mirror's Edge Catalyst", "version": "1.0.3.47248", "engine": "Frostbite 3" },
+  "skeleton": { "head": "", "hand_l": "", "hand_r": "", "hips": "", "spine": [] },
+  "weapons": [],
+  "gadgets": [
+    { "id": "mag_rope", "class": "ability", "aim": "hand" },
+    { "id": "disruptor", "class": "ability", "aim": "hand" }
+  ],
+  "holsters": {},
+  "interactables": [],
+  "vehicles": [],
+  "ui": []
+}
