@@ -22,3 +22,12 @@ EXPORTS
     DllRegisterServer=Proxy_DllRegisterServer PRIVATE
     DllUnregisterServer=Proxy_DllUnregisterServer PRIVATE
     GetdfDIJoystick=Proxy_GetdfDIJoystick
+    getConfiguration=Proxy_getConfiguration
+    getConfigurationSize=Proxy_getConfigurationSize
+    getSessionConfigurationSize=Proxy_getSessionConfigurationSize
+    getVersion=Proxy_getVersion
+    setConfiguration=Proxy_setConfiguration
+    setStopSessionCallback=Proxy_setStopSessionCallback
+    setUpdateCameraFunc=Proxy_setUpdateCameraFunc
+    stopSession=Proxy_stopSession
+    updateCamera=Proxy_updateCamera

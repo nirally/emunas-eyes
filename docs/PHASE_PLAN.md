@@ -5,23 +5,23 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-13
-Mode: agentic | Gate: hard | Prerequisites (before Stage 0)
+Mode: agentic | Gate: hard | Stage 0 of 10 — gate
 
-✅ Built and tested: nothing yet
-🔧 Built, not yet tested: nothing yet
-🚧 In progress: prerequisites (version pin, save backup, VR check)
-⬜ Not started: Stages 0–10
-❌ Won't be in Phase 1: teleport movement (breaks momentum parkour, D-003), online features (servers shut down 2023)
-❓ Need from you: prerequisite checklist
-🐞 Open bugs: none
-▶ Next: you work through the prerequisite checklist. Then I start Stage 0 (getting mod code running inside the game).
+✅ Built and tested: nothing yet (Stage 0 passes all no-headset checks)
+🔧 Built, not yet tested: mod loads inside the game, logging, live settings, safe mode, uninstall → PLAYTEST-0 waiting on you
+🚧 In progress: nothing (hard gate)
+⬜ Not started: camera, 3D, controllers, movement, hands, punching, body, HUD, settings menu, packaging
+❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
+❓ Need from you: PLAYTEST-0 (~10 min, no headset)
+🐞 Open bugs: 1 sev-4 (BUG-001 EA launcher race, not the mod)
+▶ Next: you run PLAYTEST-0. Me: Stage 1 (camera) once it passes.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
 - [x] Git initialized
 - [x] Steam auto-update set to "only update when I launch it" (user, 2026-10-13)
 - [x] SteamVR over Steam Link verified with a native VR game (user)
-- [ ] Save games backed up
+- [x] Save games backup: declined by user 2026-10-13 (risk accepted; re-offer before Stage 1 camera hooks)
 - [x] Game restore path: Steam "Verify integrity of game files". The mod only *adds* files, so uninstall = delete them, then verify
 - [x] EULA/modding policy acknowledged by user (2026-10-13)
 - [x] Other mods: none
@@ -43,12 +43,13 @@ Hypotheses: H1 a `version.dll` proxy in the game folder is loaded before d3d11 (
 Plan: one proxy DLL (`mecvr`) exporting both version.dll and dinput8.dll sets, forwarding to System32 → logger → exe version check → safe mode → config load/validate/hot-reload → change window title as visible proof → hook IDXGISwapChain::Present (MinHook) and log frame rate.
 Verify: log file shows load + Present hook frame count; game window title changes; deleting the file restores stock.
 Risk: Denuvo integrity checks on loaded modules (unlikely, ReShade-style proxies are common); Steam overlay also hooks Present.
-- [ ] Engine and DX11 confirmed from the running process
-- [ ] Entry: proxy DLL the game loads by name (rung 3). No official API or managed loader exists. Denuvo is left untouched
-- [ ] Log file written from inside the game; log line visible
-- [ ] Feature flags, safe mode (flag file → flat launch) and config validation
-- [ ] Signature scanning for every hook; exe version check on startup
-- [ ] Game restorable to stock (delete files + verify)
+- [x] Engine and DX11 confirmed from the running process
+- [x] Entry: NvCameraSDK64.dll proxy (rung 3, D-005). version.dll rejected (System32-only search). Denuvo untouched
+- [x] Log file written from inside the game; window title tagged as visible proof
+- [x] Feature flags, safe mode (flag file → flat launch, verified) and config validation + hot reload (verified live)
+- [x] Signature scanner (unit-tested) + exe version check on startup (mismatch → safe mode)
+- [x] Game restorable to stock: undeploy restores NvCameraSDK64.dll byte-identical (hash verified)
+- [ ] PLAYTEST-0: you confirm the game plays normally with the mod loaded
 
 ### Stage 1 — Camera ownership (M, high risk)
 - [ ] Find the camera / RenderView path (frame capture + OpenGameCamera/BF2VR approach)

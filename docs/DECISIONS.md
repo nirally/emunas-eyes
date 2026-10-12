@@ -38,3 +38,15 @@ Date: 2026-10-13  Stage: planning
 Chose: smooth turn on by default, snap turn available but off; vignette on at low strength (0.3).
 Rejected: the standard comfort-first default (snap turn, medium vignette). The user says they love smooth locomotion and hate snap.
 Revisit: at packaging (Stage 10), reconsider shipping defaults for new VR users. The user's own profile keeps these.
+
+### D-005 — Entry: NvCameraSDK64.dll proxy (rung 3)
+Date: 2026-10-13  Stage: 0
+Chose: replace the game's NvCameraSDK64.dll (NVIDIA Ansel SDK library, in the game folder) with our proxy. The original moves to `mecvr\NvCameraSDK64_orig.dll`, and all 9 exports forward through counting stubs.
+Rejected: version.dll proxy (H1). Tested: the game loaded System32\version.dll and ignored ours; the launcher layer restricts system-DLL search to System32, so dinput8/winmm/dxgi proxies would fail the same way. General injector (rung 4): not needed.
+Bonus: the Ansel interface (updateCamera / setUpdateCameraFunc) is a candidate camera hook for Stage 1.
+Cost: we replace one game file. The installer keeps the original; undeploy restores it byte-identical (verified by hash). Steam Verify also restores it.
+DRM: untouched. We don't modify the exe, Activation64 or Denuvo.
+
+### D-006 — Save backup declined
+Date: 2026-10-13  Stage: prerequisites
+The user chose to skip the save backup. Risk accepted. Re-offer before Stage 1 writes to camera/player state.

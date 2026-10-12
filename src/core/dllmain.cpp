@@ -33,6 +33,8 @@ const char* role_name(proxy::Role r) {
     switch (r) {
         case proxy::Role::Version: return "version.dll";
         case proxy::Role::DInput8: return "dinput8.dll";
+        case proxy::Role::NvCamera: return "NvCameraSDK64.dll";
+        case proxy::Role::NvCameraMissingOriginal: return "NvCameraSDK64.dll (ORIGINAL MISSING)";
         default: return "unknown";
     }
 }
@@ -57,6 +59,18 @@ void tag_window_async(const wchar_t* text) {
                  arg, 0, nullptr);
 }
 
+// Logs which proxied exports the game has called since the last report.
+void log_export_calls() {
+    static unsigned long long last[proxy::kExportCount] = {};
+    for (int i = 0; i < proxy::kExportCount; ++i) {
+        unsigned long long n = proxy::call_count(i);
+        if (n != last[i]) {
+            LOG_I("proxy", "export %s called %llu times (+%llu)", proxy::export_name(i), n, n - last[i]);
+            last[i] = n;
+        }
+    }
+}
+
 void set_hooks_enabled(bool on) {
     MH_STATUS st = on ? MH_EnableHook(MH_ALL_HOOKS) : MH_DisableHook(MH_ALL_HOOKS);
     LOG_I("core", "hooks %s (%s)", on ? "enabled" : "disabled", MH_StatusToString(st));
@@ -67,6 +81,9 @@ DWORD WINAPI main_thread(LPVOID) {
     log::init(dir / L"mecvr.log");
     LOG_I("core", "MEC VR %s starting, loaded as %s, pid %lu", MECVR_VERSION, role_name(g_role),
           GetCurrentProcessId());
+
+    if (g_role == proxy::Role::NvCameraMissingOriginal)
+        LOG_E("core", "mecvr\\NvCameraSDK64_orig.dll not found - photo mode calls are stubbed. Re-run the installer.");
 
     const std::string exe_ver = game_version::host_exe_version();
     LOG_I("core", "game exe version %s (target %s)", exe_ver.c_str(), game_version::kTarget);
@@ -108,9 +125,11 @@ DWORD WINAPI main_thread(LPVOID) {
     // Smoke line after 10 s of frames. Runtime/controller checks join at Stage 3.
     ULONGLONG first_frame_at = 0;
     bool smoke_done = false;
+    int tick = 0;
     for (;;) {
         Sleep(500);
         g_config.poll_reload();
+        if (++tick % 20 == 0 && tick <= 240) log_export_calls();  // every 10 s for the first 2 min
         if (!smoke_done) {
             uint64_t frames = present_hook::frame_count();
             if (frames > 0 && first_frame_at == 0) first_frame_at = GetTickCount64();

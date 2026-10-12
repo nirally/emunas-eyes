@@ -1,9 +1,12 @@
-; Forwarding stubs: each export tail-jumps to the real function in g_real.
+; Forwarding stubs: each export bumps its call counter, then tail-jumps to the
+; real function in g_real. Signature-agnostic: no registers except flags change.
 ; Index order must match proxy.cpp.
 EXTERN g_real:QWORD
+EXTERN g_calls:QWORD
 
 STUB MACRO name, index
 name PROC
+    lock inc QWORD PTR [g_calls + index * 8]
     jmp QWORD PTR [g_real + index * 8]
 name ENDP
 ENDM
@@ -32,4 +35,13 @@ STUB Proxy_DllGetClassObject, 19
 STUB Proxy_DllRegisterServer, 20
 STUB Proxy_DllUnregisterServer, 21
 STUB Proxy_GetdfDIJoystick, 22
+STUB Proxy_getConfiguration, 23
+STUB Proxy_getConfigurationSize, 24
+STUB Proxy_getSessionConfigurationSize, 25
+STUB Proxy_getVersion, 26
+STUB Proxy_setConfiguration, 27
+STUB Proxy_setStopSessionCallback, 28
+STUB Proxy_setUpdateCameraFunc, 29
+STUB Proxy_stopSession, 30
+STUB Proxy_updateCamera, 31
 END
