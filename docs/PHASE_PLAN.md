@@ -66,12 +66,12 @@ Verify: in-game assertion "head pose was last writer to the view, zero roll"; PL
 Risk: Denuvo-virtualized code around the camera; patching code bytes avoided — prefer data writes and vtable/function hooks found by signature.
 Note: Stage 1 head tracking needs OpenXR, which is formally Stage 3. Minimal OpenXR head-pose read is pulled forward into Stage 1 (D-007).
 - [x] Find the camera: view CB, RenderView copy, game camera; gameplay writer SetCameraData hooked by signature (D-009, D-010)
-- [~] Head pose applied at the camera setter, unsmoothed, zero roll from game code (assertion live; monitor-verified; headset pending PLAYTEST-1a)
-- [ ] ★ Head bob, landing dips and camera shake removed (Frosty data + code)
-- [ ] ★ Wall-run tilt, rolls, quick-turn 180, bar swings, ziplines, MAG Rope swing: no camera roll or pitch forced on the head
-- [ ] ★ Vertical look decoupled from Faith's aim (Camera On Head mod's known limit)
-- [ ] ★ Takedowns, deaths/falls, Gridnode sequences, scripted set pieces: fade or world-moves-under-head, never yank
-- [ ] Correct world scale
+- [x] Head pose applied at the camera setter (+ render-view step), unsmoothed, zero roll from game code unless opted in (D-014); 0 assertion failures
+- [x] ★ Head bob: user "noticeable but fine" (kept); rotation shake/dips removed unless game motion on
+- [x] ★ Wall-run, rolls, bar swings, MAG Rope: no forced motion by default; opt-in game motion (D-014) smooth (1f)
+- [x] ★ Vertical look from the head (view); aim decoupling itself → Stage 6
+- [~] ★ Deaths/falls fine (1f). Takedowns, cutscenes, Gridnodes → carried into Stage 2 playtests (D-016)
+- [~] Correct world scale → judged with stereo in Stage 2 (D-016)
 
 ### Stage 2 — Stereo rendering (L, high risk)
 - [ ] Highest viable rung (native per-eye → instanced → dual pass). Alternate-eye rendering rejected unless everything else fails

@@ -117,3 +117,14 @@ Risk accepted by the user: forced camera rotation is a known nausea trigger. The
 Date: 2026-10-13  Stage: 1
 Chose: in gameplay, build the VR view at the render-view step from the derived (blended) camera, the one a flat player sees, rather than overwriting it with a view built from the raw camera manager output. The main site still composes from raw (it's the only camera at the menu, and keeps the camera object consistent). Each site tracks its own look-pitch baseline; the baseline moves at most 0.35 rad/s (never a step).
 Reason: PLAYTEST-1e snappiness on movement-mode transitions (roll entry, pole, MAG Rope) - BUG-008.
+
+### D-015a — Correction to D-015
+Date: 2026-10-13  Stage: 1
+PLAYTEST-1f showed the render-view camera is identical to the raw camera (max blend 0.0°). The premise of D-015 ("the game blends transitions there") was false. The snappiness fix came from the gradual look-pitch baseline. Composing at the render-view step from its own input is kept: it's equivalent today and remains correct if a scripted camera ever arrives there.
+
+### D-016 — Stage 1 gate: pass, with two items carried into Stage 2 playtests
+Date: 2026-10-13  Stage: 1
+Passed on: 1:1 head tracking accepted by the user (PLAYTEST-1c), no game roll unless opted in (assertion 0 failures across sessions), roll and swing transitions smooth (1f), wall-run, death/respawn reported fine (1f), comfort excellent (no nausea or eye strain in 6 sessions).
+Carried: (1) cutscenes and takedowns. The user couldn't trigger them on demand; they get a fixed item in every Stage 2 playtest until seen. (2) World scale is judged properly only with stereo, so it's part of the Stage 2 exit ("objects feel the right size").
+Not applicable: vehicles (none in the game).
+Moved to later stages by design: vertical look decoupled from aim (Stage 6), body following real movement / camera ahead of Faith (Stage 4, BUG-007), head bob (user: "noticeable but fine").
