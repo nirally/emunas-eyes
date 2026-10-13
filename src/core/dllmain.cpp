@@ -15,6 +15,7 @@
 #include "diagnostics/typeinfo_dump.h"
 
 namespace mecvr::recon { void probe_strings(); }
+namespace mecvr::code_dump { void poll(const std::filesystem::path& dir); }
 #include "render/cb_capture.h"
 #include "render/present_hook.h"
 
@@ -136,6 +137,7 @@ DWORD WINAPI main_thread(LPVOID) {
         Sleep(500);
         g_config.poll_reload();
         if (++tick % 20 == 0) log_export_calls();  // every 10 s; only logs exports whose count changed
+        if (tick % 4 == 0) code_dump::poll(dir);
         if (!smoke_done) {
             uint64_t frames = present_hook::frame_count();
             if (frames > 0 && first_frame_at == 0) first_frame_at = GetTickCount64();

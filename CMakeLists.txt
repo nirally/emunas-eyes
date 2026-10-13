@@ -38,7 +38,8 @@ add_library(mecvr SHARED
     src/diagnostics/recon_probe.cpp
     src/render/cb_capture.cpp
     src/render/cam_hunt.cpp
-    src/diagnostics/hwbp.cpp)
+    src/diagnostics/hwbp.cpp
+    src/diagnostics/code_dump.cpp)
 target_link_libraries(mecvr PRIVATE mecvr_core minhook dxguid)
 set_target_properties(mecvr PROPERTIES OUTPUT_NAME "mecvr")
 

@@ -72,3 +72,14 @@ Method: "How to find" #3 + #4 + #5. Constant-buffer capture → value hunt → p
 - Downstream "RenderView" copy: transform, previous transform at -0x40, FOV 0.9599 rad (55° vertical) at +0x74/+0x78, near 0.05 at +0x7c, far 10000 at +0x80, aspect 1.7778 at +0x84 (offsets from the position). No short static path.
 - Menu camera never moves, so no writers caught yet (hardware write-watch saw 0 writes). The writers and the gameplay camera need a gameplay session (RECON-1).
 Rejected: blind poking of all candidates (crashed the game at the menu once; no save involved). Now filtered to live full transforms.
+
+### D-010 — Stage 1 hook point: gameplay camera setter, filtered by call site
+Date: 2026-10-13  Stage: 1
+Evidence (RECON-1 + code dump):
+- The menu chain [[exe+0x23e7f78]+0x400]+0x70 does NOT hold in gameplay (resolves to zeros). It's menu-only.
+- Gameplay hunt (paused): 2 feeders again. The upstream one is written once per frame while moving, by exactly one site.
+- Writer = exe+0x3536f10, `SetCameraData(cam=rcx, const data=rdx)`: compares data[0x00..0x3f] (transform A) and data[0x80] (xyz) with the camera, and if different copies 0x90 bytes (A at +0x00, transform B at +0x40, vec at +0x80) and sets dirty flags |= 0xb at cam+0x120.
+- Caller = gameplay camera manager (chunk exe+0x327ba58..0x327bcad): asks the active camera mode (rdi, vtable) for this frame's data, copies rdi+0x10..0x9f into mgr+0x90, applies other setters (0x3536db0, 0x3536a70, 0x3536fc0, 0x3532dc0), copies mgr+0x90 → mgr+0x120, then calls 0x3536f10(renderCam=rsi, mgr+0x120); return site exe+0x327bc8b. Then 0x35369e0(renderCam, [mgr+0x20]) (probably FOV).
+- Pause/menu writers are generic struct copies (0x352ca40, 0x352d810), not usable as hooks.
+Chose: hook 0x3536f10 (found by signature scan, not offset). When the return address is the gameplay-manager site, replace transforms A and B in the data with: game yaw + game position + head pose. The game's own copy (mgr+0x90) is untouched, so game logic doesn't feed back on our change. Other call sites are logged (cutscene/menu cameras: later in Stage 1).
+Risk: Denuvo integrity checks on patched code. MinHook writes a 5-byte jump at the function start (0x3536f10 is a plain leaf, not virtualized). If the game reacts badly, fall back to hooking the vtable slot of the camera mode (data-only patch).

@@ -90,6 +90,7 @@ Runner Vision (red world highlights and ghost runner line), objective/waypoint m
 | View constant buffer | 1136-byte CB: [4..7] screen, [8..23] view (camera = -R^T t), [24..39] projection (reverse-Z infinite, near 0.06, TAA jitter) | confirmed | CB capture + poke |
 | Game camera (menu) | [[exe+0x23e7f78]+0x400]+0x70 = position; LinearTransform rows before it. Writing it moves the view | confirmed (menu, 3 launches) | value hunt + poke + pointer scan, D-009 |
 | RenderView copy | Transform + prev transform, FOV 0.9599 rad, near 0.05, far 10000, aspect 1.7778. No short static path | confirmed (menu) | D-009 |
-| Game camera in gameplay, writer functions | unknown | assumed | RECON-1 |
+| Game camera in gameplay | Menu chain does NOT hold in gameplay. Gameplay camera set via exe+0x3536f10 (SetCameraData) from the camera manager, return site exe+0x327bc8b | confirmed | RECON-1 hardware write-watch + code dump, D-010 |
+| Camera data block (0x90) | +0x00 transform A (LinearTransform), +0x40 transform B, +0x80 vec4 (compared; meaning TBD); dirty flags cam+0x120 | confirmed (layout), assumed (meanings) | disassembly |
 | World units | meters (near plane 0.06, camera on a rooftop at y=62.6) | confirmed | projection + scene |
 | Anti-aliasing | TAA (projection jitter) — Stage 2 concern | confirmed | CB capture |
