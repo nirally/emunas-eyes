@@ -154,6 +154,8 @@ DWORD WINAPI main_thread(LPVOID) {
                 camera_override::set_height_offset(static_cast<float>(g_config.get_number("comfort.height_offset")));
                 camera_override::set_game_motion(g_config.get_bool("comfort.game_camera_motion"));
                 camera_override::set_stereo(g_config.get_string("stereo.mode") == "alternate");
+                camera_override::set_full_fov(g_config.get_bool("rendering.full_fov"));
+                camera_override::set_fov_test(g_config.get_bool("diagnostics.fov_test"));
             }
             present_hook::set_frame_callback(&on_frame);
         }
@@ -179,6 +181,10 @@ DWORD WINAPI main_thread(LPVOID) {
             camera_override::set_stereo(new_v["stereo.mode"].get<std::string>() == "alternate");
         if (old_v["comfort.game_camera_motion"] != new_v["comfort.game_camera_motion"])
             camera_override::set_game_motion(new_v["comfort.game_camera_motion"].get<bool>());
+        if (old_v["rendering.full_fov"] != new_v["rendering.full_fov"])
+            camera_override::set_full_fov(new_v["rendering.full_fov"].get<bool>());
+        if (old_v["diagnostics.fov_test"] != new_v["diagnostics.fov_test"])
+            camera_override::set_fov_test(new_v["diagnostics.fov_test"].get<bool>());
     });
 
     tag_window_async(L"[MEC VR " MECVR_VERSION L"]");
@@ -196,6 +202,8 @@ DWORD WINAPI main_thread(LPVOID) {
         bug_report::poll(dir, g_config.values().dump());
         if (camera_override::take_stereo_changed())
             g_config.set_user_value("stereo.mode", camera_override::stereo() ? "alternate" : "mono");
+        if (camera_override::take_full_fov_changed())
+            g_config.set_user_value("rendering.full_fov", camera_override::full_fov());
         if (camera_override::take_motion_changed())
             g_config.set_user_value("comfort.game_camera_motion", camera_override::game_motion());
         if (camera_override::take_height_changed())

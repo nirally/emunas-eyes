@@ -12,6 +12,7 @@
     "diagnostics.assertions":     { "type": "bool",  "default": true,  "section": "Diagnostics", "label": "In-game self-checks" },
     "diagnostics.typeinfo_dump":  { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Recon: dump engine type list once (developer)" },
     "diagnostics.stereo_experiment": { "type": "bool", "default": false, "section": "Diagnostics", "label": "Stage 2 experiment: two views per frame via split-screen (developer)" },
+    "diagnostics.fov_test":       { "type": "bool", "default": false, "section": "Diagnostics", "label": "Apply the full-FOV override without a headset, with a stand-in 90 deg FOV (developer)" },
     "diagnostics.cb_capture":     { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Recon: F10 captures one frame of shader constants (developer)" },
     "input.dominant_hand":        { "type": "enum",  "values": ["right", "left"], "default": "right", "section": "Input", "label": "Dominant hand" },
     "comfort.turn_mode":          { "type": "enum",  "values": ["smooth", "snap"], "default": "smooth", "section": "Comfort", "label": "Turn mode" },
@@ -21,6 +22,7 @@
     "comfort.play_mode":          { "type": "enum",  "values": ["standing", "seated"], "default": "standing", "section": "Comfort", "label": "Play mode" },
     "comfort.game_camera_motion": { "type": "bool",  "default": false, "section": "Comfort", "label": "Feel the game's camera motion: rolls, wall-run tilt, landing dips (F5). Intense" },
     "comfort.height_offset":      { "type": "float", "min": -0.5, "max": 0.8, "default": 0.0, "unit": "m", "section": "Calibration", "label": "Extra eye height (F3 up / F2 down)" },
+    "rendering.full_fov":         { "type": "bool",  "default": true, "section": "Rendering", "label": "Fill the headset's whole field of view (off = the game's own FOV in a window)" },
     "rendering.render_scale":     { "type": "float", "min": 0.5, "max": 1.5, "default": 1.0, "section": "Rendering", "label": "Render scale" },
     "rendering.world_scale":      { "type": "float", "min": 0.5, "max": 2.0, "default": 1.0, "section": "Rendering", "label": "World scale" }
   }

@@ -54,6 +54,7 @@ bool looks_like_view_cb(const float* f) {
     return screen && view_affine && proj;
 }
 std::atomic<int> g_views_this_frame{0};
+std::atomic<float> g_proj_sx{0}, g_proj_sy{0};  // last view projection scale (for the FOV log)
 uint64_t g_views_hist[5] = {};  // frames with 0,1,2,3,4+ view-constant uploads
 
 void watch_view(const void* data, UINT size) {
@@ -64,6 +65,9 @@ void watch_view(const void* data, UINT size) {
     ++g_views_this_frame;
     camera_override::check_view(f + 8);
     xr_session::set_game_projection(f[24], f[29]);
+    camera_override::note_projection(f[29]);
+    g_proj_sx = f[24];
+    g_proj_sy = f[29];
     if (g_recon) cam_hunt::on_view_matrix(f + 8, g_dir);
 }
 
@@ -226,6 +230,9 @@ void on_present() {
         last = GetTickCount64();
         LOG_I("capture", "view-constant uploads per frame: 0:%llu 1:%llu 2:%llu 3:%llu 4+:%llu", g_views_hist[0], g_views_hist[1],
               g_views_hist[2], g_views_hist[3], g_views_hist[4]);
+        if (g_proj_sx.load() > 0.01f && g_proj_sy.load() > 0.01f)
+            LOG_I("capture", "game projection: %.1f x %.1f deg (aspect %.3f)", 2 * std::atan(1.f / g_proj_sx.load()) * 57.2958f,
+                  2 * std::atan(1.f / g_proj_sy.load()) * 57.2958f, g_proj_sy.load() / g_proj_sx.load());
         for (auto& h : g_views_hist) h = 0;
     }
     if (!g_recon) return;

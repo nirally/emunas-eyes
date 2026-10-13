@@ -394,10 +394,11 @@ void frame(IDXGISwapChain* chain) {
         }
 
         static ULONGLONG last_pair_log = 0;
-        if (!mono && GetTickCount64() - last_pair_log > 10000) {
+        if (GetTickCount64() - last_pair_log > 10000) {
             last_pair_log = GetTickCount64();
-            LOG_I("xr", "stereo pairs shown: %llu (right eye without a left: %llu)", (unsigned long long)g_pairs,
-                  (unsigned long long)g_orphans);
+            LOG_I("xr", "stereo pairs shown: %llu (right eye without a left: %llu); game renders %.1f x %.1f deg",
+                  (unsigned long long)g_pairs, (unsigned long long)g_orphans, 2 * std::atan(1.f / g_sx.load()) * 57.2958f,
+                  2 * std::atan(1.f / g_sy.load()) * 57.2958f);
         }
 
         // Mono: both eyes show swapchain 0. Stereo: the latest complete pair, each eye at its own pose.

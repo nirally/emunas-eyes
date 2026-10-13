@@ -36,6 +36,18 @@ constexpr const char* kViewSiteSig = "84 C0 74 0F 48 8D 95 F0 00 00 00 48 89 D9 
 constexpr size_t kViewSiteCallOffset = 14;
 constexpr size_t kDataBytes = 0x90;
 
+// Camera FOV and aspect setters (render camera +0xe4 vertical FOV, +0xf4 aspect; each recomputes the
+// horizontal FOV at +0x290). The aspect setter is the call right after the gameplay SetCameraData.
+using SetFloatFn = void(__fastcall*)(void* cam, float v);
+constexpr const char* kFovSetterSig = "53 48 83 EC 20 0F 2E 89 E4 00 00 00 48 89 CB 74 ?? F3 0F 11 89 E4 00 00 00";
+constexpr const char* kAspectSetterSig = "53 48 83 EC 30 0F 29 74 24 20 0F 28 F1 48 89 CB 0F 2E B1 F4 00 00 00";
+SetFloatFn g_fov_orig = nullptr, g_aspect_orig = nullptr;
+std::atomic<void*> g_render_cam{nullptr};
+std::atomic<bool> g_full_fov{true};
+std::atomic<bool> g_fov_test{false};
+std::atomic<bool> g_fov_dirty{false};
+float g_game_fov = 0, g_game_aspect = 0;  // what the game last asked for (game thread)
+
 SetCameraDataFn g_orig = nullptr;
 void* g_setter = nullptr;
 uintptr_t g_site_return = 0;  // return address of the gameplay call
@@ -254,6 +266,83 @@ void reapply_at_view_site(uint8_t* data) {
     compose(data, g_view_state);
 }
 
+// tan(half vertical FOV) that covers both eyes' full field of view, symmetric. The horizontal side
+// comes from the viewport (16:9), so covering max(tan_x, tan_y) vertically covers both.
+// False when the game's own FOV should stand (no headset, setting off, override off).
+bool fov_target(float& tan_v) {
+    if (!g_full_fov.load() || !g_enabled.load() || !(head_pose::current().headset || g_fov_test.load())) return false;
+    float tan_x = 0, tan_y = 0;
+    for (int i = 0; i < 2; ++i) {
+        head_pose::Eye e = head_pose::eye(i);
+        tan_x = std::fmax(tan_x, std::fmax(std::tan(-e.fov[0]), std::tan(e.fov[1])));
+        tan_y = std::fmax(tan_y, std::fmax(std::tan(e.fov[2]), std::tan(-e.fov[3])));
+    }
+    if (tan_x <= 0.1f || tan_y <= 0.1f) return false;
+    tan_v = std::fmax(tan_x, tan_y);
+    return true;
+}
+
+// The engine's mapping from camera FOV to projection is not a plain formula (D-020), so the FOV is
+// steered by measurement: the projection actually rendered (view constants) is compared with the
+// target and the commanded tan(FOV/2) is scaled by the ratio until they agree.
+float g_cmd_tan = 0;                  // commanded tan(camera FOV / 2); 0 = not steering (game thread)
+int g_frames_since_change = 0;
+std::atomic<float> g_meas_tan_v{0};   // tan(half vertical FOV) of the last rendered view
+
+float fov_from_tan(float t) {
+    float f = 2.f * std::atan(t);
+    return g_game_fov > 3.2f ? f * 57.29578f : f;  // radians here (1.222); degrees if it ever is
+}
+
+void __fastcall fov_detour(void* cam, float v) {
+    if (cam == g_render_cam.load()) {
+        g_game_fov = v;
+        if (g_cmd_tan > 0) v = fov_from_tan(g_cmd_tan);
+    }
+    g_fov_orig(cam, v);
+}
+
+void __fastcall aspect_detour(void* cam, float v) {
+    if (cam == g_render_cam.load()) g_game_aspect = v;
+    g_aspect_orig(cam, v);
+}
+
+// Main site, after SetCameraData: steer the render camera to the headset FOV (or back to the game's).
+void update_fov(void* cam) {
+    if (!g_fov_orig) return;
+    auto* c = static_cast<uint8_t*>(cam);
+    if (g_render_cam.exchange(cam) != cam || g_game_fov == 0) {
+        g_game_fov = *reinterpret_cast<float*>(c + 0xe4);
+        g_game_aspect = *reinterpret_cast<float*>(c + 0xf4);
+        LOG_I("camera", "render camera: game FOV %.3f, aspect %.4f", g_game_fov, g_game_aspect);
+    }
+    float target;
+    bool on = fov_target(target);
+    if (on) {
+        if (g_cmd_tan <= 0) {
+            g_cmd_tan = target / (g_game_aspect > 0.1f ? g_game_aspect : 1.f);  // first guess (measured: x aspect)
+            g_frames_since_change = 0;
+            LOG_I("camera", "full field of view: target %.1f deg vertical", 2 * std::atan(target) * 57.2958f);
+        } else if (++g_frames_since_change >= 6) {
+            float meas = g_meas_tan_v.load();
+            float ratio = meas > 0.05f ? target / meas : 1.f;
+            if (std::fabs(ratio - 1.f) > 0.003f) {
+                g_cmd_tan = std::fmin(5.7f, std::fmax(0.2f, g_cmd_tan * ratio));
+                g_frames_since_change = 0;
+                static int logged = 0;
+                if (logged++ < 20)
+                    LOG_D("camera", "FOV steer: rendered %.1f deg, target %.1f -> camera FOV %.3f", 2 * std::atan(meas) * 57.2958f,
+                          2 * std::atan(target) * 57.2958f, fov_from_tan(g_cmd_tan));
+            }
+        }
+        g_fov_orig(cam, fov_from_tan(g_cmd_tan));
+    } else if (g_cmd_tan > 0) {
+        g_cmd_tan = 0;
+        g_fov_orig(cam, g_game_fov);
+        LOG_I("camera", "game field of view restored");
+    }
+}
+
 void __fastcall setter_detour(void* cam, const void* data) {
     auto ra = reinterpret_cast<uintptr_t>(_ReturnAddress());
     note_caller(ra);
@@ -266,12 +355,14 @@ void __fastcall setter_detour(void* cam, const void* data) {
     }
     if (ra != g_site_return || !g_enabled.load() || !data) {
         g_orig(cam, data);
+        if (ra == g_site_return && g_cmd_tan > 0) update_fov(cam);  // override just switched off
         return;
     }
     alignas(16) uint8_t copy[kDataBytes];
     memcpy(copy, data, kDataBytes);
     apply(copy);
     g_orig(cam, copy);
+    update_fov(cam);
 }
 
 bool key(int vk) { return (GetAsyncKeyState(vk) & 0x8000) != 0; }
@@ -300,7 +391,46 @@ void report_callers() {
     }
 }
 
+// FOV/aspect setters (optional: without them the picture stays at the game's FOV).
+void install_fov_hooks(const uint8_t* site) {
+    auto fov_pat = sigscan::parse(kFovSetterSig);
+    auto aspect_pat = sigscan::parse(kAspectSetterSig);
+    const uint8_t* fov = sigscan::find_in_module(reinterpret_cast<void*>(g_exe), *fov_pat);
+    const uint8_t* aspect = sigscan::find_in_module(reinterpret_cast<void*>(g_exe), *aspect_pat);
+    const uint8_t* site_aspect = sigscan::rip_relative(site + kSiteCallOffset + 5 + 8, 1, 5);  // movss xmm1,[rbx+20]; mov rcx,rsi; call
+    if (!fov || !aspect || aspect != site_aspect) {
+        LOG_W("camera", "FOV setters not found (fov %p, aspect %p, site calls %p) - headset FOV unavailable", fov, aspect, site_aspect);
+        return;
+    }
+    MH_STATUS st = MH_CreateHook(const_cast<uint8_t*>(fov), reinterpret_cast<void*>(&fov_detour), reinterpret_cast<void**>(&g_fov_orig));
+    if (st == MH_OK) st = MH_EnableHook(const_cast<uint8_t*>(fov));
+    if (st == MH_OK)
+        st = MH_CreateHook(const_cast<uint8_t*>(aspect), reinterpret_cast<void*>(&aspect_detour), reinterpret_cast<void**>(&g_aspect_orig));
+    if (st == MH_OK) st = MH_EnableHook(const_cast<uint8_t*>(aspect));
+    if (st != MH_OK) {
+        LOG_E("camera", "FOV setter hooks failed: %s", MH_StatusToString(st));
+        MH_RemoveHook(const_cast<uint8_t*>(fov));
+        MH_RemoveHook(const_cast<uint8_t*>(aspect));
+        g_fov_orig = g_aspect_orig = nullptr;
+        return;
+    }
+    LOG_I("camera", "FOV setter exe+%llx, aspect setter exe+%llx hooked", (unsigned long long)(reinterpret_cast<uintptr_t>(fov) - g_exe),
+          (unsigned long long)(reinterpret_cast<uintptr_t>(aspect) - g_exe));
+}
+
 }  // namespace
+
+bool full_fov() { return g_full_fov.load(); }
+bool take_full_fov_changed() { return g_fov_dirty.exchange(false); }
+void set_fov_test(bool on) { g_fov_test = on; }
+
+void note_projection(float sy) {
+    if (sy > 0.05f) g_meas_tan_v = 1.f / sy;
+}
+
+void set_full_fov(bool on) {
+    if (g_full_fov.exchange(on) != on) LOG_I("camera", "full field of view setting %s", on ? "on" : "off");
+}
 
 bool install() {
     g_exe = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
@@ -340,6 +470,7 @@ bool install() {
     }
     LOG_I("camera", "SetCameraData hooked at exe+%llx; gameplay call returns to exe+%llx",
           (unsigned long long)(reinterpret_cast<uintptr_t>(setter) - g_exe), (unsigned long long)(g_site_return - g_exe));
+    install_fov_hooks(site);
     return true;
 }
 
@@ -363,6 +494,13 @@ void on_present(float dt) {
         g_stereo_dirty = true;
     }
     stereo_was = stereo_key;
+    static bool fov_was = false;
+    bool fov_key = key(VK_F9);
+    if (fov_key && !fov_was) {
+        set_full_fov(!g_full_fov.load());
+        g_fov_dirty = true;
+    }
+    fov_was = fov_key;
     static bool motion_was = false;
     bool motion = key(VK_F5);
     if (motion && !motion_was) {

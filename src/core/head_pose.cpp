@@ -17,7 +17,7 @@ vm::Quat g_origin_rot;   // heading only
 vm::Vec3 g_origin_pos;
 Pose g_rendered;
 int g_rendered_eye = -1;
-Eye g_eyes[2] = {{{-0.0315f, 0, 0}, {}, {}}, {{0.0315f, 0, 0}, {}, {}}};
+Eye g_eyes[2] = {{{-0.0315f, 0, 0}, {}}, {{0.0315f, 0, 0}, {}}};  // fov keeps its 90 deg default
 
 // Simulator
 float g_yaw = 0, g_pitch = 0, g_roll = 0, g_height = 0;

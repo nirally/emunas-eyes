@@ -39,4 +39,13 @@ void set_stereo(bool on);
 bool stereo();
 bool take_stereo_changed();  // F4 toggled it; main thread saves
 
+// rendering.full_fov: with a headset, the game camera's FOV and aspect are set to cover both eyes'
+// full field of view (from the runtime), so the picture fills the headset instead of a window.
+void set_full_fov(bool on);  // F9 toggles; saved
+bool full_fov();
+bool take_full_fov_changed();
+void set_fov_test(bool on);  // diagnostics.fov_test: apply it without a headset (stand-in 90 deg FOV)
+// View-constant watcher: the vertical projection scale (1 / tan(half vertical FOV)) actually rendered.
+void note_projection(float sy);
+
 }  // namespace mecvr::camera_override
