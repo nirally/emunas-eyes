@@ -16,10 +16,14 @@
 
 namespace mecvr::recon { void probe_strings(); }
 namespace mecvr::code_dump { void poll(const std::filesystem::path& dir); }
+namespace mecvr::view_recon { void poll(const std::filesystem::path& dir); }
+struct IDXGISwapChain;
+namespace mecvr::screenshot { void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir); }
 namespace mecvr::bug_report { void poll(const std::filesystem::path& mod_dir, const std::string& settings_json); }
 #include "render/camera_override.h"
 #include "render/cb_capture.h"
 #include "render/present_hook.h"
+#include "render/stereo_views.h"
 #include "render/xr_session.h"
 
 namespace fs = std::filesystem;
@@ -86,8 +90,11 @@ camera_override::PitchSource pitch_source_from(const std::string& s) {
 }
 
 // Render thread, start of every Present.
+fs::path g_dir_for_frame;
+
 void on_frame(IDXGISwapChain* chain) {
     xr_session::on_present(chain);
+    screenshot::on_present(chain, g_dir_for_frame);
     static LARGE_INTEGER freq{}, last{};
     LARGE_INTEGER now;
     QueryPerformanceCounter(&now);
@@ -138,6 +145,8 @@ DWORD WINAPI main_thread(LPVOID) {
         if (hooks_ok) {
             cb_capture::install(dir, g_config.get_bool("diagnostics.cb_capture"));
             xr_session::configure(dir, g_config.get_bool("features.xr"));
+            g_dir_for_frame = dir;
+            if (stereo_views::install()) stereo_views::set_enabled(g_config.get_bool("diagnostics.stereo_experiment"));
             // Installed always so the flag can switch it live; the flag decides whether it acts.
             if (camera_override::install()) {
                 camera_override::set_enabled(g_config.get_bool("features.camera_override"));
@@ -163,6 +172,8 @@ DWORD WINAPI main_thread(LPVOID) {
             camera_override::set_pitch_source(pitch_source_from(new_v["camera.pitch_source"].get<std::string>()));
         if (old_v["comfort.height_offset"] != new_v["comfort.height_offset"])
             camera_override::set_height_offset(new_v["comfort.height_offset"].get<float>());
+        if (old_v["diagnostics.stereo_experiment"] != new_v["diagnostics.stereo_experiment"])
+            stereo_views::set_enabled(new_v["diagnostics.stereo_experiment"].get<bool>());
         if (old_v["comfort.game_camera_motion"] != new_v["comfort.game_camera_motion"])
             camera_override::set_game_motion(new_v["comfort.game_camera_motion"].get<bool>());
     });
@@ -178,6 +189,7 @@ DWORD WINAPI main_thread(LPVOID) {
         g_config.poll_reload();
         if (++tick % 20 == 0) log_export_calls();  // every 10 s; only logs exports whose count changed
         if (tick % 4 == 0) code_dump::poll(dir);
+        if (tick % 4 == 0) view_recon::poll(dir);
         bug_report::poll(dir, g_config.values().dump());
         if (camera_override::take_motion_changed())
             g_config.set_user_value("comfort.game_camera_motion", camera_override::game_motion());

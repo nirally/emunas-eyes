@@ -43,7 +43,10 @@ add_library(mecvr SHARED
     src/core/head_pose.cpp
     src/render/camera_override.cpp
     src/render/xr_session.cpp
-    src/diagnostics/bug_report.cpp)
+    src/diagnostics/bug_report.cpp
+    src/diagnostics/view_recon.cpp
+    src/render/stereo_views.cpp
+    src/render/screenshot.cpp)
 target_link_libraries(mecvr PRIVATE mecvr_core minhook dxguid)
 set_target_properties(mecvr PROPERTIES OUTPUT_NAME "mecvr")
 

@@ -53,11 +53,15 @@ bool looks_like_view_cb(const float* f) {
     bool proj = z(f[25]) && z(f[28]) && std::fabs(f[38] + 1.f) < 1e-3f;
     return screen && view_affine && proj;
 }
+std::atomic<int> g_views_this_frame{0};
+uint64_t g_views_hist[5] = {};  // frames with 0,1,2,3,4+ view-constant uploads
+
 void watch_view(const void* data, UINT size) {
     if (size != kViewCbBytes) return;
     float f[40];
     memcpy(f, data, sizeof(f));
     if (!looks_like_view_cb(f)) return;
+    ++g_views_this_frame;
     camera_override::check_view(f + 8);
     xr_session::set_game_projection(f[24], f[29]);
     if (g_recon) cam_hunt::on_view_matrix(f + 8, g_dir);
@@ -215,6 +219,15 @@ bool install(const std::filesystem::path& out_dir, bool recon) {
 }
 
 void on_present() {
+    int v = g_views_this_frame.exchange(0);
+    ++g_views_hist[v > 4 ? 4 : v];
+    static ULONGLONG last = 0;
+    if (GetTickCount64() - last > 10000) {
+        last = GetTickCount64();
+        LOG_I("capture", "view-constant uploads per frame: 0:%llu 1:%llu 2:%llu 3:%llu 4+:%llu", g_views_hist[0], g_views_hist[1],
+              g_views_hist[2], g_views_hist[3], g_views_hist[4]);
+        for (auto& h : g_views_hist) h = 0;
+    }
     if (!g_recon) return;
     cam_hunt::on_present();
     // Frame boundary: finish an in-flight capture, or start one if armed.

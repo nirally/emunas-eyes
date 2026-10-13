@@ -128,3 +128,11 @@ Passed on: 1:1 head tracking accepted by the user (PLAYTEST-1c), no game roll un
 Carried: (1) cutscenes and takedowns. The user couldn't trigger them on demand; they get a fixed item in every Stage 2 playtest until seen. (2) World scale is judged properly only with stereo, so it's part of the Stage 2 exit ("objects feel the right size").
 Not applicable: vehicles (none in the game).
 Moved to later stages by design: vertical look decoupled from aim (Stage 6), body following real movement / camera ahead of Faith (Stage 4, BUG-007), head bob (user: "noticeable but fine").
+
+### D-017 — Stage 2 H1 (native two-view via the split-screen builder): two attempts failed; moving to H2
+Date: 2026-10-13  Stage: 2
+Attempt A: a byte copy of the view object added to the view list for the builder call → crash at exe+0x2c7fa3f, a doubly-linked-list unlink (node->prev->next = node->next). The view object contains intrusive list links that a copy shares with the original.
+Attempt B: the same view object listed twice, with the viewport switched per FillRenderView (exe+0x3277100, hooked via its call site) → the render thread stopped presenting immediately (hang); crash at exe+0x3b729e1 on close.
+Conclusion: a second view has to be created by the engine's own view factory (unknown; would need its constructor and arguments). Parked as a later revisit, not abandoned.
+Next rung (H2, planned in the Stage 2 brief): sequential per-eye rendering, alternate eyes per frame, per-eye swapchains, each eye submitted with the pose it was rendered at. Step 1: plain alternation (eyes ~1 frame apart). Step 2: synchronise by freezing game time on the second eye's frame.
+Both experiments stay behind diagnostics.stereo_experiment (default off).
