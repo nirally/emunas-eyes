@@ -38,15 +38,18 @@ PFN_xrGetInstanceProcAddr g_gipa = nullptr;
     X(xrLocateSpace) X(xrWaitFrame) X(xrBeginFrame) X(xrEndFrame) X(xrEnumerateSwapchainFormats) \
     X(xrCreateSwapchain) X(xrEnumerateSwapchainImages) X(xrAcquireSwapchainImage) X(xrWaitSwapchainImage) \
     X(xrReleaseSwapchainImage) X(xrGetD3D11GraphicsRequirementsKHR) X(xrResultToString) \
-    X(xrEnumerateInstanceExtensionProperties) X(xrRequestExitSession) X(xrGetSystemProperties)
+    X(xrEnumerateInstanceExtensionProperties) X(xrRequestExitSession) X(xrGetSystemProperties) X(xrLocateViews)
 XR_FUNCS(XR_FN)
 
 XrInstance g_instance = XR_NULL_HANDLE;
 XrSystemId g_system = XR_NULL_SYSTEM_ID;
 XrSession g_session = XR_NULL_HANDLE;
 XrSpace g_local = XR_NULL_HANDLE, g_view = XR_NULL_HANDLE, g_stage = XR_NULL_HANDLE;
-XrSwapchain g_swapchain = XR_NULL_HANDLE;
-std::vector<XrSwapchainImageD3D11KHR> g_images;
+XrSwapchain g_swapchain[2] = {XR_NULL_HANDLE, XR_NULL_HANDLE};  // [eye]; mono uses [0] for both eyes
+std::vector<XrSwapchainImageD3D11KHR> g_images[2];
+bool g_has_image[2] = {false, false};
+head_pose::Pose g_eye_pose[2];       // pose each eye's latest image was rendered with
+bool g_stereo_mode = false;
 int64_t g_format = 0;
 uint32_t g_width = 0, g_height = 0;
 XrSessionState g_state = XR_SESSION_STATE_UNKNOWN;
@@ -196,12 +199,15 @@ bool create_swapchain(IDXGISwapChain* chain) {
     ci.faceCount = 1;
     ci.arraySize = 1;
     ci.mipCount = 1;
-    XR_CHECK(pxrCreateSwapchain(g_session, &ci, &g_swapchain), "xrCreateSwapchain");
-    pxrEnumerateSwapchainImages(g_swapchain, 0, &n, nullptr);
-    g_images.assign(n, {XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
-    XR_CHECK(pxrEnumerateSwapchainImages(g_swapchain, n, &n, reinterpret_cast<XrSwapchainImageBaseHeader*>(g_images.data())),
-             "swapchain images");
-    LOG_I("xr", "mono swapchain %ux%u, %u images", g_width, g_height, n);
+    for (int e = 0; e < 2; ++e) {
+        XR_CHECK(pxrCreateSwapchain(g_session, &ci, &g_swapchain[e]), "xrCreateSwapchain");
+        pxrEnumerateSwapchainImages(g_swapchain[e], 0, &n, nullptr);
+        g_images[e].assign(n, {XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
+        XR_CHECK(pxrEnumerateSwapchainImages(g_swapchain[e], n, &n,
+                                             reinterpret_cast<XrSwapchainImageBaseHeader*>(g_images[e].data())),
+                 "swapchain images");
+    }
+    LOG_I("xr", "per-eye swapchains %ux%u, %u images each", g_width, g_height, n);
     return true;
 }
 
@@ -275,6 +281,35 @@ void frame(IDXGISwapChain* chain) {
         }
     }
 
+    // Each eye's position, rotation and field of view relative to the head.
+    {
+        XrViewLocateInfo vli{XR_TYPE_VIEW_LOCATE_INFO};
+        vli.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+        vli.displayTime = fs.predictedDisplayTime;
+        vli.space = g_view;
+        XrViewState vs{XR_TYPE_VIEW_STATE};
+        XrView xv[2] = {{XR_TYPE_VIEW}, {XR_TYPE_VIEW}};
+        uint32_t count = 0;
+        if (XR_SUCCEEDED(pxrLocateViews(g_session, &vli, &vs, 2, &count, xv)) && count == 2) {
+            head_pose::Eye eyes[2];
+            for (int i = 0; i < 2; ++i) {
+                eyes[i].offset = {xv[i].pose.position.x, xv[i].pose.position.y, xv[i].pose.position.z};
+                eyes[i].rotation = to_quat(xv[i].pose.orientation);
+                eyes[i].fov[0] = xv[i].fov.angleLeft;
+                eyes[i].fov[1] = xv[i].fov.angleRight;
+                eyes[i].fov[2] = xv[i].fov.angleUp;
+                eyes[i].fov[3] = xv[i].fov.angleDown;
+            }
+            head_pose::set_eyes(eyes[0], eyes[1]);
+            static bool logged = false;
+            if (!logged) {
+                logged = true;
+                LOG_I("xr", "eyes: IPD %.1f mm; left FOV L%.1f R%.1f U%.1f D%.1f deg", (eyes[1].offset - eyes[0].offset).length() * 1000,
+                      eyes[0].fov[0] * 57.3f, eyes[0].fov[1] * 57.3f, eyes[0].fov[2] * 57.3f, eyes[0].fov[3] * 57.3f);
+            }
+        }
+    }
+
     XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
     XrCompositionLayerProjectionView views[2] = {{XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW},
                                                  {XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW}};
@@ -282,28 +317,40 @@ void frame(IDXGISwapChain* chain) {
     uint32_t layer_count = 0;
 
     if (fs.shouldRender) {
+        // Which eye this frame was rendered for (-1 = mono) and with which pose.
+        int eye = head_pose::rendered_eye();
+        head_pose::Pose used = head_pose::rendered_pose();
+        int target = eye < 0 ? 0 : eye;
+        bool mono = eye < 0;
+
         uint32_t idx = 0;
         XrSwapchainImageAcquireInfo ai{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
         XrSwapchainImageWaitInfo wsi{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
         wsi.timeout = XR_INFINITE_DURATION;
-        if (XR_SUCCEEDED(pxrAcquireSwapchainImage(g_swapchain, &ai, &idx)) &&
-            XR_SUCCEEDED(pxrWaitSwapchainImage(g_swapchain, &wsi))) {
+        if (XR_SUCCEEDED(pxrAcquireSwapchainImage(g_swapchain[target], &ai, &idx)) &&
+            XR_SUCCEEDED(pxrWaitSwapchainImage(g_swapchain[target], &wsi))) {
             ID3D11Texture2D* back = nullptr;
             if (SUCCEEDED(chain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&back)))) {
-                g_ctx->CopySubresourceRegion(g_images[idx].texture, 0, 0, 0, 0, back, 0, nullptr);
+                g_ctx->CopySubresourceRegion(g_images[target][idx].texture, 0, 0, 0, 0, back, 0, nullptr);
                 back->Release();
             }
             XrSwapchainImageReleaseInfo ri{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-            pxrReleaseSwapchainImage(g_swapchain, &ri);
+            pxrReleaseSwapchainImage(g_swapchain[target], &ri);
+            g_has_image[target] = true;
+            g_eye_pose[target] = used;
+        }
 
-            // The frame on screen was rendered with the head pose the game camera used.
-            head_pose::Pose used = head_pose::rendered_pose();
+        // Mono: both eyes show swapchain 0. Stereo: each eye shows its latest image, at its own pose.
+        bool ready = mono ? g_has_image[0] : (g_has_image[0] && g_has_image[1]);
+        if (ready) {
             float half_x = std::atan(1.f / g_sx.load()), half_y = std::atan(1.f / g_sy.load());
             for (int e = 0; e < 2; ++e) {
-                views[e].pose.orientation = to_xr(used.rotation);
-                views[e].pose.position = {used.position.x, used.position.y, used.position.z};
+                int src = mono ? 0 : e;
+                const head_pose::Pose& p = g_eye_pose[src];
+                views[e].pose.orientation = to_xr(p.rotation);
+                views[e].pose.position = {p.position.x, p.position.y, p.position.z};
                 views[e].fov = {-half_x, half_x, half_y, -half_y};
-                views[e].subImage.swapchain = g_swapchain;
+                views[e].subImage.swapchain = g_swapchain[src];
                 views[e].subImage.imageRect = {{0, 0}, {static_cast<int32_t>(g_width), static_cast<int32_t>(g_height)}};
             }
             layer.space = g_local;

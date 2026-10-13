@@ -23,9 +23,19 @@ Sample current();
 void set_headset_pose(const Pose& absolute, bool valid);
 void request_recenter();     // next headset sample becomes the origin (heading + position)
 
+// Per-eye geometry relative to the head (from the runtime; defaults to 63 mm IPD, 90 deg FOV).
+struct Eye {
+    vm::Vec3 offset;       // eye position in head space (m)
+    vm::Quat rotation;     // eye rotation in head space (canted displays)
+    float fov[4] = {-0.785f, 0.785f, 0.785f, -0.785f};  // left, right, up, down (radians)
+};
+void set_eyes(const Eye& left, const Eye& right);
+Eye eye(int index);  // 0 = left, 1 = right
+
 // Which absolute pose the frame now being presented was rendered with.
-void set_rendered(const Pose& absolute);
+void set_rendered(const Pose& absolute, int eye = -1);
 Pose rendered_pose();
+int rendered_eye();  // -1 = mono frame
 
 // Desktop simulator (no headset): numpad drives the head.
 //   4/6 yaw, 8/2 pitch, 7/9 roll, +/- height, 5 recentre (also recentres the headset).

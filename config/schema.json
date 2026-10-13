@@ -6,6 +6,7 @@
     "features.present_hook":      { "type": "bool",  "default": true,  "section": "Features",    "label": "Stage 0: render hook (frame counter)" },
     "features.camera_override":   { "type": "bool",  "default": true,  "section": "Features",    "label": "Stage 1: head pose owns the camera (Numpad0 toggles)" },
     "features.xr":                { "type": "bool",  "default": true,  "section": "Features",    "label": "Use the headset (off = desktop simulator only). Needs a restart" },
+    "stereo.mode":                { "type": "enum",  "values": ["mono", "alternate"], "default": "alternate", "section": "Rendering", "label": "3D: alternate = one eye per frame (true 3D); mono = same picture both eyes" },
     "camera.pitch_source":        { "type": "enum",  "values": ["auto", "game", "head"], "default": "auto", "section": "Comfort", "label": "Look up/down from: auto (headset if present), game (mouse/stick), head" },
     "diagnostics.log_level":      { "type": "enum",  "values": ["error", "warn", "info", "debug", "trace"], "default": "info", "section": "Diagnostics", "label": "Log level" },
     "diagnostics.assertions":     { "type": "bool",  "default": true,  "section": "Diagnostics", "label": "In-game self-checks" },

@@ -43,6 +43,9 @@ uintptr_t g_view_site_return = 0;  // return address of the render-view build ca
 std::atomic<float> g_height_offset{0};  // meters added to camera height (comfort.height_offset)
 std::atomic<bool> g_game_motion{false};     // comfort.game_camera_motion: add the game's own camera rotation (D-014)
 std::atomic<bool> g_motion_dirty{false};
+std::atomic<bool> g_stereo{false};          // stereo.mode = alternate: one eye per frame (D-017, H2 step 1)
+std::atomic<int> g_frame_eye{0};             // eye the current game frame renders
+std::atomic<bool> g_stereo_dirty{false};
 
 // Last result of the main override, for re-applying at the render-view build.
 std::mutex g_final_mutex;
@@ -79,27 +82,32 @@ void note_caller(uintptr_t ra) {
 
 // Recent (rendered rotation -> absolute head pose) pairs, so the render thread can
 // tell which head pose the frame it is presenting was drawn with.
-struct Used { vm::Quat rot; head_pose::Pose abs; };
+struct Used { vm::Quat rot; vm::Vec3 pos; head_pose::Pose abs; int eye; };
+std::atomic<uint64_t> g_eye_matched[4];  // presented frames matched to: mono, left, right, unmatched
 Used g_used[16];
 unsigned g_used_next = 0;
 std::mutex g_used_mutex;
 
-void remember(vm::Quat rot, const head_pose::Pose& abs) {
+void remember(vm::Quat rot, vm::Vec3 pos, const head_pose::Pose& abs, int eye) {
     std::lock_guard lock(g_used_mutex);
-    g_used[g_used_next++ % 16] = {rot, abs};
+    g_used[g_used_next++ % 16] = {rot, pos, abs, eye};
 }
 
-void match_rendered(const vm::LinearTransform& view) {
+void match_rendered(const vm::LinearTransform& view, vm::Vec3 cam_pos) {
     vm::Vec3 r = view.r(), b = view.b();
     float best = -1;
     head_pose::Pose found;
+    int found_eye = -1;
     std::lock_guard lock(g_used_mutex);
     for (auto& u : g_used) {
         if (!u.abs.valid) continue;
-        float score = u.rot.rotate({1, 0, 0}).dot(r) + u.rot.rotate({0, 0, 1}).dot(b);
-        if (score > best) { best = score; found = u.abs; }
+        // Rotation agreement (max 2) minus position mismatch: separates the two eyes, which
+        // share a rotation but sit an IPD apart.
+        float score = u.rot.rotate({1, 0, 0}).dot(r) + u.rot.rotate({0, 0, 1}).dot(b) - (u.pos - cam_pos).length();
+        if (score > best) { best = score; found = u.abs; found_eye = u.eye; }
     }
-    if (best > 1.999f) head_pose::set_rendered(found);
+    if (best > 1.99f) head_pose::set_rendered(found, found_eye);
+    ++g_eye_matched[best > 1.99f ? found_eye + 1 : 3];
 }
 
 // Per-site state: the main site sees the raw camera, the render-view site the blended one.
@@ -159,19 +167,33 @@ void compose(uint8_t* data, ComposeState& st) {
     }
     vm::Vec3 final_pos = a->t() + body.rotate(head.position) + vm::Vec3{0, g_height_offset.load(), 0};
 
+    // Stereo: move to this frame's eye (offset and rotation in head space, from the runtime).
+    int eye_index = -1;
+    head_pose::Pose abs = s.absolute;
+    vm::Quat head_rot_for_roll = final_rot;
+    if (g_stereo.load()) {
+        eye_index = g_frame_eye.load();
+        head_pose::Eye e = head_pose::eye(eye_index);
+        final_pos = final_pos + final_rot.rotate(e.offset);
+        final_rot = (final_rot * e.rotation).normalized();
+        abs.position = abs.position + abs.rotation.rotate(e.offset);
+        abs.rotation = (abs.rotation * e.rotation).normalized();
+    }
+
     a->set(final_rot, final_pos);
     b->set(final_rot, final_pos);
 
     // Expected roll of the result = roll the head contributed.
     vm::LinearTransform expect{};
-    expect.set(final_rot, final_pos);
+    expect.set(head_rot_for_roll, final_pos);
     g_last_head_roll = vm::roll_of(expect);
     g_last_override_tick = GetTickCount64();
-    remember(final_rot, s.absolute);
+    remember(final_rot, final_pos, abs, eye_index);
 }
 
 // Main site: raw camera from the camera manager.
 void apply(uint8_t* data) {
+    if (g_stereo.load()) g_frame_eye = g_frame_eye.load() ^ 1;
     auto* a = reinterpret_cast<vm::LinearTransform*>(data);
     {
         std::lock_guard lock(g_final_mutex);
@@ -298,6 +320,13 @@ void on_present(float dt) {
     bool toggle = key(VK_F7) || key(VK_NUMPAD0) || key(VK_INSERT);
     if (toggle && !toggle_was) set_enabled(!g_enabled.load());
     toggle_was = toggle;
+    static bool stereo_was = false;
+    bool stereo_key = key(VK_F4);
+    if (stereo_key && !stereo_was) {
+        set_stereo(!g_stereo.load());
+        g_stereo_dirty = true;
+    }
+    stereo_was = stereo_key;
     static bool motion_was = false;
     bool motion = key(VK_F5);
     if (motion && !motion_was) {
@@ -323,6 +352,10 @@ void on_present(float dt) {
         last_report = now;
         report_callers();
         report_view_site();
+        uint64_t m0 = g_eye_matched[0].exchange(0), m1 = g_eye_matched[1].exchange(0), m2 = g_eye_matched[2].exchange(0),
+                 m3 = g_eye_matched[3].exchange(0);
+        LOG_I("camera", "presented frames: mono %llu, left %llu, right %llu, unmatched %llu", (unsigned long long)m0,
+              (unsigned long long)m1, (unsigned long long)m2, (unsigned long long)m3);
         float gr = g_last_game_roll.load() * 57.29578f;
         if (std::fabs(gr) > 1.f) LOG_I("camera", "game wanted %.1f deg of roll this frame; removed", gr);
     }
@@ -347,7 +380,9 @@ void check_view(const float* v) {
     vm::LinearTransform m{};
     // View rows are the camera basis rows (D-009).
     for (int k = 0; k < 3; ++k) { m.right[k] = v[k]; m.up[k] = v[4 + k]; m.back[k] = v[8 + k]; }
-    match_rendered(m);
+    vm::Vec3 cam{-(v[0] * v[3] + v[4] * v[7] + v[8] * v[11]), -(v[1] * v[3] + v[5] * v[7] + v[9] * v[11]),
+                 -(v[2] * v[3] + v[6] * v[7] + v[10] * v[11])};
+    match_rendered(m, cam);
 
     // Only judged while the head itself is level: then any roll in the view came from the game.
     float roll = vm::roll_of(m), expected = g_last_head_roll.load();
@@ -381,5 +416,13 @@ void set_game_motion(bool on) {
 bool game_motion() { return g_game_motion.load(); }
 
 bool take_motion_changed() { return g_motion_dirty.exchange(false); }
+
+void set_stereo(bool on) {
+    if (g_stereo.exchange(on) != on) LOG_I("camera", "stereo %s", on ? "ON (alternate eyes)" : "OFF (mono)");
+}
+
+bool stereo() { return g_stereo.load(); }
+
+bool take_stereo_changed() { return g_stereo_dirty.exchange(false); }
 
 }  // namespace mecvr::camera_override

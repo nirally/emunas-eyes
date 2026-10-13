@@ -153,6 +153,7 @@ DWORD WINAPI main_thread(LPVOID) {
                 camera_override::set_pitch_source(pitch_source_from(g_config.get_string("camera.pitch_source")));
                 camera_override::set_height_offset(static_cast<float>(g_config.get_number("comfort.height_offset")));
                 camera_override::set_game_motion(g_config.get_bool("comfort.game_camera_motion"));
+                camera_override::set_stereo(g_config.get_string("stereo.mode") == "alternate");
             }
             present_hook::set_frame_callback(&on_frame);
         }
@@ -174,6 +175,8 @@ DWORD WINAPI main_thread(LPVOID) {
             camera_override::set_height_offset(new_v["comfort.height_offset"].get<float>());
         if (old_v["diagnostics.stereo_experiment"] != new_v["diagnostics.stereo_experiment"])
             stereo_views::set_enabled(new_v["diagnostics.stereo_experiment"].get<bool>());
+        if (old_v["stereo.mode"] != new_v["stereo.mode"])
+            camera_override::set_stereo(new_v["stereo.mode"].get<std::string>() == "alternate");
         if (old_v["comfort.game_camera_motion"] != new_v["comfort.game_camera_motion"])
             camera_override::set_game_motion(new_v["comfort.game_camera_motion"].get<bool>());
     });
@@ -191,6 +194,8 @@ DWORD WINAPI main_thread(LPVOID) {
         if (tick % 4 == 0) code_dump::poll(dir);
         if (tick % 4 == 0) view_recon::poll(dir);
         bug_report::poll(dir, g_config.values().dump());
+        if (camera_override::take_stereo_changed())
+            g_config.set_user_value("stereo.mode", camera_override::stereo() ? "alternate" : "mono");
         if (camera_override::take_motion_changed())
             g_config.set_user_value("comfort.game_camera_motion", camera_override::game_motion());
         if (camera_override::take_height_changed())

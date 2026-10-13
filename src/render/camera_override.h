@@ -34,4 +34,9 @@ void set_game_motion(bool on);
 bool game_motion();
 bool take_motion_changed();
 
+// stereo.mode: alternate = the game renders one eye per frame (left, right, left...).
+void set_stereo(bool on);
+bool stereo();
+bool take_stereo_changed();  // F4 toggled it; main thread saves
+
 }  // namespace mecvr::camera_override

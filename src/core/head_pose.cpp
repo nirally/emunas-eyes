@@ -16,6 +16,8 @@ bool g_recenter_pending = false;
 vm::Quat g_origin_rot;   // heading only
 vm::Vec3 g_origin_pos;
 Pose g_rendered;
+int g_rendered_eye = -1;
+Eye g_eyes[2] = {{{-0.0315f, 0, 0}, {}, {}}, {{0.0315f, 0, 0}, {}, {}}};
 
 // Simulator
 float g_yaw = 0, g_pitch = 0, g_roll = 0, g_height = 0;
@@ -47,9 +49,26 @@ void request_recenter() {
     g_recenter_pending = true;
 }
 
-void set_rendered(const Pose& absolute) {
+void set_rendered(const Pose& absolute, int eye) {
     std::lock_guard lock(g_mutex);
     g_rendered = absolute;
+    g_rendered_eye = eye;
+}
+
+int rendered_eye() {
+    std::lock_guard lock(g_mutex);
+    return g_rendered_eye;
+}
+
+void set_eyes(const Eye& left, const Eye& right) {
+    std::lock_guard lock(g_mutex);
+    g_eyes[0] = left;
+    g_eyes[1] = right;
+}
+
+Eye eye(int index) {
+    std::lock_guard lock(g_mutex);
+    return g_eyes[index & 1];
 }
 
 Pose rendered_pose() {

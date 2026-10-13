@@ -136,3 +136,9 @@ Attempt B: the same view object listed twice, with the viewport switched per Fil
 Conclusion: a second view has to be created by the engine's own view factory (unknown; would need its constructor and arguments). Parked as a later revisit, not abandoned.
 Next rung (H2, planned in the Stage 2 brief): sequential per-eye rendering, alternate eyes per frame, per-eye swapchains, each eye submitted with the pose it was rendered at. Step 1: plain alternation (eyes ~1 frame apart). Step 2: synchronise by freezing game time on the second eye's frame.
 Both experiments stay behind diagnostics.stereo_experiment (default off).
+
+### D-018 — H2 step 1: alternate-eye rendering implemented
+Date: 2026-10-13  Stage: 2
+Each game frame renders one eye: the main camera site toggles the eye once per frame; both override sites offset the camera by that eye's position and rotation in head space (from xrLocateViews; logged IPD and FOV). Rendered frames are matched back to their eye by rotation + position (eyes sit an IPD apart). Two OpenXR swapchains; each frame's image goes to its eye's swapchain, and both eyes are submitted each frame at the poses their latest images were rendered with.
+Known limits (labelled to the user): eyes are one frame apart (moving scenes, especially running, show stereo error until step 2 synchronises them); TAA and motion blur mix eyes, so the user disables them for now; FOV is still the game's.
+Toggles: stereo.mode (F4), saved.
