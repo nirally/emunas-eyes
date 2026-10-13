@@ -5,16 +5,16 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-13
-Mode: agentic | Gate: hard | Stage 0 of 10 — gate
+Mode: agentic | Gate: hard | Stage 1 of 10 — first headset check
 
-✅ Built and tested: nothing yet (Stage 0 passes all no-headset checks)
-🔧 Built, not yet tested: mod loads inside the game, logging, live settings, safe mode, uninstall → PLAYTEST-0 waiting on you
-🚧 In progress: nothing (hard gate)
-⬜ Not started: camera, 3D, controllers, movement, hands, punching, body, HUD, settings menu, packaging
+✅ Built and tested: Stage 0 (mod loads, logs, safe mode, uninstall)
+🔧 Built, not yet tested: head tracking owns the camera (verified on monitor with the simulator), headset view (flat, world-locked), no game roll, F11 bug key → PLAYTEST-1a waiting on you
+🚧 In progress: Stage 1 remainder: head bob in position, cutscenes, takedowns, death camera
+⬜ Not started: 3D (Stage 2), controllers, movement, hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-0 (~10 min, no headset)
-🐞 Open bugs: 1 sev-4 (BUG-001 EA launcher race, not the mod)
-▶ Next: you run PLAYTEST-0. Me: Stage 1 (camera) once it passes.
+❓ Need from you: PLAYTEST-1a (~15 min, headset)
+🐞 Open bugs: 1 sev-4 (BUG-001 EA launcher)
+▶ Next: you run PLAYTEST-1a. Me: head-bob removal + scripted-camera handling, guided by your notes.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -65,8 +65,8 @@ Plan: TypeInfo dump at menu (no user time) → locate the RenderView path → ob
 Verify: in-game assertion "head pose was last writer to the view, zero roll"; PLAYTEST-1 (monitor + headset) covering wall-run, roll, quick turn, swing, zipline, MAG Rope, takedown, death, cutscene.
 Risk: Denuvo-virtualized code around the camera; patching code bytes avoided — prefer data writes and vtable/function hooks found by signature.
 Note: Stage 1 head tracking needs OpenXR, which is formally Stage 3. Minimal OpenXR head-pose read is pulled forward into Stage 1 (D-007).
-- [ ] Find the camera / RenderView path (frame capture + OpenGameCamera/BF2VR approach)
-- [ ] Head pose applied last, unsmoothed, zero roll from game code
+- [x] Find the camera: view CB, RenderView copy, game camera; gameplay writer SetCameraData hooked by signature (D-009, D-010)
+- [~] Head pose applied at the camera setter, unsmoothed, zero roll from game code (assertion live; monitor-verified; headset pending PLAYTEST-1a)
 - [ ] ★ Head bob, landing dips and camera shake removed (Frosty data + code)
 - [ ] ★ Wall-run tilt, rolls, quick-turn 180, bar swings, ziplines, MAG Rope swing: no camera roll or pitch forced on the head
 - [ ] ★ Vertical look decoupled from Faith's aim (Camera On Head mod's known limit)
