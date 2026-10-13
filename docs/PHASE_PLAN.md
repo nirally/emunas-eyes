@@ -5,16 +5,16 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-13
-Mode: agentic | Gate: hard | Stage 1 of 10 — first headset check
+Mode: agentic | Gate: hard | Stage 1 of 10 — headset check 2
 
-✅ Built and tested: Stage 0 (mod loads, logs, safe mode, uninstall)
-🔧 Built, not yet tested: head tracking owns the camera (verified on monitor with the simulator), headset view (flat, world-locked), no game roll, F11 bug key → PLAYTEST-1a waiting on you
-🚧 In progress: Stage 1 remainder: head bob in position, cutscenes, takedowns, death camera
+✅ Built and tested: Stage 0; head tracking at the menu and in game (look-around 1:1, lean) — PLAYTEST-1a
+🔧 Built, not yet tested: head tilt in gameplay (BUG-004), F-key controls (BUG-002), eye-height adjust (BUG-003) → PLAYTEST-1b waiting on you
+🚧 In progress: rest of Stage 1 — vertical head bob, cutscenes, takedowns, death camera (guided by PLAYTEST-1b)
 ⬜ Not started: 3D (Stage 2), controllers, movement, hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-1a (~15 min, headset)
-🐞 Open bugs: 1 sev-4 (BUG-001 EA launcher)
-▶ Next: you run PLAYTEST-1a. Me: head-bob removal + scripted-camera handling, guided by your notes.
+❓ Need from you: PLAYTEST-1b (~15 min, headset)
+🐞 Open bugs: BUG-002/003/004 fixed pending test; BUG-001 sev-4
+▶ Next: You: PLAYTEST-1b. Me: head bob + scripted cameras once I see your notes.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
