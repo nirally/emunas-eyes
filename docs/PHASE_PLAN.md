@@ -49,7 +49,7 @@ Risk: Denuvo integrity checks on loaded modules (unlikely, ReShade-style proxies
 - [x] Feature flags, safe mode (flag file → flat launch, verified) and config validation + hot reload (verified live)
 - [x] Signature scanner (unit-tested) + exe version check on startup (mismatch → safe mode)
 - [x] Game restorable to stock: undeploy restores NvCameraSDK64.dll byte-identical (hash verified)
-- [ ] PLAYTEST-0: you confirm the game plays normally with the mod loaded
+- [x] PLAYTEST-0 passed 2026-10-13: game plays normally with the mod loaded (~6 min gameplay, 125–150 fps, no errors)
 
 ### Stage 1 — Camera ownership (M, high risk)
 - [ ] Find the camera / RenderView path (frame capture + OpenGameCamera/BF2VR approach)
