@@ -97,3 +97,10 @@ Date: 2026-10-13  Stage: 1
 Evidence: PLAYTEST-1a log (roll lost only in gameplay) + disassembly of exe+0x31a40e0: per view, 0x3277100 fills the RenderView from the camera, then `if (0x319c0e0(...)) SetCameraData(renderView, derived)`. The call returns to exe+0x31a43be and runs once per frame, only in gameplay.
 Chose: the same SetCameraData hook, filtered on this second return address (signature-scanned). When the derived forward is within 15° of our final view, replace rotation and position with our final ones. Otherwise pass through, counted and logged every 10 s.
 Open question: what 0x319c0e0 represents (it keeps yaw/pitch and drops roll). The pass-through count will show whether it ever produces a different camera (scripted moments).
+
+### D-013 — Render-view derived camera comes from the game camera; head smoothing declined
+Date: 2026-10-13  Stage: 1
+Evidence: PLAYTEST-1b counters (BUG-005). The derived camera at exe+0x31a43be follows the game camera (position within 0.03–0.2 m of ours, which equals our head offset + height offset; direction off by the head's yaw/pitch).
+Chose: replace it with our final view when it is within 10° of the game camera or 15° of ours; pass others.
+Declined: smoothing the head pose on request ("game snapping to my position too firmly"). Reason: the symptom matches BUG-005 exactly, and smoothing the head pose adds latency between head and view, the main cause of VR sickness (operating principle: never smoothed). Will offer an opt-in only if the user still wants it after the fix, and never for rotation.
+Calibration data: user eye height 1.48–1.55 m (STAGE), prefers +0.14 m camera height.

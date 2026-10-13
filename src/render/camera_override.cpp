@@ -46,9 +46,10 @@ std::atomic<float> g_height_offset{0};  // meters added to camera height (comfor
 std::mutex g_final_mutex;
 vm::Quat g_final_rot;
 vm::Vec3 g_final_pos;
+vm::Vec3 g_game_fwd;      // the game's own camera forward this frame, before our override
 ULONGLONG g_final_tick = 0;
 // Render-view build stats (reported every 10 s).
-std::atomic<uint64_t> g_vs_snapped{0}, g_vs_passed{0};
+std::atomic<uint64_t> g_vs_from_game{0}, g_vs_from_ours{0}, g_vs_passed{0};
 std::atomic<float> g_vs_max_angle{0}, g_vs_max_pos{0};
 uintptr_t g_exe = 0;
 
@@ -124,6 +125,7 @@ void apply(uint8_t* data) {
         std::lock_guard lock(g_final_mutex);
         g_final_rot = final_rot;
         g_final_pos = final_pos;
+        g_game_fwd = (a->b() * -1.f).normalized();  // a still holds the game camera here
         g_final_tick = GetTickCount64();
     }
 
@@ -138,32 +140,39 @@ void apply(uint8_t* data) {
     remember(final_rot, s.absolute);
 }
 
-// Render-view build: when the derived camera is our view minus roll (same forward
-// within 15 deg), put our exact rotation back. Anything else (cutscene, scripted
-// camera) passes through untouched for now.
+// Render-view build (D-012, D-013): the derived camera is built from the game's own camera
+// (PLAYTEST-1b: 30-97 deg away from ours whenever the head is turned). When it matches the game
+// camera (within 10 deg) or our view (within 15 deg), replace it with our view. Anything else is a
+// genuinely different camera (cutscene, scripted shot) and passes through for now.
+float angle_deg(vm::Vec3 a, vm::Vec3 b) {
+    return std::acos(std::fmin(1.f, std::fmax(-1.f, a.dot(b)))) * 57.29578f;
+}
+
 void reapply_at_view_site(uint8_t* data) {
     auto* a = reinterpret_cast<vm::LinearTransform*>(data);
     auto* b = reinterpret_cast<vm::LinearTransform*>(data + 0x40);
     vm::Quat rot;
-    vm::Vec3 pos;
+    vm::Vec3 pos, game_fwd;
     {
         std::lock_guard lock(g_final_mutex);
         if (GetTickCount64() - g_final_tick > 200) { ++g_vs_passed; return; }
         rot = g_final_rot;
         pos = g_final_pos;
+        game_fwd = g_game_fwd;
     }
-    vm::Vec3 want_fwd = rot.rotate({0, 0, -1});
     vm::Vec3 got_fwd = (a->b() * -1.f).normalized();
-    float angle = std::acos(std::fmin(1.f, std::fmax(-1.f, want_fwd.dot(got_fwd)))) * 57.29578f;
+    float to_ours = angle_deg(rot.rotate({0, 0, -1}), got_fwd);
+    float to_game = angle_deg(game_fwd, got_fwd);
     float dpos = (a->t() - pos).length();
-    if (angle > g_vs_max_angle.load()) g_vs_max_angle = angle;
+    if (to_ours > g_vs_max_angle.load()) g_vs_max_angle = to_ours;
     if (dpos > g_vs_max_pos.load()) g_vs_max_pos = dpos;
-    if (angle > 15.f) { ++g_vs_passed; return; }
+    if (to_game < 10.f) ++g_vs_from_game;
+    else if (to_ours < 15.f) ++g_vs_from_ours;
+    else { ++g_vs_passed; return; }
     // Ours entirely: the derived camera may also lose head position / height offset, and any
     // extra offset it adds would be game-driven motion we don't want on the head.
     a->set(rot, pos);
     b->set(rot, pos);
-    ++g_vs_snapped;
 }
 
 void __fastcall setter_detour(void* cam, const void* data) {
@@ -191,10 +200,10 @@ bool key(int vk) { return (GetAsyncKeyState(vk) & 0x8000) != 0; }
 std::atomic<bool> g_height_dirty{false};
 
 void report_view_site() {
-    uint64_t s = g_vs_snapped.exchange(0), p = g_vs_passed.exchange(0);
-    if (s || p)
-        LOG_I("camera", "render-view build: %llu frames given our view back, %llu passed through (max differences: %.1f deg, %.2f m)",
-              (unsigned long long)s, (unsigned long long)p, g_vs_max_angle.exchange(0), g_vs_max_pos.exchange(0));
+    uint64_t g = g_vs_from_game.exchange(0), o = g_vs_from_ours.exchange(0), p = g_vs_passed.exchange(0);
+    if (g || o || p)
+        LOG_I("camera", "render-view build: replaced %llu (from game camera) + %llu (from ours), passed %llu other (max: %.1f deg, %.2f m from ours)",
+              (unsigned long long)g, (unsigned long long)o, (unsigned long long)p, g_vs_max_angle.exchange(0), g_vs_max_pos.exchange(0));
 }
 
 void report_callers() {
