@@ -43,14 +43,9 @@ uintptr_t g_view_site_return = 0;  // return address of the render-view build ca
 std::atomic<float> g_height_offset{0};  // meters added to camera height (comfort.height_offset)
 std::atomic<bool> g_game_motion{false};     // comfort.game_camera_motion: add the game's own camera rotation (D-014)
 std::atomic<bool> g_motion_dirty{false};
-float g_look_pitch_baseline = 0;          // game look pitch when not animating (game thread only)
-float g_prev_game_pitch = 0;
-ULONGLONG g_prev_pitch_tick = 0;
 
 // Last result of the main override, for re-applying at the render-view build.
 std::mutex g_final_mutex;
-vm::Quat g_final_rot;
-vm::Vec3 g_final_pos;
 vm::Vec3 g_game_fwd;      // the game's own camera forward this frame, before our override
 ULONGLONG g_final_tick = 0;
 // Render-view build stats (reported every 10 s).
@@ -107,7 +102,23 @@ void match_rendered(const vm::LinearTransform& view) {
     if (best > 1.999f) head_pose::set_rendered(found);
 }
 
-void apply(uint8_t* data) {
+// Per-site state: the main site sees the raw camera, the render-view site the blended one.
+struct ComposeState {
+    float baseline = 0;        // tracked look pitch (game thread only)
+    float prev_pitch = 0;
+    ULONGLONG prev_tick = 0;
+    bool primed = false;
+};
+ComposeState g_main_state, g_view_state;
+
+float angle_deg(vm::Vec3 a, vm::Vec3 b) {
+    return std::acos(std::fmin(1.f, std::fmax(-1.f, a.dot(b)))) * 57.29578f;
+}
+
+// Builds our view from a game camera in `data` (transform A at +0x00, B at +0x40) and writes it
+// back into both transforms. Used at the main site (raw camera; the only one at the menu) and at
+// the render-view site (the game's blended camera, what a flat player sees - D-015).
+void compose(uint8_t* data, ComposeState& st) {
     auto* a = reinterpret_cast<vm::LinearTransform*>(data);
     auto* b = reinterpret_cast<vm::LinearTransform*>(data + 0x40);
 
@@ -127,27 +138,26 @@ void apply(uint8_t* data) {
     vm::Quat final_rot = (view * head.rotation).normalized();
     if (g_game_motion.load()) {
         // The game camera relative to its heading = look pitch + animation (rolls, tilts, dips).
-        // Track the look pitch while the camera is calm and subtract it, so only animation remains.
+        // The look pitch is tracked only while the camera is calm, and only gradually (never a
+        // step): a step would show up as a snap, e.g. at the top of a swing (PLAYTEST-1e).
         ULONGLONG now = GetTickCount64();
-        float dt = g_prev_pitch_tick ? (now - g_prev_pitch_tick) / 1000.f : 0.f;
-        float pitch_rate = dt > 0 ? std::fabs(game_pitch - g_prev_game_pitch) / dt : 0.f;
+        float dt = st.prev_tick ? (now - st.prev_tick) / 1000.f : 0.f;
+        float pitch_rate = dt > 0 ? std::fabs(game_pitch - st.prev_pitch) / dt : 0.f;
         bool calm = std::fabs(vm::roll_of(*a)) < 2.f / 57.29578f && a->u().y > 0.5f && pitch_rate < 0.5f;
-        if (calm) g_look_pitch_baseline = game_pitch;
-        g_prev_game_pitch = game_pitch;
-        g_prev_pitch_tick = now;
-        float baseline = game_pitch_on ? 0.f : g_look_pitch_baseline;  // simulator keeps the game pitch
+        if (!st.primed) { st.baseline = game_pitch; st.primed = true; }
+        else if (calm && dt > 0) {
+            float step = 0.35f * dt;  // rad/s cap: catches up with mouse pitch, too slow to see
+            float d = game_pitch - st.baseline;
+            st.baseline += d > step ? step : d < -step ? -step : d;
+        }
+        st.prev_pitch = game_pitch;
+        st.prev_tick = now;
+        float baseline = game_pitch_on ? 0.f : st.baseline;  // simulator keeps the game pitch
         vm::Quat game_rel = vm::yaw_quat(-game_yaw) * vm::quat_of(*a);
         vm::Quat motion = vm::Quat::axis_angle({1, 0, 0}, -baseline) * game_rel;
         final_rot = (body * motion * head.rotation).normalized();
     }
     vm::Vec3 final_pos = a->t() + body.rotate(head.position) + vm::Vec3{0, g_height_offset.load(), 0};
-    {
-        std::lock_guard lock(g_final_mutex);
-        g_final_rot = final_rot;
-        g_final_pos = final_pos;
-        g_game_fwd = (a->b() * -1.f).normalized();  // a still holds the game camera here
-        g_final_tick = GetTickCount64();
-    }
 
     a->set(final_rot, final_pos);
     b->set(final_rot, final_pos);
@@ -160,39 +170,30 @@ void apply(uint8_t* data) {
     remember(final_rot, s.absolute);
 }
 
-// Render-view build (D-012, D-013): the derived camera is built from the game's own camera
-// (PLAYTEST-1b: 30-97 deg away from ours whenever the head is turned). When it matches the game
-// camera (within 10 deg) or our view (within 15 deg), replace it with our view. Anything else is a
-// genuinely different camera (cutscene, scripted shot) and passes through for now.
-float angle_deg(vm::Vec3 a, vm::Vec3 b) {
-    return std::acos(std::fmin(1.f, std::fmax(-1.f, a.dot(b)))) * 57.29578f;
-}
-
-void reapply_at_view_site(uint8_t* data) {
+// Main site: raw camera from the camera manager.
+void apply(uint8_t* data) {
     auto* a = reinterpret_cast<vm::LinearTransform*>(data);
-    auto* b = reinterpret_cast<vm::LinearTransform*>(data + 0x40);
-    vm::Quat rot;
-    vm::Vec3 pos, game_fwd;
     {
         std::lock_guard lock(g_final_mutex);
-        if (GetTickCount64() - g_final_tick > 200) { ++g_vs_passed; return; }
-        rot = g_final_rot;
-        pos = g_final_pos;
-        game_fwd = g_game_fwd;
+        g_game_fwd = (a->b() * -1.f).normalized();
+        g_final_tick = GetTickCount64();
     }
-    vm::Vec3 got_fwd = (a->b() * -1.f).normalized();
-    float to_ours = angle_deg(rot.rotate({0, 0, -1}), got_fwd);
-    float to_game = angle_deg(game_fwd, got_fwd);
-    float dpos = (a->t() - pos).length();
-    if (to_ours > g_vs_max_angle.load()) g_vs_max_angle = to_ours;
-    if (dpos > g_vs_max_pos.load()) g_vs_max_pos = dpos;
-    if (to_game < 10.f) ++g_vs_from_game;
-    else if (to_ours < 15.f) ++g_vs_from_ours;
-    else { ++g_vs_passed; return; }
-    // Ours entirely: the derived camera may also lose head position / height offset, and any
-    // extra offset it adds would be game-driven motion we don't want on the head.
-    a->set(rot, pos);
-    b->set(rot, pos);
+    compose(data, g_main_state);
+}
+
+// Render-view site (D-012, D-013, D-015): the game's blended camera. Compose from it directly;
+// count how far it is from the raw camera (size of the game's blending) for diagnostics.
+void reapply_at_view_site(uint8_t* data) {
+    auto* a = reinterpret_cast<vm::LinearTransform*>(data);
+    vm::Vec3 raw_fwd;
+    {
+        std::lock_guard lock(g_final_mutex);
+        raw_fwd = g_game_fwd;
+    }
+    float blend = angle_deg(raw_fwd, (a->b() * -1.f).normalized());
+    if (blend > g_vs_max_angle.load()) g_vs_max_angle = blend;
+    if (blend < 1.f) ++g_vs_from_game; else ++g_vs_from_ours;  // "same as raw" / "blended"
+    compose(data, g_view_state);
 }
 
 void __fastcall setter_detour(void* cam, const void* data) {
@@ -222,8 +223,9 @@ std::atomic<bool> g_height_dirty{false};
 void report_view_site() {
     uint64_t g = g_vs_from_game.exchange(0), o = g_vs_from_ours.exchange(0), p = g_vs_passed.exchange(0);
     if (g || o || p)
-        LOG_I("camera", "render-view build: replaced %llu (from game camera) + %llu (from ours), passed %llu other (max: %.1f deg, %.2f m from ours)",
-              (unsigned long long)g, (unsigned long long)o, (unsigned long long)p, g_vs_max_angle.exchange(0), g_vs_max_pos.exchange(0));
+        LOG_I("camera", "render-view build: composed %llu frames (%llu equal to the raw camera, %llu blended by the game; max blend %.1f deg)",
+              (unsigned long long)(g + o + p), (unsigned long long)g, (unsigned long long)o, g_vs_max_angle.exchange(0));
+        g_vs_max_pos = 0;
 }
 
 void report_callers() {

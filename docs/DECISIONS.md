@@ -112,3 +112,8 @@ Chose: setting comfort.game_camera_motion (F5 toggles live, saved). When on, the
 Defaults: OFF in schema (comfort-first for anyone else); ON in this user's config.
 Also: heading_of made exact for yaw*pitch*roll cameras at any pitch (sign of up.y), right-axis fallback at vertical. Unit-checked (full tumble, tilt+pitch, motion formula).
 Risk accepted by the user: forced camera rotation is a known nausea trigger. The F5 toggle is the escape hatch.
+
+### D-015 — Compose from the game's blended camera in gameplay
+Date: 2026-10-13  Stage: 1
+Chose: in gameplay, build the VR view at the render-view step from the derived (blended) camera, the one a flat player sees, rather than overwriting it with a view built from the raw camera manager output. The main site still composes from raw (it's the only camera at the menu, and keeps the camera object consistent). Each site tracks its own look-pitch baseline; the baseline moves at most 0.35 rad/s (never a step).
+Reason: PLAYTEST-1e snappiness on movement-mode transitions (roll entry, pole, MAG Rope) - BUG-008.
