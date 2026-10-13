@@ -33,7 +33,12 @@ add_library(mecvr SHARED
     src/core/proxy_stubs.asm
     src/core/game_version.cpp
     src/core/window_title.cpp
-    src/render/present_hook.cpp)
+    src/render/present_hook.cpp
+    src/diagnostics/typeinfo_dump.cpp
+    src/diagnostics/recon_probe.cpp
+    src/render/cb_capture.cpp
+    src/render/cam_hunt.cpp
+    src/diagnostics/hwbp.cpp)
 target_link_libraries(mecvr PRIVATE mecvr_core minhook dxguid)
 set_target_properties(mecvr PROPERTIES OUTPUT_NAME "mecvr")
 

@@ -52,6 +52,19 @@ Risk: Denuvo integrity checks on loaded modules (unlikely, ReShade-style proxies
 - [x] PLAYTEST-0 passed 2026-10-13: game plays normally with the mod loaded (~6 min gameplay, 125–150 fps, no errors)
 
 ### Stage 1 — Camera ownership (M, high risk)
+
+#### Stage 1 brief
+Goal: the head pose owns the view, 1:1 and unsmoothed, with no forced motion from game code in any state.
+Unknowns: where Catalyst builds its view (GameRenderer → RenderView in other Frostbite titles); whether updateCamera (Ansel) runs outside photo mode; which camera effects are data (Frosty) vs code.
+Hypotheses:
+  H1 Frostbite reflection: the TypeInfo list (class names + field offsets) can be walked from a known name string → gives GameRenderer/RenderView/camera classes without guessing.
+  H2 As in SWBF2 (BF2VR, OpenGameCamera), a GameRenderer singleton holds a RenderView with the final view transform + FOV; overriding it before the frame is built moves the view.
+  H3 Ansel updateCamera only runs during photo-mode sessions (game paused) → useful for stereo testing, not gameplay.
+  H4 Head bob/shake/landing dips live in data (FaithCharacter / camera assets), removable via a Frosty .fbmod (Camera On Head mod shows the camera rig is data).
+Plan: TypeInfo dump at menu (no user time) → locate the RenderView path → observation test: rotate the view 10° for one frame and confirm the world moves → head-pose override (from the simulator first, since OpenXR comes in Stage 3) → strip forced camera motion state by state.
+Verify: in-game assertion "head pose was last writer to the view, zero roll"; PLAYTEST-1 (monitor + headset) covering wall-run, roll, quick turn, swing, zipline, MAG Rope, takedown, death, cutscene.
+Risk: Denuvo-virtualized code around the camera; patching code bytes avoided — prefer data writes and vtable/function hooks found by signature.
+Note: Stage 1 head tracking needs OpenXR, which is formally Stage 3. Minimal OpenXR head-pose read is pulled forward into Stage 1 (D-007).
 - [ ] Find the camera / RenderView path (frame capture + OpenGameCamera/BF2VR approach)
 - [ ] Head pose applied last, unsmoothed, zero roll from game code
 - [ ] ★ Head bob, landing dips and camera shake removed (Frosty data + code)

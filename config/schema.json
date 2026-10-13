@@ -6,6 +6,8 @@
     "features.present_hook":      { "type": "bool",  "default": true,  "section": "Features",    "label": "Stage 0: render hook (frame counter)" },
     "diagnostics.log_level":      { "type": "enum",  "values": ["error", "warn", "info", "debug", "trace"], "default": "info", "section": "Diagnostics", "label": "Log level" },
     "diagnostics.assertions":     { "type": "bool",  "default": true,  "section": "Diagnostics", "label": "In-game self-checks" },
+    "diagnostics.typeinfo_dump":  { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Recon: dump engine type list once (developer)" },
+    "diagnostics.cb_capture":     { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Recon: F10 captures one frame of shader constants (developer)" },
     "input.dominant_hand":        { "type": "enum",  "values": ["right", "left"], "default": "right", "section": "Input", "label": "Dominant hand" },
     "comfort.turn_mode":          { "type": "enum",  "values": ["smooth", "snap"], "default": "smooth", "section": "Comfort", "label": "Turn mode" },
     "comfort.smooth_turn_speed":  { "type": "float", "min": 30, "max": 360, "default": 120, "unit": "deg/s", "section": "Comfort", "label": "Smooth turn speed" },

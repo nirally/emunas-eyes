@@ -50,3 +50,25 @@ DRM: untouched. We don't modify the exe, Activation64 or Denuvo.
 ### D-006 — Save backup declined
 Date: 2026-10-13  Stage: prerequisites
 The user chose to skip the save backup. Risk accepted. Re-offer before Stage 1 writes to camera/player state.
+
+### D-007 — Minimal OpenXR head pose pulled into Stage 1
+Date: 2026-10-13  Stage: 1
+Chose: Stage 1 reads the headset pose through a minimal OpenXR session (head only, no rendering to the headset yet), so camera ownership can be tested with real head movement. The full runtime/input layer stays in Stage 3.
+Reason: "1:1 with the headset" can't be verified without the headset's pose. The desktop simulator (mouse-look head) covers the no-headset checks.
+
+### D-008 — Stage 1 H1 rejected: no reflection names in the exe
+Date: 2026-10-13  Stage: 1
+Evidence: a whole-process string probe at the main menu. The control string "d3d11.dll" was found (scanner works). "GameRenderer", "ClientGameContext" and "FaithCharacter" are absent from the exe image ("GameRenderer" only appears 5x in heap data). "CameraComponent" appears 17x and "RenderView" once in the exe, as plain strings, not as a TypeInfo list.
+Conclusion: Catalyst's retail build strips TypeInfo names, so a name-driven SDK walk isn't available.
+Next rung: "How to find" #3, frame capture. Hook constant-buffer uploads, capture one frame, identify the view/projection matrices by shape, then value-hunt the CPU-side camera struct and the code that writes it.
+Also noted: the typeinfo scanner merged regions, so one faulting page hid the whole image. Fixed in recon_probe (per-region guard).
+
+### D-009 — Camera located (main menu): view CB, RenderView copy, game camera + stable chain
+Date: 2026-10-13  Stage: 1
+Method: "How to find" #3 + #4 + #5. Constant-buffer capture → value hunt → poke test → pointer scan.
+- View constant buffer: 1136 bytes. [4..7] screen size, [8..23] view (row-major storage, translation in column 3, camera = -R^T t), [24..39] projection (reverse-Z infinite, near 0.06, TAA jitter in [2],[6]).
+- 2,153–2,440 copies of the camera position in memory; ~200 full LinearTransforms (right, up, forward, trans; 64 bytes). Exactly 2 move the rendered view when written (+3.000 m, 3 runs).
+- Upstream "game camera": writing it propagates to the render copy. Reached by **[[exe+0x23e7f78]+0x400]+0x70** (position; rotation rows at +0x40/+0x50/+0x60). Verified on 3 launches.
+- Downstream "RenderView" copy: transform, previous transform at -0x40, FOV 0.9599 rad (55° vertical) at +0x74/+0x78, near 0.05 at +0x7c, far 10000 at +0x80, aspect 1.7778 at +0x84 (offsets from the position). No short static path.
+- Menu camera never moves, so no writers caught yet (hardware write-watch saw 0 writes). The writers and the gameplay camera need a gameplay session (RECON-1).
+Rejected: blind poking of all candidates (crashed the game at the menu once; no save involved). Now filtered to live full transforms.

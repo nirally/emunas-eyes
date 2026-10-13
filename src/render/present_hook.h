@@ -10,4 +10,7 @@ void uninstall();
 
 uint64_t frame_count();
 
+// Runs at the start of every Present, on the render thread.
+void set_frame_callback(void (*cb)());
+
 }  // namespace mecvr::present_hook

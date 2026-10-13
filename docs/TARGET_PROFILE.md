@@ -87,4 +87,9 @@ Runner Vision (red world highlights and ghost runner line), objective/waypoint m
 | Ansel calls in gameplay | unknown | assumed | PLAYTEST-0 item 4 |
 | Backup door | Engine.BuildInfo_Win64_retail.dll (export getBuildInfo, loaded at #87, after d3d11) | confirmed | dumpbin |
 | Frame rate (flat, menu) | ~145–200 fps uncapped at 1080p | confirmed | Present hook |
-| Camera object, view/projection | unknown | assumed | Stage 1 |
+| View constant buffer | 1136-byte CB: [4..7] screen, [8..23] view (camera = -R^T t), [24..39] projection (reverse-Z infinite, near 0.06, TAA jitter) | confirmed | CB capture + poke |
+| Game camera (menu) | [[exe+0x23e7f78]+0x400]+0x70 = position; LinearTransform rows before it. Writing it moves the view | confirmed (menu, 3 launches) | value hunt + poke + pointer scan, D-009 |
+| RenderView copy | Transform + prev transform, FOV 0.9599 rad, near 0.05, far 10000, aspect 1.7778. No short static path | confirmed (menu) | D-009 |
+| Game camera in gameplay, writer functions | unknown | assumed | RECON-1 |
+| World units | meters (near plane 0.06, camera on a rooftop at y=62.6) | confirmed | projection + scene |
+| Anti-aliasing | TAA (projection jitter) — Stage 2 concern | confirmed | CB capture |

@@ -12,6 +12,10 @@
 #include "core/proxy.h"
 #include "core/window_title.h"
 #include "diagnostics/log.h"
+#include "diagnostics/typeinfo_dump.h"
+
+namespace mecvr::recon { void probe_strings(); }
+#include "render/cb_capture.h"
 #include "render/present_hook.h"
 
 namespace fs = std::filesystem;
@@ -108,6 +112,8 @@ DWORD WINAPI main_thread(LPVOID) {
     bool hooks_ok = false;
     if (g_config.get_bool("features.present_hook")) {
         hooks_ok = present_hook::install();
+        if (hooks_ok && g_config.get_bool("diagnostics.cb_capture") && cb_capture::install(dir))
+            present_hook::set_frame_callback(&cb_capture::on_present);
         if (hooks_ok && !g_config.get_bool("features.vr_enabled")) set_hooks_enabled(false);
     } else {
         LOG_I("core", "features.present_hook is off - not hooking rendering");
@@ -129,7 +135,7 @@ DWORD WINAPI main_thread(LPVOID) {
     for (;;) {
         Sleep(500);
         g_config.poll_reload();
-        if (++tick % 20 == 0 && tick <= 240) log_export_calls();  // every 10 s for the first 2 min
+        if (++tick % 20 == 0) log_export_calls();  // every 10 s; only logs exports whose count changed
         if (!smoke_done) {
             uint64_t frames = present_hook::frame_count();
             if (frames > 0 && first_frame_at == 0) first_frame_at = GetTickCount64();
@@ -138,6 +144,11 @@ DWORD WINAPI main_thread(LPVOID) {
                       MECVR_VERSION, exe_ver.c_str(), role_name(g_role), hooks_ok ? "live" : "off",
                       static_cast<unsigned long long>(frames), g_config.values().size());
                 smoke_done = true;
+                if (g_config.get_bool("diagnostics.typeinfo_dump")) {
+                    static fs::path out = dir / L"typeinfo.txt";
+                    if (HANDLE t = CreateThread(nullptr, 0, [](LPVOID) -> DWORD { recon::probe_strings(); typeinfo_dump::run(out); return 0; }, nullptr, 0, nullptr))
+                        CloseHandle(t);
+                }
             }
         }
     }
