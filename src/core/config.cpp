@@ -126,3 +126,18 @@ std::string Store::get_string(const std::string& key) const {
 }
 
 }  // namespace mecvr::config
+
+namespace mecvr::config {
+
+void Store::set_user_value(const std::string& key, const json& value) {
+    json user = read_user_file();
+    if (!user.is_object()) user = json::object();
+    user[key] = value;
+    {
+        std::ofstream out(user_file_);
+        out << user.dump(2) << "\n";
+    }
+    poll_reload();  // re-validate and notify like any other edit
+}
+
+}  // namespace mecvr::config

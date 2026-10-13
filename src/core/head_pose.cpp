@@ -58,7 +58,7 @@ Pose rendered_pose() {
 }
 
 void sim_update(float dt) {
-    if (down(VK_NUMPAD5)) {
+    if (down(VK_NUMPAD5) || down(VK_F6) || down(VK_CLEAR)) {
         std::lock_guard lock(g_mutex);
         g_yaw = g_pitch = g_roll = g_height = 0;
         g_recenter_pending = true;

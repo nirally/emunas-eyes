@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <fstream>
 
 #include "core/config.h"
@@ -70,4 +71,30 @@ TEST(config_project_schema_is_valid) {
     std::vector<std::string> w;
     resolve(s, json::object(), w);
     CHECK(w.empty());
+}
+
+TEST(config_set_user_value_persists_and_applies) {
+    auto dir = std::filesystem::temp_directory_path() / "mecvr_test_config";
+    std::filesystem::create_directories(dir);
+    {
+        std::ofstream s(dir / "schema.json");
+        s << test_schema().dump();
+        std::ofstream u(dir / "config.json");
+        u << R"({"a.flag": false})";
+    }
+    mecvr::config::Store store;
+    CHECK(store.load(dir / "schema.json", dir / "config.json"));
+    int changes = 0;
+    store.on_change([&](const json&, const json&) { ++changes; });
+    store.set_user_value("a.speed", 200.0);
+    CHECK(store.get_number("a.speed") == 200.0);
+    CHECK(store.get_bool("a.flag") == false);  // other user values kept
+    CHECK(changes == 1);
+    {
+        std::ifstream in(dir / "config.json");
+        json saved = json::parse(in);
+        CHECK(saved["a.speed"] == 200.0 && saved["a.flag"] == false);
+    }
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
 }

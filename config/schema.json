@@ -17,6 +17,7 @@
     "comfort.snap_turn_angle":    { "type": "float", "min": 15, "max": 90, "default": 30, "unit": "deg", "section": "Comfort", "label": "Snap turn angle" },
     "comfort.vignette_strength":  { "type": "float", "min": 0, "max": 1, "default": 0.3, "section": "Comfort", "label": "Vignette strength" },
     "comfort.play_mode":          { "type": "enum",  "values": ["standing", "seated"], "default": "standing", "section": "Comfort", "label": "Play mode" },
+    "comfort.height_offset":      { "type": "float", "min": -0.5, "max": 0.8, "default": 0.0, "unit": "m", "section": "Calibration", "label": "Extra eye height (F3 up / F2 down)" },
     "rendering.render_scale":     { "type": "float", "min": 0.5, "max": 1.5, "default": 1.0, "section": "Rendering", "label": "Render scale" },
     "rendering.world_scale":      { "type": "float", "min": 0.5, "max": 2.0, "default": 1.0, "section": "Rendering", "label": "World scale" }
   }

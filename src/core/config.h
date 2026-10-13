@@ -22,6 +22,9 @@ public:
     // Re-reads the user file if it changed on disk. Returns true if values changed.
     bool poll_reload();
 
+    // Writes one value into the user file (config.json) and applies it. Main thread only.
+    void set_user_value(const std::string& key, const json& value);
+
     bool get_bool(const std::string& key) const;
     double get_number(const std::string& key) const;
     std::string get_string(const std::string& key) const;

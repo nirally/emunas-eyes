@@ -30,11 +30,26 @@ constexpr const char* kSetterSig =
 // Gameplay camera manager: stores the last data row, calls the setter, then loads [rbx+20] (FOV).
 constexpr const char* kSiteSig = "0F 29 4A 70 0F 29 82 80 00 00 00 E8 ?? ?? ?? ?? F3 0F 10 4B 20 48 89 F1 E8";
 constexpr size_t kSiteCallOffset = 11;  // E8 within the site signature
+// Gameplay render-view build (D-012): if (0x319c0e0(...)) SetCameraData(renderView, derived). The derived
+// camera keeps yaw/pitch but rebuilds "up" from world up, dropping head roll.
+constexpr const char* kViewSiteSig = "84 C0 74 0F 48 8D 95 F0 00 00 00 48 89 D9 E8 ?? ?? ?? ?? 8B 47 28 89 83 BC 0F 00 00";
+constexpr size_t kViewSiteCallOffset = 14;
 constexpr size_t kDataBytes = 0x90;
 
 SetCameraDataFn g_orig = nullptr;
 void* g_setter = nullptr;
 uintptr_t g_site_return = 0;  // return address of the gameplay call
+uintptr_t g_view_site_return = 0;  // return address of the render-view build call (0 if not found)
+std::atomic<float> g_height_offset{0};  // meters added to camera height (comfort.height_offset)
+
+// Last result of the main override, for re-applying at the render-view build.
+std::mutex g_final_mutex;
+vm::Quat g_final_rot;
+vm::Vec3 g_final_pos;
+ULONGLONG g_final_tick = 0;
+// Render-view build stats (reported every 10 s).
+std::atomic<uint64_t> g_vs_snapped{0}, g_vs_passed{0};
+std::atomic<float> g_vs_max_angle{0}, g_vs_max_pos{0};
 uintptr_t g_exe = 0;
 
 std::atomic<bool> g_enabled{true};
@@ -104,7 +119,13 @@ void apply(uint8_t* data) {
     vm::Quat view = game_pitch_on ? body * vm::Quat::axis_angle({1, 0, 0}, game_pitch) : body;
 
     vm::Quat final_rot = (view * head.rotation).normalized();
-    vm::Vec3 final_pos = a->t() + body.rotate(head.position);
+    vm::Vec3 final_pos = a->t() + body.rotate(head.position) + vm::Vec3{0, g_height_offset.load(), 0};
+    {
+        std::lock_guard lock(g_final_mutex);
+        g_final_rot = final_rot;
+        g_final_pos = final_pos;
+        g_final_tick = GetTickCount64();
+    }
 
     a->set(final_rot, final_pos);
     b->set(final_rot, final_pos);
@@ -117,9 +138,44 @@ void apply(uint8_t* data) {
     remember(final_rot, s.absolute);
 }
 
+// Render-view build: when the derived camera is our view minus roll (same forward
+// within 15 deg), put our exact rotation back. Anything else (cutscene, scripted
+// camera) passes through untouched for now.
+void reapply_at_view_site(uint8_t* data) {
+    auto* a = reinterpret_cast<vm::LinearTransform*>(data);
+    auto* b = reinterpret_cast<vm::LinearTransform*>(data + 0x40);
+    vm::Quat rot;
+    vm::Vec3 pos;
+    {
+        std::lock_guard lock(g_final_mutex);
+        if (GetTickCount64() - g_final_tick > 200) { ++g_vs_passed; return; }
+        rot = g_final_rot;
+        pos = g_final_pos;
+    }
+    vm::Vec3 want_fwd = rot.rotate({0, 0, -1});
+    vm::Vec3 got_fwd = (a->b() * -1.f).normalized();
+    float angle = std::acos(std::fmin(1.f, std::fmax(-1.f, want_fwd.dot(got_fwd)))) * 57.29578f;
+    float dpos = (a->t() - pos).length();
+    if (angle > g_vs_max_angle.load()) g_vs_max_angle = angle;
+    if (dpos > g_vs_max_pos.load()) g_vs_max_pos = dpos;
+    if (angle > 15.f) { ++g_vs_passed; return; }
+    // Ours entirely: the derived camera may also lose head position / height offset, and any
+    // extra offset it adds would be game-driven motion we don't want on the head.
+    a->set(rot, pos);
+    b->set(rot, pos);
+    ++g_vs_snapped;
+}
+
 void __fastcall setter_detour(void* cam, const void* data) {
     auto ra = reinterpret_cast<uintptr_t>(_ReturnAddress());
     note_caller(ra);
+    if (ra == g_view_site_return && g_view_site_return && g_enabled.load() && data) {
+        alignas(16) uint8_t copy[kDataBytes];
+        memcpy(copy, data, kDataBytes);
+        reapply_at_view_site(copy);
+        g_orig(cam, copy);
+        return;
+    }
     if (ra != g_site_return || !g_enabled.load() || !data) {
         g_orig(cam, data);
         return;
@@ -128,6 +184,17 @@ void __fastcall setter_detour(void* cam, const void* data) {
     memcpy(copy, data, kDataBytes);
     apply(copy);
     g_orig(cam, copy);
+}
+
+bool key(int vk) { return (GetAsyncKeyState(vk) & 0x8000) != 0; }
+
+std::atomic<bool> g_height_dirty{false};
+
+void report_view_site() {
+    uint64_t s = g_vs_snapped.exchange(0), p = g_vs_passed.exchange(0);
+    if (s || p)
+        LOG_I("camera", "render-view build: %llu frames given our view back, %llu passed through (max differences: %.1f deg, %.2f m)",
+              (unsigned long long)s, (unsigned long long)p, g_vs_max_angle.exchange(0), g_vs_max_pos.exchange(0));
 }
 
 void report_callers() {
@@ -163,6 +230,15 @@ bool install() {
         return false;
     }
     g_site_return = reinterpret_cast<uintptr_t>(call + 5);
+    if (auto vpat = sigscan::parse(kViewSiteSig)) {
+        const uint8_t* vs = sigscan::find_in_module(reinterpret_cast<void*>(g_exe), *vpat);
+        if (vs && sigscan::rip_relative(vs + kViewSiteCallOffset, 1, 5) == setter) {
+            g_view_site_return = reinterpret_cast<uintptr_t>(vs + kViewSiteCallOffset + 5);
+            LOG_I("camera", "render-view build site found, returns to exe+%llx", (unsigned long long)(g_view_site_return - g_exe));
+        } else {
+            LOG_W("camera", "render-view build site not found - head roll may be lost in gameplay");
+        }
+    }
     g_setter = const_cast<uint8_t*>(setter);
 
     MH_STATUS st = MH_Initialize();
@@ -185,10 +261,21 @@ void set_enabled(bool on) {
 void set_pitch_source(PitchSource s) { g_pitch_source = s; }
 
 void on_present(float dt) {
-    static bool num0_was = false;
-    bool num0 = (GetAsyncKeyState(VK_NUMPAD0) & 0x8000) != 0;
-    if (num0 && !num0_was) set_enabled(!g_enabled.load());
-    num0_was = num0;
+    // Hotkeys. F-keys work on 60% keyboards; numpad keys are alternatives and work
+    // with Num Lock either way (Num Lock off turns Numpad0 into Insert).
+    static bool toggle_was = false, up_was = false, down_was = false;
+    bool toggle = key(VK_F7) || key(VK_NUMPAD0) || key(VK_INSERT);
+    if (toggle && !toggle_was) set_enabled(!g_enabled.load());
+    toggle_was = toggle;
+    bool up = key(VK_F3), dn = key(VK_F2);
+    if ((up && !up_was) || (dn && !down_was)) {
+        float h = g_height_offset.load() + (up ? 0.02f : -0.02f);
+        set_height_offset(h);
+        g_height_dirty = true;
+        LOG_I("camera", "height offset %+.2f m (F3 up / F2 down)", g_height_offset.load());
+    }
+    up_was = up;
+    down_was = dn;
 
     head_pose::sim_update(dt);
 
@@ -197,6 +284,7 @@ void on_present(float dt) {
     if (now - last_report > 10000) {
         last_report = now;
         report_callers();
+        report_view_site();
         float gr = g_last_game_roll.load() * 57.29578f;
         if (std::fabs(gr) > 1.f) LOG_I("camera", "game wanted %.1f deg of roll this frame; removed", gr);
     }
@@ -209,7 +297,8 @@ void check_view(const float* v) {
         last_dbg = GetTickCount64();
         vm::LinearTransform d{};
         for (int k = 0; k < 3; ++k) { d.right[k] = v[k]; d.up[k] = v[4 + k]; d.back[k] = v[8 + k]; }
-        LOG_D("camera", "rendered view: yaw %.1f pitch %.1f roll %.1f deg (head roll %.1f, override %s)",
+        float cam_y = -(v[1] * v[3] + v[5] * v[7] + v[9] * v[11]);
+        LOG_D("camera", "rendered view: y %.2f yaw %.1f pitch %.1f roll %.1f deg (head roll %.1f, override %s)", cam_y,
               vm::yaw_of(d) * 57.29578f, vm::pitch_of(d) * 57.29578f, vm::roll_of(d) * 57.29578f,
               g_last_head_roll.load() * 57.29578f, g_enabled.load() ? "on" : "off");
     }
@@ -231,5 +320,15 @@ void check_view(const float* v) {
 }
 
 uint64_t assertion_failures() { return g_assert_failures.load(); }
+
+void set_height_offset(float meters) {
+    if (meters < -0.5f) meters = -0.5f;
+    if (meters > 0.8f) meters = 0.8f;
+    g_height_offset = meters;
+}
+
+float height_offset() { return g_height_offset.load(); }
+
+bool take_height_changed() { return g_height_dirty.exchange(false); }
 
 }  // namespace mecvr::camera_override

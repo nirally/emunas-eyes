@@ -44,7 +44,7 @@ XR_FUNCS(XR_FN)
 XrInstance g_instance = XR_NULL_HANDLE;
 XrSystemId g_system = XR_NULL_SYSTEM_ID;
 XrSession g_session = XR_NULL_HANDLE;
-XrSpace g_local = XR_NULL_HANDLE, g_view = XR_NULL_HANDLE;
+XrSpace g_local = XR_NULL_HANDLE, g_view = XR_NULL_HANDLE, g_stage = XR_NULL_HANDLE;
 XrSwapchain g_swapchain = XR_NULL_HANDLE;
 std::vector<XrSwapchainImageD3D11KHR> g_images;
 int64_t g_format = 0;
@@ -165,6 +165,8 @@ bool create_session() {
     XR_CHECK(pxrCreateReferenceSpace(g_session, &rs, &g_local), "LOCAL space");
     rs.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
     XR_CHECK(pxrCreateReferenceSpace(g_session, &rs, &g_view), "VIEW space");
+    rs.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE;  // floor level; only used to report eye height
+    if (XR_FAILED(pxrCreateReferenceSpace(g_session, &rs, &g_stage))) g_stage = XR_NULL_HANDLE;
     return true;
 }
 
@@ -260,6 +262,17 @@ void frame(IDXGISwapChain* chain) {
         p.position = {loc.pose.position.x, loc.pose.position.y, loc.pose.position.z};
         p.valid = true;
         head_pose::set_headset_pose(p, true);
+    }
+
+    // Real eye height above the floor, for height calibration (every 30 s).
+    static ULONGLONG last_height_log = 0;
+    if (g_stage && GetTickCount64() - last_height_log > 30000) {
+        XrSpaceLocation sl{XR_TYPE_SPACE_LOCATION};
+        if (XR_SUCCEEDED(pxrLocateSpace(g_view, g_stage, fs.predictedDisplayTime, &sl)) &&
+            (sl.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT)) {
+            last_height_log = GetTickCount64();
+            LOG_I("xr", "your eye height above the floor: %.2f m", sl.pose.position.y);
+        }
     }
 
     XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};

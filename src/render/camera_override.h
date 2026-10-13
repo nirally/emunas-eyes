@@ -22,4 +22,10 @@ void check_view(const float* view);
 
 uint64_t assertion_failures();
 
+// Extra camera height in meters (comfort.height_offset). F3 / F2 adjust it live in 2 cm steps;
+// take_height_changed() tells the main thread to save the new value.
+void set_height_offset(float meters);
+float height_offset();
+bool take_height_changed();
+
 }  // namespace mecvr::camera_override
