@@ -287,6 +287,9 @@ bool fov_target(float& tan_v) {
 // target and the commanded tan(FOV/2) is scaled by the ratio until they agree.
 float g_cmd_tan = 0;                  // commanded tan(camera FOV / 2); 0 = not steering (game thread)
 int g_frames_since_change = 0;
+int g_off_frames = 0;                 // consecutive frames off target while locked
+bool g_locked = false;                // settled: hold the command
+float g_learned_tan = 0;              // last settled command, kept across F9 toggles
 std::atomic<float> g_meas_tan_v{0};   // tan(half vertical FOV) of the last rendered view
 
 float fov_from_tan(float t) {
@@ -320,19 +323,38 @@ void update_fov(void* cam) {
     bool on = fov_target(target);
     if (on) {
         if (g_cmd_tan <= 0) {
-            g_cmd_tan = target / (g_game_aspect > 0.1f ? g_game_aspect : 1.f);  // first guess (measured: x aspect)
-            g_frames_since_change = 0;
+            // Calm-camera mapping measured in PLAYTEST-2b: rendered vertical FOV = camera FOV. Reuse
+            // what was learned last time, so F9 switches instantly.
+            g_cmd_tan = g_learned_tan > 0 ? g_learned_tan : target;
+            g_locked = g_learned_tan > 0;
+            g_frames_since_change = g_off_frames = 0;
             LOG_I("camera", "full field of view: target %.1f deg vertical", 2 * std::atan(target) * 57.2958f);
-        } else if (++g_frames_since_change >= 6) {
+        } else {
+            // Settle once, then hold. The game adds its own FOV kicks (drops, landings); steering against
+            // them oscillated (PLAYTEST-2b), so only an error lasting 5 s unlocks the steering again.
             float meas = g_meas_tan_v.load();
             float ratio = meas > 0.05f ? target / meas : 1.f;
-            if (std::fabs(ratio - 1.f) > 0.003f) {
-                g_cmd_tan = std::fmin(5.7f, std::fmax(0.2f, g_cmd_tan * ratio));
-                g_frames_since_change = 0;
-                static int logged = 0;
-                if (logged++ < 20)
-                    LOG_D("camera", "FOV steer: rendered %.1f deg, target %.1f -> camera FOV %.3f", 2 * std::atan(meas) * 57.2958f,
-                          2 * std::atan(target) * 57.2958f, fov_from_tan(g_cmd_tan));
+            bool off = std::fabs(ratio - 1.f) > (g_locked ? 0.01f : 0.003f);
+            if (g_locked) {
+                g_off_frames = off ? g_off_frames + 1 : 0;
+                if (g_off_frames > 450) {
+                    g_locked = false;
+                    g_frames_since_change = g_off_frames = 0;
+                    LOG_I("camera", "FOV off target for 5 s (rendered %.1f deg) - re-steering", 2 * std::atan(meas) * 57.2958f);
+                }
+            } else if (++g_frames_since_change >= 6) {
+                if (off) {
+                    g_cmd_tan = std::fmin(5.7f, std::fmax(0.2f, g_cmd_tan * std::fmin(1.25f, std::fmax(0.8f, ratio))));
+                    g_frames_since_change = 0;
+                    static int logged = 0;
+                    if (logged++ < 20)
+                        LOG_D("camera", "FOV steer: rendered %.1f deg, target %.1f -> camera FOV %.3f", 2 * std::atan(meas) * 57.2958f,
+                              2 * std::atan(target) * 57.2958f, fov_from_tan(g_cmd_tan));
+                } else {
+                    g_locked = true;
+                    g_learned_tan = g_cmd_tan;
+                    LOG_I("camera", "FOV settled: camera FOV %.3f renders %.1f deg", fov_from_tan(g_cmd_tan), 2 * std::atan(meas) * 57.2958f);
+                }
             }
         }
         g_fov_orig(cam, fov_from_tan(g_cmd_tan));
@@ -489,14 +511,18 @@ void on_present(float dt) {
     toggle_was = toggle;
     static bool stereo_was = false;
     bool stereo_key = key(VK_F4);
-    if (stereo_key && !stereo_was) {
+    static ULONGLONG last_toggle = 0;  // F4/F9: ignore a second press within 0.7 s (key bounce flipped F9 back, PLAYTEST-2b)
+    const bool can_toggle = GetTickCount64() - last_toggle > 700;
+    if (stereo_key && !stereo_was && can_toggle) {
+        last_toggle = GetTickCount64();
         set_stereo(!g_stereo.load());
         g_stereo_dirty = true;
     }
     stereo_was = stereo_key;
     static bool fov_was = false;
     bool fov_key = key(VK_F9);
-    if (fov_key && !fov_was) {
+    if (fov_key && !fov_was && can_toggle) {
+        last_toggle = GetTickCount64();
         set_full_fov(!g_full_fov.load());
         g_fov_dirty = true;
     }

@@ -112,6 +112,10 @@ void set_hooks_enabled(bool on) {
 
 DWORD WINAPI main_thread(LPVOID) {
     const fs::path dir = mod_dir();
+    {
+        std::error_code ec;  // keep the previous session's log (playtest logs were lost on relaunch)
+        std::filesystem::rename(dir / L"mecvr.log", dir / L"mecvr.prev.log", ec);
+    }
     log::init(dir / L"mecvr.log");
     LOG_I("core", "MEC VR %s starting, loaded as %s, pid %lu", MECVR_VERSION, role_name(g_role),
           GetCurrentProcessId());

@@ -156,3 +156,8 @@ Chose: with a headset (and rendering.full_fov on, F9 toggles, saved), the target
 Verified without a headset (diagnostics.fov_test, stand-in 90°): first guess rendered 73.7°, one step later 90.0° and stable. The OpenXR layer already submits the FOV the game actually rendered, so the picture stays correct while steering.
 Trade-off (told to the user): the same 1920x1080 image now spans about 129°x100° instead of 86°x55°, so it is less sharp; render scale comes next. Asymmetric per-eye projection (a few degrees saved) is deferred.
 Also fixed: head_pose's default eye FOV was zero-initialised (only mattered without a headset).
+
+### D-020a — FOV steering settles once, then holds
+Date: 2026-10-13  Stage: 2
+PLAYTEST-2b log: during a drop the game added its own FOV kick and the per-6-frame steering fought it (rendered 135° <-> 61° for ~2 s). Calm mapping measured twice: rendered vertical FOV = camera FOV (1.571 -> 90.0°, 1.745 -> 100.0°). Now: first command = target (identity), steps clamped to x0.8-1.25 until within 0.3%, then locked; only an error lasting 5 s re-opens steering. The settled command is reused when F9 turns the view back on (instant). Game FOV kicks pass through as a flat player sees them. Verified (stand-in 90°): settled in 30 ms.
+Also: F4/F9 ignore a second press within 0.7 s; the swapchains are remade when the game's resolution changes (for DSR, next); the previous session's log is kept as mecvr.prev.log.

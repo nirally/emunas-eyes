@@ -38,7 +38,8 @@ PFN_xrGetInstanceProcAddr g_gipa = nullptr;
     X(xrLocateSpace) X(xrWaitFrame) X(xrBeginFrame) X(xrEndFrame) X(xrEnumerateSwapchainFormats) \
     X(xrCreateSwapchain) X(xrEnumerateSwapchainImages) X(xrAcquireSwapchainImage) X(xrWaitSwapchainImage) \
     X(xrReleaseSwapchainImage) X(xrGetD3D11GraphicsRequirementsKHR) X(xrResultToString) \
-    X(xrEnumerateInstanceExtensionProperties) X(xrRequestExitSession) X(xrGetSystemProperties) X(xrLocateViews)
+    X(xrEnumerateInstanceExtensionProperties) X(xrRequestExitSession) X(xrGetSystemProperties) X(xrLocateViews) \
+    X(xrDestroySwapchain)
 XR_FUNCS(XR_FN)
 
 XrInstance g_instance = XR_NULL_HANDLE;
@@ -444,6 +445,26 @@ void set_game_projection(float sx, float sy) {
 
 bool running() { return g_running.load(); }
 
+// The game's resolution changed (options menu, or a higher DSR resolution for sharpness):
+// remake the per-eye swapchains at the new size.
+void resize_if_needed(IDXGISwapChain* chain) {
+    DXGI_SWAP_CHAIN_DESC d{};
+    if (FAILED(chain->GetDesc(&d)) || (d.BufferDesc.Width == g_width && d.BufferDesc.Height == g_height)) return;
+    if (d.BufferDesc.Width < 64 || d.BufferDesc.Height < 64) return;  // minimised
+    LOG_I("xr", "game resolution changed %ux%u -> %ux%u", g_width, g_height, d.BufferDesc.Width, d.BufferDesc.Height);
+    for (int e = 0; e < 2; ++e) {
+        if (g_swapchain[e]) pxrDestroySwapchain(g_swapchain[e]);
+        g_swapchain[e] = XR_NULL_HANDLE;
+        g_images[e].clear();
+        g_has_image[e] = false;
+    }
+    g_pending_left = false;
+    if (!create_swapchain(chain)) {
+        g_failed = true;
+        LOG_E("xr", "could not remake the swapchains - staying flat");
+    }
+}
+
 void on_present(IDXGISwapChain* chain) {
     if (!g_enabled || g_failed) return;
     if (!g_tried) {
@@ -456,7 +477,10 @@ void on_present(IDXGISwapChain* chain) {
     }
     poll_events();
     g_running = g_session_running;
-    if (g_session_running) frame(chain);
+    if (g_session_running) {
+        resize_if_needed(chain);
+        if (!g_failed) frame(chain);
+    }
 }
 
 }  // namespace mecvr::xr_session
