@@ -5,16 +5,16 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-13
-Mode: agentic | Gate: hard | Stage 2 of 10 — recon
+Mode: agentic | Gate: hard | Stage 2 of 10 — first 3D check
 
-✅ Built and tested: Stage 0 (mod loads, safe mode, uninstall); Stage 1 (head tracking 1:1, no forced motion, opt-in game motion, death/respawn fine, comfort excellent)
-🔧 Built, not yet tested: nothing
-🚧 In progress: Stage 2 — real 3D: recon of how Frostbite renders views
+✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
+🔧 Built, not yet tested: real 3D by alternating eyes (F4 toggles) → PLAYTEST-2a waiting on you
+🚧 In progress: Stage 2 — next: full headset field of view, then synchronising the two eyes
 ⬜ Not started: controllers, movement, hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: nothing right now — recon runs at the main menu without you
-🐞 Open bugs: BUG-007 sev-3 (fight framing, Stages 2/4/5–7); BUG-001 sev-4
-▶ Next: Me: Stage 2 recon + first stereo attempt. You: next headset test when 3D is ready to look at.
+❓ Need from you: PLAYTEST-2a (~15 min, headset); switch off anti-aliasing and motion blur first
+🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: You: PLAYTEST-2a. Me: full field of view while you test.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
