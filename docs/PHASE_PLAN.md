@@ -5,16 +5,16 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-13
-Mode: agentic | Gate: hard | Stage 1 of 10 — headset check 5
+Mode: agentic | Gate: hard | Stage 2 of 10 — recon
 
-✅ Built and tested: Stage 0; head tracking 1:1, no snapping (accepted, PLAYTEST-1c); roll no longer flips (PLAYTEST-1d); eye height +14 cm
-🔧 Built, not yet tested: feel-the-roll option (on for you, F5), roll-proof heading v2 → PLAYTEST-1e waiting on you
-🚧 In progress: Stage 1 remainder — takedowns, cutscenes, death camera
-⬜ Not started: 3D (Stage 2), controllers, movement, hands, punching, body, HUD, settings menu, packaging
+✅ Built and tested: Stage 0 (mod loads, safe mode, uninstall); Stage 1 (head tracking 1:1, no forced motion, opt-in game motion, death/respawn fine, comfort excellent)
+🔧 Built, not yet tested: nothing
+🚧 In progress: Stage 2 — real 3D: recon of how Frostbite renders views
+⬜ Not started: controllers, movement, hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-1e (~15 min, headset)
-🐞 Open bugs: BUG-007 sev-3 (fight framing — Stages 2, 5–7); BUG-002/003/004 awaiting confirmation; BUG-001 sev-4
-▶ Next: You: PLAYTEST-1e. Me: scripted cameras (takedowns, cutscenes, death) from your notes, then the Stage 1 gate.
+❓ Need from you: nothing right now — recon runs at the main menu without you
+🐞 Open bugs: BUG-007 sev-3 (fight framing, Stages 2/4/5–7); BUG-001 sev-4
+▶ Next: Me: Stage 2 recon + first stereo attempt. You: next headset test when 3D is ready to look at.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -74,6 +74,18 @@ Note: Stage 1 head tracking needs OpenXR, which is formally Stage 3. Minimal Ope
 - [~] Correct world scale → judged with stereo in Stage 2 (D-016)
 
 ### Stage 2 — Stereo rendering (L, high risk)
+
+#### Stage 2 brief
+Goal: true per-eye rendering at the headset's own FOV and resolution, with every effect correct per eye. Replaces the Stage 1 mono layer (D-011).
+Known: one RenderView per frame is built in exe+0x31a40e0 by looping over a list of "views" ([exe+0x2415e50]: begin +8, end +0x10; 0x1120-byte RenderView entries). The RenderView carries the transform, previous transform (TAA/motion vectors), FOV 0.9599 rad, near/far, aspect (D-009). Projection is reverse-Z infinite with TAA jitter. The Helix 3D Vision fix lists the effects that break in stereo: shadows, CS lights, reflections, sky/sun/moon, lens flares; motion blur off. The engine supports Ansel hi-res capture, which means off-centre projection support exists somewhere.
+Unknowns: Q-201 does the engine render more than one view per frame if the list has two entries (rung 1/2)? Q-202 where to inject the asymmetric per-eye projection (the RenderView FOV is symmetric)? Q-203 can the frame be rendered twice per Present (rung 3) without breaking game-thread state, TAA history or streaming?
+Hypotheses:
+  H1 (rung 1) Add a second view to the view list → Frostbite renders two RenderViews per frame natively (split-screen style) with shared simulation.
+  H2 (rung 3) Hook the render-frame entry and run it twice, swapping the RenderView between left and right eye transforms.
+  H3 (fallback, labelled) Alternate-eye rendering (BF2VR's method) - rejected unless H1 and H2 fail (D-007 note); it halves per-eye framerate and causes temporal artifacts.
+Plan: recon the view list and the render-frame call graph at the menu (no user time) → try H1 with a duplicated view → per-eye target capture → asymmetric projection → effects pass (Helix list), TAA per eye → widen culling → resolution/render scale. Performance guardrail: a GTX 1080 Ti over Steam Link; render scale slider early.
+Verify: PLAYTEST-2: depth looks right, objects the right size (D-016), no eye-locked effects, cutscene/takedown check (D-016), comfort.
+Risk: high. Frostbite's frame graph may assume one view; per-view resources (TAA history, shadow cascades) may need duplication.
 - [ ] Highest viable rung (native per-eye → instanced → dual pass). Alternate-eye rendering rejected unless everything else fails
 - [ ] ★ Effects from the Helix fix list correct per eye: shadows, lights (incl. compute-shader lights), reflections/SSR, sky/sun/moon, lens flares; motion blur off
 - [ ] Culling widened; no eye-locked artifacts; correct size of known objects

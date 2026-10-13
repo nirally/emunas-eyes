@@ -9,3 +9,7 @@ Default if unanswered: assume it works, since you've played it a lot. If it hang
 ### Q-002 — Build path: from scratch, or hybrid? — ANSWERED: hybrid
 Why: there's no existing Catalyst VR mod to build on top of. See D-001.
 Default if unanswered: hybrid (my own code, plus MIT-licensed pieces and Frosty data mods).
+
+### Q-201 — (agent recon) Does Frostbite render more than one view per frame if asked?
+Why: decides rung 1 vs rung 3 for stereo. Answered by recon, not the user.
+Default: try it at the menu first.
