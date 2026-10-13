@@ -68,6 +68,16 @@ inline float yaw_of(const LinearTransform& m) {
     return std::atan2(-fwd.x, -fwd.z);
 }
 
+// Heading that survives the game camera tumbling (rolls, flips): read from the camera's
+// right axis, which a forward roll rotates around and so never moves. Falls back to the
+// forward direction only if the right axis is near vertical (an extreme sideways tilt).
+inline float heading_of(const LinearTransform& m) {
+    Vec3 r = m.r();
+    float horiz = std::sqrt(r.x * r.x + r.z * r.z);
+    if (horiz > 0.3f) return std::atan2(-r.z, r.x);
+    return yaw_of(m);
+}
+
 inline float pitch_of(const LinearTransform& m) {
     Vec3 fwd = (m.b() * -1.f).normalized();
     return std::asin(fwd.y < -1.f ? -1.f : fwd.y > 1.f ? 1.f : fwd.y);

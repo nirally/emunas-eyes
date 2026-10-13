@@ -58,3 +58,23 @@ TEST(vmath_set_preserves_w_lanes) {
     m.set(yaw_quat(0.3f), {1, 1, 1});
     CHECK(m.right[3] == 7 && m.up[3] == 8 && m.back[3] == 9 && m.trans[3] == 1);
 }
+
+TEST(vmath_heading_survives_forward_roll) {
+    // PLAYTEST-1c: during Faith's roll the game camera pitches through straight down and past.
+    // Forward-based yaw flips 180 deg there; heading_of must stay put the whole way round.
+    const float heading = 0.7f;
+    for (float pitch_deg = 0; pitch_deg < 360; pitch_deg += 15) {
+        LinearTransform m{};
+        m.set(yaw_quat(heading) * Quat::axis_angle({1, 0, 0}, -pitch_deg * kPi / 180.f), {});
+        CHECK(near(heading_of(m), heading, 1e-3f));
+    }
+}
+
+TEST(vmath_heading_matches_yaw_when_level_or_tilted) {
+    for (float deg : {-150.f, -45.f, 0.f, 30.f, 120.f}) {
+        LinearTransform m{};
+        // wall-run style sideways tilt of 20 deg must not change heading
+        m.set(yaw_quat(deg * kPi / 180.f) * Quat::axis_angle({0, 0, 1}, 20.f * kPi / 180.f), {});
+        CHECK(near(heading_of(m), deg * kPi / 180.f, 1e-3f));
+    }
+}

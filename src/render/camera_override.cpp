@@ -106,7 +106,7 @@ void apply(uint8_t* data) {
     auto* a = reinterpret_cast<vm::LinearTransform*>(data);
     auto* b = reinterpret_cast<vm::LinearTransform*>(data + 0x40);
 
-    const float game_yaw = vm::yaw_of(*a);
+    const float game_yaw = vm::heading_of(*a);  // not yaw_of: survives rolls (PLAYTEST-1c)
     const float game_pitch = vm::pitch_of(*a);
     g_last_game_roll = vm::roll_of(*a);
 
