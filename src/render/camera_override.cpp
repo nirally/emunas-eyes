@@ -116,6 +116,12 @@ struct ComposeState {
     float prev_pitch = 0;
     ULONGLONG prev_tick = 0;
     bool primed = false;
+    // Stereo pairs (PLAYTEST-2a): the right-eye frame reuses the left-eye frame's head pose and
+    // game camera, so the two eyes of a pair differ only by the eye offset.
+    bool pair_valid = false;
+    vm::Quat pair_rot;
+    vm::Vec3 pair_pos;
+    head_pose::Pose pair_abs;
 };
 ComposeState g_main_state, g_view_state;
 
@@ -126,13 +132,40 @@ float angle_deg(vm::Vec3 a, vm::Vec3 b) {
 // Builds our view from a game camera in `data` (transform A at +0x00, B at +0x40) and writes it
 // back into both transforms. Used at the main site (raw camera; the only one at the menu) and at
 // the render-view site (the game's blended camera, what a flat player sees - D-015).
+void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, vm::Vec3& out_pos,
+                  head_pose::Pose& out_abs);
+void finish(vm::LinearTransform* a, vm::LinearTransform* b, int eye_index, vm::Quat final_rot, vm::Vec3 final_pos,
+            head_pose::Pose abs);
+
 void compose(uint8_t* data, ComposeState& st) {
     auto* a = reinterpret_cast<vm::LinearTransform*>(data);
     auto* b = reinterpret_cast<vm::LinearTransform*>(data + 0x40);
+    g_last_game_roll = vm::roll_of(*a);
 
+    const int eye_index = g_stereo.load() ? g_frame_eye.load() : -1;
+    vm::Quat rot;
+    vm::Vec3 pos;
+    head_pose::Pose abs;
+    if (eye_index == 1 && st.pair_valid) {
+        rot = st.pair_rot;
+        pos = st.pair_pos;
+        abs = st.pair_abs;
+        st.pair_valid = false;
+    } else {
+        compose_head(a, st, rot, pos, abs);
+        st.pair_valid = eye_index == 0;
+        st.pair_rot = rot;
+        st.pair_pos = pos;
+        st.pair_abs = abs;
+    }
+    finish(a, b, eye_index, rot, pos, abs);
+}
+
+// The head-level view (no eye offset) from the game camera and the current head pose.
+void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, vm::Vec3& out_pos,
+                  head_pose::Pose& out_abs) {
     const float game_yaw = vm::heading_of(*a);  // not yaw_of: survives rolls (PLAYTEST-1c)
     const float game_pitch = vm::pitch_of(*a);
-    g_last_game_roll = vm::roll_of(*a);
 
     head_pose::Sample s = head_pose::current();
     const head_pose::Pose& head = s.relative;
@@ -165,14 +198,17 @@ void compose(uint8_t* data, ComposeState& st) {
         vm::Quat motion = vm::Quat::axis_angle({1, 0, 0}, -baseline) * game_rel;
         final_rot = (body * motion * head.rotation).normalized();
     }
-    vm::Vec3 final_pos = a->t() + body.rotate(head.position) + vm::Vec3{0, g_height_offset.load(), 0};
+    out_rot = final_rot;
+    out_pos = a->t() + body.rotate(head.position) + vm::Vec3{0, g_height_offset.load(), 0};
+    out_abs = s.absolute;
+}
 
+// Moves the head-level view to this frame's eye and writes it into both transforms.
+void finish(vm::LinearTransform* a, vm::LinearTransform* b, int eye_index, vm::Quat final_rot, vm::Vec3 final_pos,
+            head_pose::Pose abs) {
     // Stereo: move to this frame's eye (offset and rotation in head space, from the runtime).
-    int eye_index = -1;
-    head_pose::Pose abs = s.absolute;
     vm::Quat head_rot_for_roll = final_rot;
-    if (g_stereo.load()) {
-        eye_index = g_frame_eye.load();
+    if (eye_index >= 0) {
         head_pose::Eye e = head_pose::eye(eye_index);
         final_pos = final_pos + final_rot.rotate(e.offset);
         final_rot = (final_rot * e.rotation).normalized();

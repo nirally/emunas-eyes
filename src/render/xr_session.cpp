@@ -49,6 +49,10 @@ XrSwapchain g_swapchain[2] = {XR_NULL_HANDLE, XR_NULL_HANDLE};  // [eye]; mono u
 std::vector<XrSwapchainImageD3D11KHR> g_images[2];
 bool g_has_image[2] = {false, false};
 head_pose::Pose g_eye_pose[2];       // pose each eye's latest image was rendered with
+ID3D11Texture2D* g_hold = nullptr;   // left eye image waiting for its right eye
+head_pose::Pose g_hold_pose;
+bool g_pending_left = false;
+uint64_t g_pairs = 0, g_orphans = 0;
 bool g_stereo_mode = false;
 int64_t g_format = 0;
 uint32_t g_width = 0, g_height = 0;
@@ -250,6 +254,43 @@ void poll_events() {
 vm::Quat to_quat(const XrQuaternionf& q) { return {q.x, q.y, q.z, q.w}; }
 XrQuaternionf to_xr(vm::Quat q) { return {q.x, q.y, q.z, q.w}; }
 
+bool copy_to_swapchain(int target, ID3D11Texture2D* src) {
+    uint32_t idx = 0;
+    XrSwapchainImageAcquireInfo ai{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+    XrSwapchainImageWaitInfo wsi{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
+    wsi.timeout = XR_INFINITE_DURATION;
+    if (XR_FAILED(pxrAcquireSwapchainImage(g_swapchain[target], &ai, &idx))) return false;
+    bool ok = XR_SUCCEEDED(pxrWaitSwapchainImage(g_swapchain[target], &wsi));
+    if (ok) g_ctx->CopySubresourceRegion(g_images[target][idx].texture, 0, 0, 0, 0, src, 0, nullptr);
+    XrSwapchainImageReleaseInfo ri{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+    pxrReleaseSwapchainImage(g_swapchain[target], &ri);
+    return ok;
+}
+
+// A texture like the back buffer, to hold a left-eye image.
+bool ensure_hold(ID3D11Texture2D* back) {
+    D3D11_TEXTURE2D_DESC d;
+    back->GetDesc(&d);
+    if (g_hold) {
+        D3D11_TEXTURE2D_DESC h;
+        g_hold->GetDesc(&h);
+        if (h.Width == d.Width && h.Height == d.Height && h.Format == d.Format) return true;
+        g_hold->Release();
+        g_hold = nullptr;
+    }
+    d.Usage = D3D11_USAGE_DEFAULT;
+    d.BindFlags = 0;
+    d.CPUAccessFlags = 0;
+    d.MiscFlags = 0;
+    d.SampleDesc = {1, 0};
+    if (FAILED(g_device->CreateTexture2D(&d, nullptr, &g_hold))) {
+        static bool logged = false;
+        if (!logged) { logged = true; LOG_E("xr", "could not create the left-eye hold texture"); }
+        return false;
+    }
+    return true;
+}
+
 void frame(IDXGISwapChain* chain) {
     XrFrameWaitInfo wi{XR_TYPE_FRAME_WAIT_INFO};
     XrFrameState fs{XR_TYPE_FRAME_STATE};
@@ -320,27 +361,46 @@ void frame(IDXGISwapChain* chain) {
         // Which eye this frame was rendered for (-1 = mono) and with which pose.
         int eye = head_pose::rendered_eye();
         head_pose::Pose used = head_pose::rendered_pose();
-        int target = eye < 0 ? 0 : eye;
         bool mono = eye < 0;
 
-        uint32_t idx = 0;
-        XrSwapchainImageAcquireInfo ai{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
-        XrSwapchainImageWaitInfo wsi{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
-        wsi.timeout = XR_INFINITE_DURATION;
-        if (XR_SUCCEEDED(pxrAcquireSwapchainImage(g_swapchain[target], &ai, &idx)) &&
-            XR_SUCCEEDED(pxrWaitSwapchainImage(g_swapchain[target], &wsi))) {
-            ID3D11Texture2D* back = nullptr;
-            if (SUCCEEDED(chain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&back)))) {
-                g_ctx->CopySubresourceRegion(g_images[target][idx].texture, 0, 0, 0, 0, back, 0, nullptr);
-                back->Release();
+        ID3D11Texture2D* back = nullptr;
+        if (SUCCEEDED(chain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&back)))) {
+            if (mono) {
+                if (copy_to_swapchain(0, back)) {
+                    g_has_image[0] = true;
+                    g_eye_pose[0] = used;
+                }
+                g_pending_left = false;
+            } else if (eye == 0) {
+                // Left eye: held back until its right eye exists, so a pair is always shown together
+                // (PLAYTEST-2a: showing each eye as soon as it was drawn looked like vibration).
+                if (ensure_hold(back)) {
+                    g_ctx->CopyResource(g_hold, back);
+                    g_hold_pose = used;
+                    g_pending_left = true;
+                }
+            } else if (g_pending_left) {
+                if (copy_to_swapchain(0, g_hold) && copy_to_swapchain(1, back)) {
+                    g_has_image[0] = g_has_image[1] = true;
+                    g_eye_pose[0] = g_hold_pose;
+                    g_eye_pose[1] = used;
+                    ++g_pairs;
+                }
+                g_pending_left = false;
+            } else {
+                ++g_orphans;  // right eye without a left one before it
             }
-            XrSwapchainImageReleaseInfo ri{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-            pxrReleaseSwapchainImage(g_swapchain[target], &ri);
-            g_has_image[target] = true;
-            g_eye_pose[target] = used;
+            back->Release();
         }
 
-        // Mono: both eyes show swapchain 0. Stereo: each eye shows its latest image, at its own pose.
+        static ULONGLONG last_pair_log = 0;
+        if (!mono && GetTickCount64() - last_pair_log > 10000) {
+            last_pair_log = GetTickCount64();
+            LOG_I("xr", "stereo pairs shown: %llu (right eye without a left: %llu)", (unsigned long long)g_pairs,
+                  (unsigned long long)g_orphans);
+        }
+
+        // Mono: both eyes show swapchain 0. Stereo: the latest complete pair, each eye at its own pose.
         bool ready = mono ? g_has_image[0] : (g_has_image[0] && g_has_image[1]);
         if (ready) {
             float half_x = std::atan(1.f / g_sx.load()), half_y = std::atan(1.f / g_sy.load());
