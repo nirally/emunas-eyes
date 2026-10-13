@@ -61,6 +61,30 @@ struct alignas(16) LinearTransform {
 };
 static_assert(sizeof(LinearTransform) == 64);
 
+// Rotation of a transform's basis as a quaternion (basis rows are the rotated X, Y, Z axes).
+inline Quat quat_of(const LinearTransform& m) {
+    // Matrix with columns = basis vectors: m00 = right.x, m10 = right.y, m20 = right.z, ...
+    float m00 = m.right[0], m10 = m.right[1], m20 = m.right[2];
+    float m01 = m.up[0], m11 = m.up[1], m21 = m.up[2];
+    float m02 = m.back[0], m12 = m.back[1], m22 = m.back[2];
+    float tr = m00 + m11 + m22;
+    Quat q;
+    if (tr > 0) {
+        float s = std::sqrt(tr + 1.f) * 2.f;
+        q = {(m21 - m12) / s, (m02 - m20) / s, (m10 - m01) / s, 0.25f * s};
+    } else if (m00 > m11 && m00 > m22) {
+        float s = std::sqrt(1.f + m00 - m11 - m22) * 2.f;
+        q = {0.25f * s, (m01 + m10) / s, (m02 + m20) / s, (m21 - m12) / s};
+    } else if (m11 > m22) {
+        float s = std::sqrt(1.f + m11 - m00 - m22) * 2.f;
+        q = {(m01 + m10) / s, 0.25f * s, (m12 + m21) / s, (m02 - m20) / s};
+    } else {
+        float s = std::sqrt(1.f + m22 - m00 - m11) * 2.f;
+        q = {(m02 + m20) / s, (m12 + m21) / s, 0.25f * s, (m10 - m01) / s};
+    }
+    return q.normalized();
+}
+
 // Heading of a camera: angle about world +Y of its forward (-back) direction,
 // 0 when looking down world -Z, positive turning left (counter-clockwise from above).
 inline float yaw_of(const LinearTransform& m) {
@@ -68,14 +92,20 @@ inline float yaw_of(const LinearTransform& m) {
     return std::atan2(-fwd.x, -fwd.z);
 }
 
-// Heading that survives the game camera tumbling (rolls, flips): read from the camera's
-// right axis, which a forward roll rotates around and so never moves. Falls back to the
-// forward direction only if the right axis is near vertical (an extreme sideways tilt).
+// Heading that survives the game camera tumbling (rolls, flips). For a camera built as
+// yaw * pitch * roll with |roll| < 90 deg, the back axis is (sin h cos p, -sin p, cos h cos p)
+// and cos p has the sign of up.y - so flipping by that sign gives the exact heading for any
+// pitch, including upside down mid-roll. When the back axis is near vertical (the instant of
+// looking straight down/up) it falls back to the right axis, which a forward roll never moves.
 inline float heading_of(const LinearTransform& m) {
+    Vec3 b = m.b();
+    float horiz = std::sqrt(b.x * b.x + b.z * b.z);
+    if (horiz > 0.3f) {
+        float s = m.u().y >= 0.f ? 1.f : -1.f;
+        return std::atan2(s * b.x, s * b.z);
+    }
     Vec3 r = m.r();
-    float horiz = std::sqrt(r.x * r.x + r.z * r.z);
-    if (horiz > 0.3f) return std::atan2(-r.z, r.x);
-    return yaw_of(m);
+    return std::atan2(-r.z, r.x);
 }
 
 inline float pitch_of(const LinearTransform& m) {

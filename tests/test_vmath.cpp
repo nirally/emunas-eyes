@@ -78,3 +78,29 @@ TEST(vmath_heading_matches_yaw_when_level_or_tilted) {
         CHECK(near(heading_of(m), deg * kPi / 180.f, 1e-3f));
     }
 }
+
+TEST(vmath_quat_of_round_trip) {
+    Quat cases[] = {Quat{}, yaw_quat(2.5f), Quat::axis_angle({1, 0, 0}, -2.8f),
+                    yaw_quat(0.7f) * Quat::axis_angle({1, 0, 0}, 3.0f) * Quat::axis_angle({0, 0, 1}, 0.4f),
+                    Quat::axis_angle({0.3f, -1, 0.5f}, 1.9f)};
+    for (Quat q : cases) {
+        LinearTransform m{};
+        m.set(q, {});
+        Quat r = quat_of(m);
+        // q and -q are the same rotation
+        float d = std::fabs(q.x * r.x + q.y * r.y + q.z * r.z + q.w * r.w);
+        CHECK(near(d, 1.f, 1e-4f));
+    }
+}
+
+TEST(vmath_game_motion_strips_heading_and_look_pitch) {
+    // Same formula as camera_override (D-014): motion = pitch(-baseline) * yaw(-heading) * game.
+    // For game = yaw(h) * pitch(p) * roll(r), the result must be pitch(p - baseline) * roll(r).
+    const float h = 1.2f, p = -0.5f, r = 0.3f, baseline = -0.2f;
+    LinearTransform game{};
+    game.set(yaw_quat(h) * Quat::axis_angle({1, 0, 0}, p) * Quat::axis_angle({0, 0, 1}, r), {});
+    Quat motion = Quat::axis_angle({1, 0, 0}, -baseline) * yaw_quat(-heading_of(game)) * quat_of(game);
+    Quat expect = Quat::axis_angle({1, 0, 0}, p - baseline) * Quat::axis_angle({0, 0, 1}, r);
+    float d = std::fabs(motion.x * expect.x + motion.y * expect.y + motion.z * expect.z + motion.w * expect.w);
+    CHECK(near(d, 1.f, 1e-3f));
+}

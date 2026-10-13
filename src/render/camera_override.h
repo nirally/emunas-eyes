@@ -28,4 +28,10 @@ void set_height_offset(float meters);
 float height_offset();
 bool take_height_changed();
 
+// comfort.game_camera_motion: when on, the game's own camera rotation (rolls, wall-run tilt,
+// landing dips) is added on top of the head pose; look pitch is excluded. F5 toggles; saved.
+void set_game_motion(bool on);
+bool game_motion();
+bool take_motion_changed();
+
 }  // namespace mecvr::camera_override

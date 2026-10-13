@@ -42,9 +42,15 @@ Not done: head-pose smoothing (user asked). Declined for now: smoothing the head
 Verified: pending PLAYTEST-1c
 
 ### BUG-006 — View flips backwards during Faith's roll
-Status: fixed, awaiting playtest | Severity: 1 (sudden 180° view flip = nausea risk) | Stage: 1 | Reported: PLAYTEST-1c
+Status: closed (verified PLAYTEST-1d) | Severity: 1 (sudden 180° view flip = nausea risk) | Stage: 1 | Reported: PLAYTEST-1c
 Repro: roll (landing roll or dodge roll).
 Expected: heading stays steady through the roll. Actual: view glitches and flips backwards.
 Hypothesis: the game camera pitches through straight down and beyond during the roll; the heading was read from the forward vector, whose horizontal direction flips 180° once pitch passes vertical.
 Fix: heading read from the camera's right axis (unchanged by a forward roll), with forward as fallback only for extreme sideways tilt. Unit check tumbles the camera through 360° of pitch.
 Verified: pending PLAYTEST-1d
+
+### BUG-007 — In fights the player feels "in front of" Faith; only knuckles visible when punching
+Status: open | Severity: 3 | Stage: 1 (framing) → resolved structurally by Stages 2, 5–7 | Reported: PLAYTEST-1d
+Hypotheses, in order: (1) the mono picture uses the game's 55° vertical FOV, so arms at the edges are cut off (Stage 2 gives the headset's full FOV); (2) camera +0.14 m above Faith's eyes (height offset) moves the viewpoint up and over the arms; (3) physical head offset from the recentre point moves the camera ahead of Faith's head. Head offset is now logged every 2 s (debug) to check (3).
+Workaround: F6 while standing naturally; try F2 a few steps to see whether the arms frame better.
+Structural fix: Stage 5–7 (physics hands + IK: Faith's arms follow the real hands; punches are physical, user priority).

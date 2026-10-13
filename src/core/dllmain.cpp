@@ -143,6 +143,7 @@ DWORD WINAPI main_thread(LPVOID) {
                 camera_override::set_enabled(g_config.get_bool("features.camera_override"));
                 camera_override::set_pitch_source(pitch_source_from(g_config.get_string("camera.pitch_source")));
                 camera_override::set_height_offset(static_cast<float>(g_config.get_number("comfort.height_offset")));
+                camera_override::set_game_motion(g_config.get_bool("comfort.game_camera_motion"));
             }
             present_hook::set_frame_callback(&on_frame);
         }
@@ -162,6 +163,8 @@ DWORD WINAPI main_thread(LPVOID) {
             camera_override::set_pitch_source(pitch_source_from(new_v["camera.pitch_source"].get<std::string>()));
         if (old_v["comfort.height_offset"] != new_v["comfort.height_offset"])
             camera_override::set_height_offset(new_v["comfort.height_offset"].get<float>());
+        if (old_v["comfort.game_camera_motion"] != new_v["comfort.game_camera_motion"])
+            camera_override::set_game_motion(new_v["comfort.game_camera_motion"].get<bool>());
     });
 
     tag_window_async(L"[MEC VR " MECVR_VERSION L"]");
@@ -176,6 +179,8 @@ DWORD WINAPI main_thread(LPVOID) {
         if (++tick % 20 == 0) log_export_calls();  // every 10 s; only logs exports whose count changed
         if (tick % 4 == 0) code_dump::poll(dir);
         bug_report::poll(dir, g_config.values().dump());
+        if (camera_override::take_motion_changed())
+            g_config.set_user_value("comfort.game_camera_motion", camera_override::game_motion());
         if (camera_override::take_height_changed())
             g_config.set_user_value("comfort.height_offset", std::round(camera_override::height_offset() * 100.0) / 100.0);
         if (!smoke_done) {

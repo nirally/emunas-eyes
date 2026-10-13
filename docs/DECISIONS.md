@@ -104,3 +104,11 @@ Evidence: PLAYTEST-1b counters (BUG-005). The derived camera at exe+0x31a43be fo
 Chose: replace it with our final view when it is within 10° of the game camera or 15° of ours; pass others.
 Declined: smoothing the head pose on request ("game snapping to my position too firmly"). Reason: the symptom matches BUG-005 exactly, and smoothing the head pose adds latency between head and view, the main cause of VR sickness (operating principle: never smoothed). Will offer an opt-in only if the user still wants it after the fix, and never for rotation.
 Calibration data: user eye height 1.48–1.55 m (STAGE), prefers +0.14 m camera height.
+
+### D-014 — Opt-in "game camera motion" (rolls, tilts, dips felt in VR)
+Date: 2026-10-13  Stage: 1
+User request (PLAYTEST-1d): "I really want to feel the roll with the camera. I don't care about nausea or eye strain."
+Chose: setting comfort.game_camera_motion (F5 toggles live, saved). When on, the game camera's rotation relative to its heading (minus the tracked look-pitch baseline) is applied between the body heading and the head pose: final = yaw(h) * pitch(-baseline) * yaw(-h) * game * head. The look pitch (mouse) stays excluded; the baseline is tracked only while the camera is calm (roll < 2°, upright, pitch rate < 0.5 rad/s). The roll assertion is suspended while on.
+Defaults: OFF in schema (comfort-first for anyone else); ON in this user's config.
+Also: heading_of made exact for yaw*pitch*roll cameras at any pitch (sign of up.y), right-axis fallback at vertical. Unit-checked (full tumble, tilt+pitch, motion formula).
+Risk accepted by the user: forced camera rotation is a known nausea trigger. The F5 toggle is the escape hatch.

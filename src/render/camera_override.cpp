@@ -41,6 +41,11 @@ void* g_setter = nullptr;
 uintptr_t g_site_return = 0;  // return address of the gameplay call
 uintptr_t g_view_site_return = 0;  // return address of the render-view build call (0 if not found)
 std::atomic<float> g_height_offset{0};  // meters added to camera height (comfort.height_offset)
+std::atomic<bool> g_game_motion{false};     // comfort.game_camera_motion: add the game's own camera rotation (D-014)
+std::atomic<bool> g_motion_dirty{false};
+float g_look_pitch_baseline = 0;          // game look pitch when not animating (game thread only)
+float g_prev_game_pitch = 0;
+ULONGLONG g_prev_pitch_tick = 0;
 
 // Last result of the main override, for re-applying at the render-view build.
 std::mutex g_final_mutex;
@@ -120,6 +125,21 @@ void apply(uint8_t* data) {
     vm::Quat view = game_pitch_on ? body * vm::Quat::axis_angle({1, 0, 0}, game_pitch) : body;
 
     vm::Quat final_rot = (view * head.rotation).normalized();
+    if (g_game_motion.load()) {
+        // The game camera relative to its heading = look pitch + animation (rolls, tilts, dips).
+        // Track the look pitch while the camera is calm and subtract it, so only animation remains.
+        ULONGLONG now = GetTickCount64();
+        float dt = g_prev_pitch_tick ? (now - g_prev_pitch_tick) / 1000.f : 0.f;
+        float pitch_rate = dt > 0 ? std::fabs(game_pitch - g_prev_game_pitch) / dt : 0.f;
+        bool calm = std::fabs(vm::roll_of(*a)) < 2.f / 57.29578f && a->u().y > 0.5f && pitch_rate < 0.5f;
+        if (calm) g_look_pitch_baseline = game_pitch;
+        g_prev_game_pitch = game_pitch;
+        g_prev_pitch_tick = now;
+        float baseline = game_pitch_on ? 0.f : g_look_pitch_baseline;  // simulator keeps the game pitch
+        vm::Quat game_rel = vm::yaw_quat(-game_yaw) * vm::quat_of(*a);
+        vm::Quat motion = vm::Quat::axis_angle({1, 0, 0}, -baseline) * game_rel;
+        final_rot = (body * motion * head.rotation).normalized();
+    }
     vm::Vec3 final_pos = a->t() + body.rotate(head.position) + vm::Vec3{0, g_height_offset.load(), 0};
     {
         std::lock_guard lock(g_final_mutex);
@@ -276,6 +296,13 @@ void on_present(float dt) {
     bool toggle = key(VK_F7) || key(VK_NUMPAD0) || key(VK_INSERT);
     if (toggle && !toggle_was) set_enabled(!g_enabled.load());
     toggle_was = toggle;
+    static bool motion_was = false;
+    bool motion = key(VK_F5);
+    if (motion && !motion_was) {
+        set_game_motion(!g_game_motion.load());
+        g_motion_dirty = true;
+    }
+    motion_was = motion;
     bool up = key(VK_F3), dn = key(VK_F2);
     if ((up && !up_was) || (dn && !down_was)) {
         float h = g_height_offset.load() + (up ? 0.02f : -0.02f);
@@ -310,6 +337,9 @@ void check_view(const float* v) {
         LOG_D("camera", "rendered view: y %.2f yaw %.1f pitch %.1f roll %.1f deg (head roll %.1f, override %s)", cam_y,
               vm::yaw_of(d) * 57.29578f, vm::pitch_of(d) * 57.29578f, vm::roll_of(d) * 57.29578f,
               g_last_head_roll.load() * 57.29578f, g_enabled.load() ? "on" : "off");
+        head_pose::Sample hs = head_pose::current();
+        LOG_D("camera", "head offset from recentre: x %+.2f y %+.2f z %+.2f m (z<0 = forward)", hs.relative.position.x,
+              hs.relative.position.y, hs.relative.position.z);
     }
     if (!g_enabled.load() || GetTickCount64() - g_last_override_tick.load() > 100) return;
     vm::LinearTransform m{};
@@ -320,6 +350,7 @@ void check_view(const float* v) {
     // Only judged while the head itself is level: then any roll in the view came from the game.
     float roll = vm::roll_of(m), expected = g_last_head_roll.load();
     if (std::fabs(expected) > 0.1f / 57.29578f) return;
+    if (g_game_motion.load()) return;  // the game's roll is wanted in this mode
     if (std::fabs(roll) > 0.5f / 57.29578f) {
         uint64_t n = ++g_assert_failures;
         if (n == 1 || n % 600 == 0)
@@ -339,5 +370,14 @@ void set_height_offset(float meters) {
 float height_offset() { return g_height_offset.load(); }
 
 bool take_height_changed() { return g_height_dirty.exchange(false); }
+
+void set_game_motion(bool on) {
+    if (g_game_motion.exchange(on) != on)
+        LOG_I("camera", "game camera motion %s (F5)", on ? "ON - rolls, tilts and dips are felt" : "OFF - head only");
+}
+
+bool game_motion() { return g_game_motion.load(); }
+
+bool take_motion_changed() { return g_motion_dirty.exchange(false); }
 
 }  // namespace mecvr::camera_override
