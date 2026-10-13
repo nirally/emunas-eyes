@@ -40,6 +40,7 @@ switch ($As) {
 }
 
 Copy-Item (Join-Path $root 'config\schema.json') $modDir -Force
+Copy-Item (Join-Path $root 'third_party\openxr\bin\openxr_loader.dll') $modDir -Force
 if (-not (Test-Path (Join-Path $modDir 'config.json'))) { Copy-Item (Join-Path $root 'config\defaults.json') (Join-Path $modDir 'config.json') }
 $safeFile = Join-Path $modDir 'SAFE_MODE'
 if ($Safe) { New-Item -ItemType File -Force $safeFile | Out-Null } else { Remove-Item $safeFile -ErrorAction SilentlyContinue }

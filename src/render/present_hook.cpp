@@ -25,7 +25,7 @@ std::atomic<uint64_t> g_frames{0};
 uint64_t g_window_frames = 0;
 ULONGLONG g_window_start = 0;
 IDXGISwapChain* g_last_chain = nullptr;
-void (*g_frame_callback)() = nullptr;
+void (*g_frame_callback)(IDXGISwapChain*) = nullptr;
 
 void describe(IDXGISwapChain* chain, const char* why) {
     DXGI_SWAP_CHAIN_DESC d{};
@@ -40,7 +40,7 @@ void describe(IDXGISwapChain* chain, const char* why) {
 
 HRESULT STDMETHODCALLTYPE present_detour(IDXGISwapChain* chain, UINT sync, UINT flags) {
     uint64_t n = ++g_frames;
-    if (g_frame_callback) g_frame_callback();
+    if (g_frame_callback) g_frame_callback(chain);
     if (chain != g_last_chain) {
         g_last_chain = chain;
         describe(chain, n == 1 ? "Present hook live" : "swapchain changed");
@@ -143,6 +143,6 @@ void uninstall() {
 
 uint64_t frame_count() { return g_frames.load(); }
 
-void set_frame_callback(void (*cb)()) { g_frame_callback = cb; }
+void set_frame_callback(void (*cb)(IDXGISwapChain*)) { g_frame_callback = cb; }
 
 }  // namespace mecvr::present_hook

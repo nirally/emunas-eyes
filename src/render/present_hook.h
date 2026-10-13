@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
 
+struct IDXGISwapChain;
+
 namespace mecvr::present_hook {
 
 // Hooks IDXGISwapChain::Present and ResizeBuffers via a throwaway device's vtable.
@@ -11,6 +13,6 @@ void uninstall();
 uint64_t frame_count();
 
 // Runs at the start of every Present, on the render thread.
-void set_frame_callback(void (*cb)());
+void set_frame_callback(void (*cb)(IDXGISwapChain*));
 
 }  // namespace mecvr::present_hook

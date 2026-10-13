@@ -15,6 +15,8 @@
 
 #include "diagnostics/log.h"
 #include "render/cam_hunt.h"
+#include "render/camera_override.h"
+#include "render/xr_session.h"
 
 namespace mecvr::cb_capture {
 namespace {
@@ -30,6 +32,7 @@ UnmapFn g_unmap_orig = nullptr;
 UpdateFn g_update_orig = nullptr;
 
 std::filesystem::path g_dir;
+bool g_recon = false;  // capture + camera hunt tools (developer)
 std::atomic<bool> g_armed{false};     // capture during the next full frame
 std::atomic<bool> g_capturing{false};
 int g_capture_index = 0;
@@ -54,7 +57,10 @@ void watch_view(const void* data, UINT size) {
     if (size != kViewCbBytes) return;
     float f[40];
     memcpy(f, data, sizeof(f));
-    if (looks_like_view_cb(f)) cam_hunt::on_view_matrix(f + 8, g_dir);
+    if (!looks_like_view_cb(f)) return;
+    camera_override::check_view(f + 8);
+    xr_session::set_game_projection(f[24], f[29]);
+    if (g_recon) cam_hunt::on_view_matrix(f + 8, g_dir);
 }
 
 bool near0(float v) { return std::fabs(v) < 1e-4f; }
@@ -179,8 +185,9 @@ void write_capture() {
 
 }  // namespace
 
-bool install(const std::filesystem::path& out_dir) {
+bool install(const std::filesystem::path& out_dir, bool recon) {
     g_dir = out_dir;
+    g_recon = recon;
     cam_hunt::set_output_dir(out_dir);
     auto create = reinterpret_cast<PFN_D3D11_CREATE_DEVICE>(
         GetProcAddress(GetModuleHandleW(L"d3d11.dll"), "D3D11CreateDevice"));
@@ -208,6 +215,7 @@ bool install(const std::filesystem::path& out_dir) {
 }
 
 void on_present() {
+    if (!g_recon) return;
     cam_hunt::on_present();
     // Frame boundary: finish an in-flight capture, or start one if armed.
     if (g_capturing) {

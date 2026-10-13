@@ -83,3 +83,11 @@ Evidence (RECON-1 + code dump):
 - Pause/menu writers are generic struct copies (0x352ca40, 0x352d810), not usable as hooks.
 Chose: hook 0x3536f10 (found by signature scan, not offset). When the return address is the gameplay-manager site, replace transforms A and B in the data with: game yaw + game position + head pose. The game's own copy (mgr+0x90) is untouched, so game logic doesn't feed back on our change. Other call sites are logged (cutscene/menu cameras: later in Stage 1).
 Risk: Denuvo integrity checks on patched code. MinHook writes a 5-byte jump at the function start (0x3536f10 is a plain leaf, not virtualized). If the game reacts badly, fall back to hooking the vtable slot of the camera mode (data-only patch).
+
+### D-011 — Stage 1 headset path: mono world-locked layer at the game's FOV
+Date: 2026-10-13  Stage: 1
+Chose: OpenXR (loader 1.1.63, loaded from mecvr\ by full path) through SteamVR. The game's back buffer is copied into an sRGB swapchain and submitted as one projection layer for both eyes, using the game's own symmetric FOV (from the view constants) and the exact head pose the frame was rendered with (matched by rendered rotation). The runtime places it world-locked: 1:1 look-around without stereo.
+Labelled to the user as "flat picture, not 3D yet". Stereo replaces this in Stage 2.
+Pitch: from the head when a headset session runs (camera.pitch_source=auto); mouse pitch is ignored for the view (aim decoupling is Stage 6).
+Failure path verified: no runtime/headset → logs the reason, stays flat, simulator works.
+Known open in Stage 1: positional head bob from the game camera (rotation bob/roll already removed), cutscenes, takedowns, death camera.

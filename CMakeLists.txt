@@ -21,7 +21,7 @@ add_library(mecvr_core STATIC
     src/diagnostics/log.cpp
     src/core/config.cpp
     src/core/sigscan.cpp)
-target_include_directories(mecvr_core PUBLIC src third_party)
+target_include_directories(mecvr_core PUBLIC src third_party third_party/openxr/include)
 target_compile_definitions(mecvr_core PUBLIC MECVR_VERSION="${MECVR_VERSION}" WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 target_compile_options(mecvr_core PUBLIC /W4 /utf-8)
 
@@ -39,13 +39,17 @@ add_library(mecvr SHARED
     src/render/cb_capture.cpp
     src/render/cam_hunt.cpp
     src/diagnostics/hwbp.cpp
-    src/diagnostics/code_dump.cpp)
+    src/diagnostics/code_dump.cpp
+    src/core/head_pose.cpp
+    src/render/camera_override.cpp
+    src/render/xr_session.cpp
+    src/diagnostics/bug_report.cpp)
 target_link_libraries(mecvr PRIVATE mecvr_core minhook dxguid)
 set_target_properties(mecvr PROPERTIES OUTPUT_NAME "mecvr")
 
 # --- unit checks ---------------------------------------------------------------
 enable_testing()
-add_executable(mecvr_tests tests/test_main.cpp tests/test_config.cpp tests/test_sigscan.cpp)
+add_executable(mecvr_tests tests/test_main.cpp tests/test_config.cpp tests/test_sigscan.cpp tests/test_vmath.cpp)
 target_link_libraries(mecvr_tests PRIVATE mecvr_core)
 target_include_directories(mecvr_tests PRIVATE ${CMAKE_SOURCE_DIR})
 add_test(NAME unit COMMAND mecvr_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})

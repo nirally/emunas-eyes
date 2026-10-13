@@ -16,8 +16,11 @@
 
 namespace mecvr::recon { void probe_strings(); }
 namespace mecvr::code_dump { void poll(const std::filesystem::path& dir); }
+namespace mecvr::bug_report { void poll(const std::filesystem::path& mod_dir, const std::string& settings_json); }
+#include "render/camera_override.h"
 #include "render/cb_capture.h"
 #include "render/present_hook.h"
+#include "render/xr_session.h"
 
 namespace fs = std::filesystem;
 using namespace mecvr;
@@ -76,6 +79,25 @@ void log_export_calls() {
     }
 }
 
+camera_override::PitchSource pitch_source_from(const std::string& s) {
+    if (s == "game") return camera_override::PitchSource::Game;
+    if (s == "head") return camera_override::PitchSource::Head;
+    return camera_override::PitchSource::Auto;
+}
+
+// Render thread, start of every Present.
+void on_frame(IDXGISwapChain* chain) {
+    xr_session::on_present(chain);
+    static LARGE_INTEGER freq{}, last{};
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    if (!freq.QuadPart) QueryPerformanceFrequency(&freq);
+    float dt = last.QuadPart ? float(now.QuadPart - last.QuadPart) / float(freq.QuadPart) : 0.f;
+    last = now;
+    camera_override::on_present(dt);
+    cb_capture::on_present();
+}
+
 void set_hooks_enabled(bool on) {
     MH_STATUS st = on ? MH_EnableHook(MH_ALL_HOOKS) : MH_DisableHook(MH_ALL_HOOKS);
     LOG_I("core", "hooks %s (%s)", on ? "enabled" : "disabled", MH_StatusToString(st));
@@ -113,8 +135,16 @@ DWORD WINAPI main_thread(LPVOID) {
     bool hooks_ok = false;
     if (g_config.get_bool("features.present_hook")) {
         hooks_ok = present_hook::install();
-        if (hooks_ok && g_config.get_bool("diagnostics.cb_capture") && cb_capture::install(dir))
-            present_hook::set_frame_callback(&cb_capture::on_present);
+        if (hooks_ok) {
+            cb_capture::install(dir, g_config.get_bool("diagnostics.cb_capture"));
+            xr_session::configure(dir, g_config.get_bool("features.xr"));
+            // Installed always so the flag can switch it live; the flag decides whether it acts.
+            if (camera_override::install()) {
+                camera_override::set_enabled(g_config.get_bool("features.camera_override"));
+                camera_override::set_pitch_source(pitch_source_from(g_config.get_string("camera.pitch_source")));
+            }
+            present_hook::set_frame_callback(&on_frame);
+        }
         if (hooks_ok && !g_config.get_bool("features.vr_enabled")) set_hooks_enabled(false);
     } else {
         LOG_I("core", "features.present_hook is off - not hooking rendering");
@@ -125,6 +155,10 @@ DWORD WINAPI main_thread(LPVOID) {
             log::set_level(log::level_from_string(new_v["diagnostics.log_level"].get<std::string>(), log::Level::Info));
         if (hooks_ok && old_v["features.vr_enabled"] != new_v["features.vr_enabled"])
             set_hooks_enabled(new_v["features.vr_enabled"].get<bool>());
+        if (old_v["features.camera_override"] != new_v["features.camera_override"])
+            camera_override::set_enabled(new_v["features.camera_override"].get<bool>());
+        if (old_v["camera.pitch_source"] != new_v["camera.pitch_source"])
+            camera_override::set_pitch_source(pitch_source_from(new_v["camera.pitch_source"].get<std::string>()));
     });
 
     tag_window_async(L"[MEC VR " MECVR_VERSION L"]");
@@ -138,13 +172,15 @@ DWORD WINAPI main_thread(LPVOID) {
         g_config.poll_reload();
         if (++tick % 20 == 0) log_export_calls();  // every 10 s; only logs exports whose count changed
         if (tick % 4 == 0) code_dump::poll(dir);
+        bug_report::poll(dir, g_config.values().dump());
         if (!smoke_done) {
             uint64_t frames = present_hook::frame_count();
             if (frames > 0 && first_frame_at == 0) first_frame_at = GetTickCount64();
             if (first_frame_at && GetTickCount64() - first_frame_at >= 10000) {
-                LOG_I("smoke", "SMOKE OK mod=%s exe=%s proxy=%s present_hook=%s frames=%llu flags=%zu assertions=0",
+                LOG_I("smoke", "SMOKE OK mod=%s exe=%s proxy=%s present_hook=%s frames=%llu flags=%zu assertions=%llu",
                       MECVR_VERSION, exe_ver.c_str(), role_name(g_role), hooks_ok ? "live" : "off",
-                      static_cast<unsigned long long>(frames), g_config.values().size());
+                      static_cast<unsigned long long>(frames), g_config.values().size(),
+                      static_cast<unsigned long long>(camera_override::assertion_failures()));
                 smoke_done = true;
                 if (g_config.get_bool("diagnostics.typeinfo_dump")) {
                     static fs::path out = dir / L"typeinfo.txt";
