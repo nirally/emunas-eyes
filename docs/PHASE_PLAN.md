@@ -18,9 +18,9 @@ Mode: agentic | Gate: hard | Stage 4 of 10 — movement and comfort
 🚧 In progress: Stage 4 — next: the Stage 4 gate (a longer session)
 ⬜ Not started: hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-4h, Stage 4 sign-off: one full mission (~20-30 min); Q-501 (hands look)
+❓ Need from you: PLAYTEST-4h, Stage 4 sign-off: one full mission (~20-30 min)
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-4h, and answer Q-501 (how your hands look). Me: Stage 5 recon after that (no game changes while you play).
+▶ Next: You: PLAYTEST-4h. Me: Stage 5a (controller poses) offline while you play; tested in game afterwards.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
