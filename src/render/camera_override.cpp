@@ -75,6 +75,8 @@ std::atomic<float> g_snap_angle{0.785f};
 std::atomic<float> g_world_yaw{0};          // W, for both camera sites
 std::atomic<bool> g_turning_sim{false};    // diagnostics.mod_turning_sim: also without a headset (tests)
 std::atomic<bool> g_body_follows_head{false}; // input.body_follows_head: steer the game to where the head looks
+std::atomic<bool> g_crouch_slide{false};      // physical crouch started a slide: drop the real crouch from the view
+float g_crouch_blend = 0;                     // 0 = real head height, 1 = no downward head offset (game thread)
 yaw_model::Model g_yaw;
 yaw_model::Snap g_snap_state;
 uint64_t g_inject_counts = 0, g_game_turns_seen = 0;
@@ -235,7 +237,19 @@ void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, v
         final_rot = (body * motion * head.rotation).normalized();
     }
     out_rot = final_rot;
-    out_pos = a->t() + body.rotate(head.position) + vm::Vec3{0, g_height_offset.load(), 0};
+    // While a crouch-slide runs, the game's camera already holds Faith's low head: blend the real head's
+    // downward offset out (0.25 s each way), or the view would drop twice and clip the floor (PLAYTEST-4c).
+    vm::Vec3 head_pos = head.position;
+    {
+        static ULONGLONG last = GetTickCount64();
+        const ULONGLONG now = GetTickCount64();
+        const float step = (now - last) / 250.f;
+        last = now;
+        g_crouch_blend += g_crouch_slide.load() ? step : -step;
+        g_crouch_blend = g_crouch_blend < 0 ? 0 : g_crouch_blend > 1 ? 1 : g_crouch_blend;
+        if (head_pos.y < 0) head_pos.y *= 1.f - g_crouch_blend;
+    }
+    out_pos = a->t() + body.rotate(head_pos) + vm::Vec3{0, g_height_offset.load(), 0};
     out_abs = s.absolute;
 }
 
@@ -720,4 +734,8 @@ void report_turning() {
           (unsigned long long)g_inject_counts, (unsigned long long)g_game_turns_seen);
     g_inject_counts = g_game_turns_seen = 0;
 }
+}  // namespace mecvr::camera_override
+
+namespace mecvr::camera_override {
+void set_crouch_slide(bool on) { g_crouch_slide = on; }
 }  // namespace mecvr::camera_override

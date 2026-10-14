@@ -240,8 +240,12 @@ void sync(XrTime /*time*/, bool focused) {
                     g_run_was = run;
                     if (g_release_frames > 0) --g_release_frames;
                     else pad.left_trigger = 255;
+                    // A press while running starts a slide: the game lowers Faith's camera itself, so the camera
+                    // stops adding the real crouch (no double drop through the floor, PLAYTEST-4c).
+                    if (run >= 0.7f) camera_override::set_crouch_slide(true);
                 } else {
                     g_run_was = 1.f;  // no re-press until crouched again and starting from slow
+                    camera_override::set_crouch_slide(false);
                 }
                 if (g_crouch.down != was_down)
                     LOG_I("input", "physical crouch %s (head %.2f m from standing)", g_crouch.down ? "DOWN" : "up", head_dy);

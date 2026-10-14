@@ -62,6 +62,9 @@ void set_body_follows_head(bool on);  // input.body_follows_head (default off, P
 float world_heading();          // W
 void report_turning();  // every 10 s
 
+// Physical crouch started a slide (xr_input): the view stops adding the real crouch while it lasts.
+void set_crouch_slide(bool on);
+
 // rendering.full_fov: with a headset, the game camera's FOV and aspect are set to cover both eyes'
 // full field of view (from the runtime), so the picture fills the headset instead of a window.
 void set_full_fov(bool on);  // F9 toggles; saved
