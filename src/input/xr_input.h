@@ -11,8 +11,8 @@ namespace mecvr::xr_input {
 //   left grip   -> LB  Up actions    left trigger  -> LT  Down actions
 //   right grip  -> RB  Quick turn    right trigger -> RT  Shift
 //   A/B (right) -> A/B Interact / Disruptor        X/Y (left) -> X/Y Light / Heavy attack
-//   right stick click -> R3 Runner's Vision        left stick click -> Back (map)
-//   left menu   -> Start (pause)
+//   right stick click -> R3 Runner's Vision        left stick click -> tap: Start (pause), hold: Back (map)
+//   left menu   -> Start (SteamVR keeps it for its dashboard on Touch, so mostly unused)
 // The game's vibration (XInputSetState) is played on the matching hand.
 
 // After xrCreateSession: creates and attaches the action set. False keeps the game on keyboard/mouse.

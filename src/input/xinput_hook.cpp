@@ -93,7 +93,7 @@ DWORD WINAPI get_caps(DWORD user, DWORD flags, XINPUT_CAPABILITIES* caps) {
         *caps = {};
         caps->Type = XINPUT_DEVTYPE_GAMEPAD;
         caps->SubType = XINPUT_DEVSUBTYPE_GAMEPAD;
-        caps->Flags = 0;
+        caps->Flags = XINPUT_CAPS_FFB_SUPPORTED;  // claim rumble support (games may skip pads without it)
         caps->Gamepad.wButtons = 0xF3FF;
         caps->Gamepad.bLeftTrigger = caps->Gamepad.bRightTrigger = 0xFF;
         caps->Gamepad.sThumbLX = caps->Gamepad.sThumbLY = caps->Gamepad.sThumbRX = caps->Gamepad.sThumbRY = -64;

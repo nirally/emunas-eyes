@@ -32,6 +32,10 @@ XrAction g_act[kActCount] = {};
 bool g_ready = false;
 std::atomic<bool> g_left_handed{false}, g_stick_pitch{false};
 bool g_pad_on = false;
+pad_map::TapHold g_stick_click;  // move-hand stick click: Pause / Map
+// Vibration diagnostics (PLAYTEST-3a: none felt): strongest request and haptic call results per 10 s.
+uint16_t g_vib_max[2] = {0, 0};
+uint32_t g_haptic_ok = 0, g_haptic_fail = 0;
 
 XrPath path(const char* s) {
     XrPath p = XR_NULL_PATH;
@@ -108,7 +112,8 @@ void haptic(int hand, float amplitude) {
     v.amplitude = amplitude;
     v.duration = 60'000'000;  // 60 ms, refreshed every frame while the game keeps rumbling
     v.frequency = XR_FREQUENCY_UNSPECIFIED;
-    pxrApplyHapticFeedback(g_session, &hi, reinterpret_cast<const XrHapticBaseHeader*>(&v));
+    if (XR_SUCCEEDED(pxrApplyHapticFeedback(g_session, &hi, reinterpret_cast<const XrHapticBaseHeader*>(&v)))) ++g_haptic_ok;
+    else ++g_haptic_fail;
 }
 
 void log_profile() {
@@ -215,15 +220,29 @@ void sync(XrTime /*time*/, bool focused) {
                 hand[h].menu = get_bool(kMenu, h);
             }
             if (active) {
-                xinput_hook::set_pad(pad_map::map(hand[0], hand[1], g_left_handed.load(), g_stick_pitch.load()));
+                pad_map::Pad pad = pad_map::map(hand[0], hand[1], g_left_handed.load(), g_stick_pitch.load());
+                pad.buttons |= g_stick_click.update(hand[move].stick_click, GetTickCount64() / 1000.0, pad_map::kStart,
+                                                    pad_map::kBack);  // tap: pause, hold: map
+                xinput_hook::set_pad(pad);
 
                 // The game's rumble: low-frequency motor -> move hand, high-frequency -> turn hand.
                 uint16_t low = 0, high = 0;
                 xinput_hook::last_vibration(low, high);
+                if (low > g_vib_max[0]) g_vib_max[0] = low;
+                if (high > g_vib_max[1]) g_vib_max[1] = high;
                 haptic(move, low / 65535.f);
                 haptic(turn, high / 65535.f);
             }
         }
+    }
+    static ULONGLONG last_report = GetTickCount64();
+    if (GetTickCount64() - last_report >= 10000) {
+        last_report = GetTickCount64();
+        if (g_pad_on)
+            LOG_I("input", "vibration requested by the game: max low %u high %u; haptic calls ok %u failed %u", g_vib_max[0],
+                  g_vib_max[1], g_haptic_ok, g_haptic_fail);
+        g_vib_max[0] = g_vib_max[1] = 0;
+        g_haptic_ok = g_haptic_fail = 0;
     }
     if (active != g_pad_on) {
         g_pad_on = active;

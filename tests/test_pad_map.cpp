@@ -14,7 +14,7 @@ TEST(pad_map_right_handed_layout) {
     CHECK((p.buttons & kLB) && !(p.buttons & kRB));   // left grip: Up actions
     CHECK((p.buttons & kX) && (p.buttons & kB));      // X light attack (left), B disruptor (right)
     CHECK(!(p.buttons & kA) && !(p.buttons & kY));
-    CHECK((p.buttons & kBack) && (p.buttons & kRightThumb) && (p.buttons & kStart));
+    CHECK(!(p.buttons & kBack) && (p.buttons & kRightThumb) && (p.buttons & kStart));  // map/pause via TapHold
 }
 
 TEST(pad_map_left_handed_mirrors) {
@@ -36,4 +36,26 @@ TEST(pad_map_stick_pitch_and_clamping) {
     CHECK(map(l, r, false, false).ry == 0);
     l.grip = 0.5f;                   // grips need more than half a squeeze
     CHECK(!(map(l, r, false, false).buttons & kLB));
+}
+
+TEST(pad_map_stick_click_tap_pauses_hold_opens_map) {
+    TapHold th;
+    // tap: press 0.1 s, release -> Start for 0.15 s after release, never Back
+    CHECK(th.update(true, 0.00, kStart, kBack) == 0);
+    CHECK(th.update(true, 0.10, kStart, kBack) == 0);
+    CHECK(th.update(false, 0.12, kStart, kBack) == kStart);
+    CHECK(th.update(false, 0.20, kStart, kBack) == kStart);
+    CHECK(th.update(false, 0.30, kStart, kBack) == 0);
+    // hold: Back from 0.5 s while held, no Start on release
+    CHECK(th.update(true, 1.00, kStart, kBack) == 0);
+    CHECK(th.update(true, 1.40, kStart, kBack) == 0);
+    CHECK(th.update(true, 1.55, kStart, kBack) == kBack);
+    CHECK(th.update(false, 1.60, kStart, kBack) == 0);
+    CHECK(th.update(false, 1.70, kStart, kBack) == 0);
+}
+
+TEST(pad_map_stick_click_no_longer_maps_back_directly) {
+    Hand l, r;
+    l.stick_click = true;
+    CHECK(!(map(l, r, false, false).buttons & kBack));
 }

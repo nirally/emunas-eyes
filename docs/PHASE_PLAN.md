@@ -10,13 +10,14 @@ Mode: agentic | Gate: hard | Stage 3 of 10 — controllers (testing)
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
 ✅ Stage 2 passed (D-025): true 3D, full headset view, sharp at 2880x1620 (DSR), eyes in sync, anti-aliasing per eye, effects correct in both eyes; size/depth 5/5, comfort 5
 ✅ Log complete again in PLAYTEST-2d (BUG-009 monitoring; the two-process case hasn't recurred)
-🔧 Built, not yet tested: Quest 2 controllers play the game (virtual Xbox pad, D-026) → PLAYTEST-3a
+✅ Quest 2 controllers play the game (PLAYTEST-3a: everything works except pause/vibration; turn speed wanted faster)
+🔧 Built, not yet tested: pause = tap left stick click, map = hold it; vibration fix + logging → PLAYTEST-3b
 🚧 In progress: Stage 3 — next: desktop simulator on the same path, then the Stage 3 gate
 ⬜ Not started: movement, hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-3a (~15 min, headset + controllers)
+❓ Need from you: PLAYTEST-3b (~10 min)
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-3a. Me: simulator path and fixes from your notes.
+▶ Next: You: PLAYTEST-3b. Me: simulator path while you test.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

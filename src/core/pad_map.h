@@ -31,7 +31,8 @@ inline int16_t axis(float v) {
 inline uint8_t trig(float v) { return uint8_t(std::lround((v < 0 ? 0 : v > 1 ? 1 : v) * 255.f)); }
 
 // Catalyst's default pad layout: LB Up actions, LT Down actions, RB Quick turn, RT Shift, A Interact,
-// B Disruptor, X Light attack, Y Heavy attack, R3 Runner's Vision, Back Map, Start Pause.
+// B Disruptor, X Light attack, Y Heavy attack, R3 Runner's Vision, Back Map, Start Pause (Map/Pause from
+// the move-hand stick click via TapHold).
 // The "move" hand is the left one (right when left_handed); the other hand turns. Right stick Y only
 // with stick_pitch (head and mouse do pitch in VR).
 inline Pad map(const Hand& left, const Hand& right, bool left_handed, bool stick_pitch) {
@@ -51,9 +52,31 @@ inline Pad map(const Hand& left, const Hand& right, bool left_handed, bool stick
     if (mv.primary) p.buttons |= kX;           // Light attack
     if (mv.secondary) p.buttons |= kY;         // Heavy attack
     if (tn.stick_click) p.buttons |= kRightThumb;  // Runner's Vision
-    if (mv.stick_click) p.buttons |= kBack;        // Map
-    if (left.menu || right.menu) p.buttons |= kStart;  // Pause
+    // Move-hand stick click: tap = Pause, hold = Map (TapHold below sets these; SteamVR keeps the
+    // Touch menu button for its dashboard, PLAYTEST-3a). The menu button stays mapped for runtimes
+    // that pass it through.
+    if (left.menu || right.menu) p.buttons |= kStart;
     return p;
 }
+
+// One button, two actions: a short press sends `tap` for a moment after release; holding longer than
+// hold_s sends `hold` while still held. Times in seconds.
+struct TapHold {
+    double hold_s = 0.5, pulse_s = 0.15;
+    bool was = false, holding = false;
+    double down_at = 0, pulse_until = -1;
+    // Returns the buttons to add for this frame.
+    uint16_t update(bool pressed, double now, uint16_t tap, uint16_t hold) {
+        uint16_t out = 0;
+        if (pressed && !was) { down_at = now; holding = false; }
+        if (pressed && now - down_at >= hold_s) holding = true;
+        if (!pressed && was && !holding) pulse_until = now + pulse_s;
+        if (!pressed) holding = false;
+        was = pressed;
+        if (holding) out |= hold;
+        if (now < pulse_until) out |= tap;
+        return out;
+    }
+};
 
 }  // namespace mecvr::pad_map
