@@ -30,6 +30,8 @@ namespace mecvr::bug_report { void poll(const std::filesystem::path& mod_dir, co
 #include "render/stereo_views.h"
 #include "render/time_sync.h"
 #include "render/taa_eyes.h"
+#include "input/xinput_hook.h"
+#include "input/xr_input.h"
 #include "render/motion_fix.h"
 #include "render/xr_session.h"
 
@@ -193,6 +195,8 @@ DWORD WINAPI main_thread(LPVOID) {
                 time_sync::set_enabled(g_config.get_bool("stereo.sync"));
                 time_sync::set_hold_dt(g_config.get_number("diagnostics.sync_hold_dt"));
                 time_sync::install();
+                xr_input::set_left_handed(g_config.get_bool("input.left_handed"));
+                xr_input::set_stick_pitch(g_config.get_bool("input.stick_pitch"));
                 taa_eyes::set_enabled(g_config.get_bool("rendering.taa_per_eye"));
                 taa_eyes::set_motion_fix(g_config.get_bool("diagnostics.taa_motion_fix"));
                 motion_fix::set_debug_zero(g_config.get_bool("diagnostics.motion_fix_debug"));
@@ -226,6 +230,10 @@ DWORD WINAPI main_thread(LPVOID) {
             motion_fix::set_debug_zero(new_v["diagnostics.motion_fix_debug"].get<bool>());
         if (old_v["diagnostics.taa_motion_fix"] != new_v["diagnostics.taa_motion_fix"])
             taa_eyes::set_motion_fix(new_v["diagnostics.taa_motion_fix"].get<bool>());
+        if (old_v["input.left_handed"] != new_v["input.left_handed"])
+            xr_input::set_left_handed(new_v["input.left_handed"].get<bool>());
+        if (old_v["input.stick_pitch"] != new_v["input.stick_pitch"])
+            xr_input::set_stick_pitch(new_v["input.stick_pitch"].get<bool>());
         if (old_v["rendering.taa_per_eye"] != new_v["rendering.taa_per_eye"])
             taa_eyes::set_enabled(new_v["rendering.taa_per_eye"].get<bool>());
         if (old_v["diagnostics.sync_hold_dt"] != new_v["diagnostics.sync_hold_dt"])
@@ -256,6 +264,9 @@ DWORD WINAPI main_thread(LPVOID) {
         Sleep(500);
         g_config.poll_reload();
         if (++tick % 20 == 0) log_export_calls();  // every 10 s; only logs exports whose count changed
+        xinput_hook::poll_install();
+        xinput_hook::poll_test(dir);
+        if (tick % 20 == 0) xinput_hook::report();
         if (tick % 4 == 0) code_dump::poll(dir);
         if (tick % 4 == 0) view_recon::poll(dir);
         if (tick % 4 == 0) mem_find::poll(dir);

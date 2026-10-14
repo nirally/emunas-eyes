@@ -17,6 +17,7 @@
 
 #include "core/head_pose.h"
 #include "diagnostics/log.h"
+#include "input/xr_input.h"
 
 namespace mecvr::xr_session {
 namespace {
@@ -219,7 +220,9 @@ bool create_swapchain(IDXGISwapChain* chain) {
 bool init(IDXGISwapChain* chain) {
     if (FAILED(chain->GetDevice(__uuidof(ID3D11Device), reinterpret_cast<void**>(&g_device)))) return false;
     g_device->GetImmediateContext(&g_ctx);
-    return load_loader() && create_instance() && create_session() && create_swapchain(chain);
+    if (!(load_loader() && create_instance() && create_session() && create_swapchain(chain))) return false;
+    if (!xr_input::create(g_instance, g_session, g_gipa)) LOG_W("xr", "controllers unavailable - keyboard/mouse/pad still work");
+    return true;
 }
 
 void poll_events() {
@@ -298,6 +301,7 @@ void frame(IDXGISwapChain* chain) {
     if (XR_FAILED(pxrWaitFrame(g_session, &wi, &fs))) return;
     XrFrameBeginInfo bi{XR_TYPE_FRAME_BEGIN_INFO};
     if (XR_FAILED(pxrBeginFrame(g_session, &bi))) return;
+    xr_input::sync(fs.predictedDisplayTime, g_state == XR_SESSION_STATE_FOCUSED);
 
     // Head pose for upcoming game frames.
     XrSpaceLocation loc{XR_TYPE_SPACE_LOCATION};

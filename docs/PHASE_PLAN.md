@@ -5,17 +5,18 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-14
-Mode: agentic | Gate: hard | Stage 3 of 10 — controllers (recon)
+Mode: agentic | Gate: hard | Stage 3 of 10 — controllers (testing)
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
 ✅ Stage 2 passed (D-025): true 3D, full headset view, sharp at 2880x1620 (DSR), eyes in sync, anti-aliasing per eye, effects correct in both eyes; size/depth 5/5, comfort 5
 ✅ Log complete again in PLAYTEST-2d (BUG-009 monitoring; the two-process case hasn't recurred)
-🚧 In progress: Stage 3 — Quest 2 controllers: recon of how the game reads the gamepad
+🔧 Built, not yet tested: Quest 2 controllers play the game (virtual Xbox pad, D-026) → PLAYTEST-3a
+🚧 In progress: Stage 3 — next: desktop simulator on the same path, then the Stage 3 gate
 ⬜ Not started: movement, hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: nothing right now
+❓ Need from you: PLAYTEST-3a (~15 min, headset + controllers)
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: Me: gamepad recon, then the controller mapping. You: PLAYTEST-3a when the controllers work.
+▶ Next: You: PLAYTEST-3a. Me: simulator path and fixes from your notes.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -104,12 +105,12 @@ Hypotheses:
 Plan: recon at the menu (which XInput DLL/entry the game calls, how often, which user index) → OpenXR action set + Touch bindings (bindings.json) → virtual pad via H1 → map: left stick move, right stick turn (smooth, D-003/Stage 4), A jump, B crouch/slide, triggers attack/shift, grips gadget/Runner Vision, menu → pause; dominant hand swap → haptics → simulator drives the same path.
 Verify: in-game test at the menu/gameplay without a headset (simulator pad), then PLAYTEST-3a with the Touch controllers: every action reachable, no stuck inputs, menus navigable, comfort.
 Risk: the game may mix keyboard/mouse and pad prompts or switch input mode when both are active; anti-cheat not present (offline).
-- [ ] OpenXR via SteamVR; runtime and connection logged on startup
-- [ ] Action map with Touch defaults + all controller families in bindings.json
-- [ ] Dominant/off hand abstraction; handedness swap end to end
-- [ ] Game input injected via action map (gamepad emulation or input hook — decide in brief)
+- [x] OpenXR via SteamVR; runtime and connection logged on startup (Stage 1-2)
+- [~] Action map with Touch defaults; Index + simple controller suggested; remapping via SteamVR binding UI (D-026) — headset check PLAYTEST-3a
+- [~] Dominant/off hand: input.left_handed mirrors all controls (unit-tested) — headset check pending
+- [x] Game input injected via action map: virtual Xbox pad through an XInput hook (D-026), verified in game
 - [ ] Desktop simulator drives the same code paths
-- [ ] Haptics pulse(hand, strength, duration)
+- [~] Haptics: the game's rumble played on the hands — headset check PLAYTEST-3a
 
 ### Stage 4 — Locomotion and comfort (M)
 - [ ] ★ Smooth locomotion (head/controller-relative) mapped to Faith's run with momentum preserved

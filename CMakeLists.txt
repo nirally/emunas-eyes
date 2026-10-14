@@ -52,13 +52,15 @@ add_library(mecvr SHARED
     src/render/ctx_hooks.cpp
     src/render/taa_eyes.cpp
     src/diagnostics/mem_find.cpp
-    src/render/motion_fix.cpp)
+    src/render/motion_fix.cpp
+    src/input/xinput_hook.cpp
+    src/input/xr_input.cpp)
 target_link_libraries(mecvr PRIVATE mecvr_core minhook dxguid)
 set_target_properties(mecvr PROPERTIES OUTPUT_NAME "mecvr")
 
 # --- unit checks ---------------------------------------------------------------
 enable_testing()
-add_executable(mecvr_tests tests/test_main.cpp tests/test_config.cpp tests/test_sigscan.cpp tests/test_vmath.cpp)
+add_executable(mecvr_tests tests/test_main.cpp tests/test_config.cpp tests/test_sigscan.cpp tests/test_vmath.cpp tests/test_pad_map.cpp)
 target_link_libraries(mecvr_tests PRIVATE mecvr_core)
 target_include_directories(mecvr_tests PRIVATE ${CMAKE_SOURCE_DIR})
 add_test(NAME unit COMMAND mecvr_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
