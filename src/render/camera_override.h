@@ -43,6 +43,11 @@ bool take_stereo_changed();  // F4 toggled it; main thread saves
 uint64_t main_site_count();
 bool next_frame_is_right_eye();
 void set_zero_ipd(bool on);  // diagnostics.zero_ipd: no eye offset, so the two eyes of a pair should be identical
+void set_ipd_scale(float s);  // diagnostics.ipd_scale: eye offset x s (developer checks)
+void set_ipd_vertical(bool on);  // diagnostics.ipd_vertical: eyes stacked vertically (developer checks)
+// Render thread: eye of the frame being drawn now, from its view constants (0 left, 1 right, -1 mono or
+// not matched). Set when the frame's view constants are uploaded, early in the frame.
+int rendering_eye();
 
 // rendering.full_fov: with a headset, the game camera's FOV and aspect are set to cover both eyes'
 // full field of view (from the runtime), so the picture fills the headset instead of a window.

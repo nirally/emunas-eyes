@@ -60,6 +60,8 @@ std::atomic<bool> g_stereo{false};          // stereo.mode = alternate: one eye 
 std::atomic<int> g_frame_eye{0};             // eye the current game frame renders
 std::atomic<uint64_t> g_main_count{0};        // main-site overrides so far (eye sync checks it advanced)
 std::atomic<bool> g_zero_ipd{false};           // diagnostics.zero_ipd: both eyes at the head centre (eye-sync checks)
+std::atomic<float> g_ipd_scale{1.f};          // diagnostics.ipd_scale: exaggerate the eye offset (TAA eye-mixing checks)
+std::atomic<bool> g_ipd_vertical{false};      // diagnostics.ipd_vertical: eyes above each other (motion-fix y check)
 std::atomic<bool> g_stereo_dirty{false};
 
 // Last result of the main override, for re-applying at the render-view build.
@@ -99,6 +101,7 @@ void note_caller(uintptr_t ra) {
 // tell which head pose the frame it is presenting was drawn with.
 struct Used { vm::Quat rot; vm::Vec3 pos; head_pose::Pose abs; int eye; };
 std::atomic<uint64_t> g_eye_matched[4];  // presented frames matched to: mono, left, right, unmatched
+std::atomic<int> g_render_eye{-1};       // eye of the frame the render thread is drawing now (-1 mono/unknown)
 Used g_used[16];
 unsigned g_used_next = 0;
 std::mutex g_used_mutex;
@@ -122,6 +125,7 @@ void match_rendered(const vm::LinearTransform& view, vm::Vec3 cam_pos) {
         if (score > best) { best = score; found = u.abs; found_eye = u.eye; }
     }
     if (best > 1.99f) head_pose::set_rendered(found, found_eye);
+    g_render_eye = best > 1.99f ? found_eye : -1;
     ++g_eye_matched[best > 1.99f ? found_eye + 1 : 3];
 }
 
@@ -225,6 +229,8 @@ void finish(vm::LinearTransform* a, vm::LinearTransform* b, int eye_index, vm::Q
     vm::Quat head_rot_for_roll = final_rot;
     if (eye_index >= 0 && !g_zero_ipd.load()) {
         head_pose::Eye e = head_pose::eye(eye_index);
+        e.offset = e.offset * g_ipd_scale.load();
+        if (g_ipd_vertical.load()) e.offset = vm::Vec3{0, e.offset.x, 0};
         final_pos = final_pos + final_rot.rotate(e.offset);
         final_rot = (final_rot * e.rotation).normalized();
         abs.position = abs.position + abs.rotation.rotate(e.offset);
@@ -525,7 +531,7 @@ void on_present(float dt) {
     }
     stereo_was = stereo_key;
     static bool fov_was = false;
-    bool fov_key = key(VK_F9);
+    bool fov_key = key(VK_F9) && !key(VK_SHIFT);  // Shift+F9 is per-eye anti-aliasing (taa_eyes)
     if (fov_key && !fov_was && can_toggle) {
         last_toggle = GetTickCount64();
         set_full_fov(!g_full_fov.load());
@@ -633,5 +639,8 @@ bool take_stereo_changed() { return g_stereo_dirty.exchange(false); }
 uint64_t main_site_count() { return g_main_count.load(); }
 bool next_frame_is_right_eye() { return g_enabled.load() && g_stereo.load() && g_frame_eye.load() == 0; }
 void set_zero_ipd(bool on) { g_zero_ipd = on; }
+void set_ipd_scale(float s) { g_ipd_scale = s; }
+void set_ipd_vertical(bool on) { g_ipd_vertical = on; }
+int rendering_eye() { return g_render_eye.load(); }
 
 }  // namespace mecvr::camera_override

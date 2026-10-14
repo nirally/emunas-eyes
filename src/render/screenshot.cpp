@@ -116,6 +116,22 @@ void write_pair(const std::filesystem::path& dir, int index, const Image& a, con
                 x0 = std::min(x0, x); y0 = std::min(y0, y); x1 = std::max(x1, x); y1 = std::max(y1, y);
             }
         }
+    // Sharpness: mean absolute luminance gradient (x and y), per frame. Softening from AA history
+    // that comes from the other eye shows up as a lower number than mono.
+    auto sharpness = [](const Image& im) {
+        auto lum = [&im](uint32_t x, uint32_t y) {
+            const uint8_t* p = im.rgb.data() + (size_t(y) * im.w + x) * 3;
+            return 0.299 * p[0] + 0.587 * p[1] + 0.114 * p[2];
+        };
+        double s = 0;
+        for (uint32_t y = 0; y + 1 < im.h; ++y)
+            for (uint32_t x = 0; x + 1 < im.w; ++x) {
+                const double c = lum(x, y);
+                s += std::abs(lum(x + 1, y) - c) + std::abs(lum(x, y + 1) - c);
+            }
+        return s / (double(im.w - 1) * (im.h - 1));
+    };
+    LOG_I("shot", "pair %d: sharpness a %.3f b %.3f", index, sharpness(a), sharpness(b));
     swprintf_s(name, L"pair_%d_diff.bmp", index);
     save_bmp(dir / name, diff);
     const double total = double(a.w) * a.h;
@@ -130,7 +146,8 @@ void write_pair(const std::filesystem::path& dir, int index, const Image& a, con
 
 void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
     // A PAIR request grabs 4 consecutive frames and diffs each neighbouring two (3 results), so
-    // a left->right and a right->left step are both seen whatever eye the capture starts on.
+    // a left->right and a right->left step are both seen whatever eye the capture starts on, then
+    // each frame against the one two later (2 results: the same eye in stereo).
     constexpr int kFrames = 4;
     static int poll = 0, shot_index = 0, pair_index = 0, pair_stage = 0;
     static Image frames[kFrames];
@@ -138,6 +155,11 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
         if (!grab(chain, 2, frames[pair_stage - 1])) { pair_stage = 0; return; }
         if (++pair_stage > kFrames) {
             for (int i = 0; i + 1 < kFrames; ++i) write_pair(dir, ++pair_index, frames[i], frames[i + 1]);
+            // Same eye, two frames apart: shimmer / temporal stability of each eye on its own.
+            for (int i = 0; i + 2 < kFrames; ++i) {
+                LOG_I("shot", "pair %d is same-eye (frames %d and %d)", pair_index + 1, i + 1, i + 3);
+                write_pair(dir, ++pair_index, frames[i], frames[i + 2]);
+            }
             pair_stage = 0;
         }
         return;

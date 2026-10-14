@@ -104,3 +104,34 @@ TEST(vmath_game_motion_strips_heading_and_look_pitch) {
     float d = std::fabs(motion.x * expect.x + motion.y * expect.y + motion.z * expect.z + motion.w * expect.w);
     CHECK(near(d, 1.f, 1e-3f));
 }
+
+TEST(vmath_invert4_game_view_projection) {
+    // Current (unjittered) view-projection from a real view-constant dump (docs/recon/taa/viewcb_1.txt, 72..87).
+    const float vp[16] = {0.523161f, 0.000126f, 0.206660f, 4.546785f,  0.001131f, 0.999993f, -0.003473f, -47.414555f,
+                          -0.000001f, 0.0f,      0.000002f, 0.059927f,  0.367394f, -0.003646f, -0.930058f, 30.860641f};
+    float inv[16];
+    CHECK(invert4(vp, inv));
+    float id[16];
+    for (int r = 0; r < 4; ++r)
+        for (int c = 0; c < 4; ++c) {
+            float s = 0;
+            for (int k = 0; k < 4; ++k) s += vp[r * 4 + k] * inv[k * 4 + c];
+            id[r * 4 + c] = s;
+        }
+    for (int i = 0; i < 16; ++i) CHECK(near(id[i], (i % 5) ? 0.f : 1.f, 1e-3f));
+    // A world point 4 m in front of the camera round-trips through clip space.
+    const float cam[3] = {-18.743696f, 47.524940f, 25.590939f};
+    // forward = -(view row 2) = (0.367394, -0.003646, -0.930058)
+    const float p[4] = {cam[0] + 0.367394f * 4, cam[1] - 0.003646f * 4, cam[2] - 0.930058f * 4, 1};
+    float clip[4], back[4];
+    mul4(vp, p, clip);
+    CHECK(clip[3] > 3.9f && clip[3] < 4.1f);  // w = distance in front
+    mul4(inv, clip, back);
+    for (int i = 0; i < 3; ++i) CHECK(near(back[i] / back[3], p[i], 1e-2f));
+}
+
+TEST(vmath_invert4_singular) {
+    const float z[16] = {};
+    float out[16];
+    CHECK(!invert4(z, out));
+}

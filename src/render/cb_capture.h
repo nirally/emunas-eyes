@@ -12,4 +12,7 @@ bool install(const std::filesystem::path& out_dir, bool recon);
 // Called from the Present hook once per frame.
 void on_present();
 
+// Copies the latest per-view constant buffer as the game wrote it (284 floats); false if none yet.
+bool last_view_cb(float* out);
+
 }  // namespace mecvr::cb_capture

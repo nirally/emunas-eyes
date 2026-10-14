@@ -48,7 +48,11 @@ add_library(mecvr SHARED
     src/render/stereo_views.cpp
     src/render/screenshot.cpp
     src/diagnostics/time_recon.cpp
-    src/render/time_sync.cpp)
+    src/render/time_sync.cpp
+    src/render/ctx_hooks.cpp
+    src/render/taa_eyes.cpp
+    src/diagnostics/mem_find.cpp
+    src/render/motion_fix.cpp)
 target_link_libraries(mecvr PRIVATE mecvr_core minhook dxguid)
 set_target_properties(mecvr PROPERTIES OUTPUT_NAME "mecvr")
 

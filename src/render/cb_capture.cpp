@@ -16,6 +16,7 @@
 #include "diagnostics/log.h"
 #include "render/cam_hunt.h"
 #include "render/camera_override.h"
+#include "render/taa_eyes.h"
 #include "render/xr_session.h"
 
 namespace mecvr::cb_capture {
@@ -57,13 +58,45 @@ std::atomic<int> g_views_this_frame{0};
 std::atomic<float> g_proj_sx{0}, g_proj_sy{0};  // last view projection scale (for the FOV log)
 uint64_t g_views_hist[5] = {};  // frames with 0,1,2,3,4+ view-constant uploads
 
+// Latest per-view constants as the game wrote them (before the per-eye TAA patch), for MEMFIND.
+float g_last_view[kViewCbBytes / 4];
+bool g_have_last_view = false;
+
+// VIEWCB trigger: the next kViewDumps view constant buffers, all floats (finding the previous-frame
+// matrices TAA reprojects with, D-023).
+constexpr int kViewDumps = 4;
+std::atomic<int> g_view_dumps_left{0};
+FILE* g_view_dump = nullptr;
+int g_view_dump_index = 0;
+std::atomic<uint64_t> g_present_count{0};
+
 void watch_view(const void* data, UINT size) {
     if (size != kViewCbBytes) return;
     float f[40];
     memcpy(f, data, sizeof(f));
     if (!looks_like_view_cb(f)) return;
+    {
+        std::lock_guard lock(g_mutex);
+        memcpy(g_last_view, data, sizeof(g_last_view));
+        g_have_last_view = true;
+    }
     ++g_views_this_frame;
     camera_override::check_view(f + 8);
+    if (g_view_dumps_left.load() > 0) {  // after check_view, so the eye printed is this frame's
+        std::lock_guard lock(g_mutex);
+        if (g_view_dump) {
+            const float* all = static_cast<const float*>(data);
+            fprintf(g_view_dump, "\n# view CB at present %llu, eye %d\n", (unsigned long long)g_present_count.load(),
+                    camera_override::rendering_eye());
+            for (UINT i = 0; i < size / 4; ++i) fprintf(g_view_dump, "%s%4u:%12.6f", i % 4 ? " " : "\n", i, all[i]);
+            fprintf(g_view_dump, "\n");
+            if (--g_view_dumps_left == 0) {
+                fclose(g_view_dump);
+                g_view_dump = nullptr;
+                LOG_I("capture", "view CB dump %d written", g_view_dump_index);
+            }
+        }
+    }
     xr_session::set_game_projection(f[24], f[29]);
     camera_override::note_projection(f[29]);
     g_proj_sx = f[24];
@@ -142,6 +175,8 @@ void STDMETHODCALLTYPE unmap_detour(ID3D11DeviceContext* ctx, ID3D11Resource* re
     }
     if (p.data) {
         watch_view(p.data, p.size);
+        if (p.size == kViewCbBytes && looks_like_view_cb(static_cast<const float*>(p.data)))
+            taa_eyes::record_view_cb(static_cast<const float*>(p.data), p.size / 4);
         if (g_capturing) record("Map", res, p.data, p.size);
     }
     g_unmap_orig(ctx, res, sub);
@@ -153,6 +188,8 @@ void STDMETHODCALLTYPE update_detour(ID3D11DeviceContext* ctx, ID3D11Resource* r
     if (data && !box && is_constant_buffer(res, &size)) {
         watch_view(data, size);
         if (g_capturing) record("UpdateSubresource", res, data, size);
+        if (size == kViewCbBytes && looks_like_view_cb(static_cast<const float*>(data)))
+            taa_eyes::record_view_cb(static_cast<const float*>(data), size / 4);
     }
     g_update_orig(ctx, res, sub, box, data, row, depth);
 }
@@ -224,6 +261,17 @@ bool install(const std::filesystem::path& out_dir, bool recon) {
 
 void on_present() {
     int v = g_views_this_frame.exchange(0);
+    ++g_present_count;
+    static int view_poll = 0;
+    if (++view_poll % 30 == 0 && g_view_dumps_left.load() == 0) {
+        std::error_code ec;
+        if (std::filesystem::remove(g_dir / L"VIEWCB", ec)) {
+            wchar_t name[32];
+            swprintf_s(name, L"viewcb_%d.txt", ++g_view_dump_index);
+            std::lock_guard lock(g_mutex);
+            if (_wfopen_s(&g_view_dump, (g_dir / name).c_str(), L"w") == 0 && g_view_dump) g_view_dumps_left = kViewDumps;
+        }
+    }
     ++g_views_hist[v > 4 ? 4 : v];
     static ULONGLONG last = 0;
     if (GetTickCount64() - last > 10000) {
@@ -259,4 +307,13 @@ void on_present() {
     }
 }
 
+}  // namespace mecvr::cb_capture
+
+namespace mecvr::cb_capture {
+bool last_view_cb(float* out) {
+    std::lock_guard lock(g_mutex);
+    if (!g_have_last_view) return false;
+    memcpy(out, g_last_view, sizeof(g_last_view));
+    return true;
+}
 }  // namespace mecvr::cb_capture

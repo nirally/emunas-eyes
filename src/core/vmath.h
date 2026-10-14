@@ -126,4 +126,35 @@ inline float roll_of(const LinearTransform& m) {
 
 inline Quat yaw_quat(float yaw) { return Quat::axis_angle({0, 1, 0}, yaw); }
 
+// 4x4 matrices as 16 floats, row-major (m[r * 4 + c]), applied to column vectors: out = M * v.
+// The game's view-projection rows in the view constants are laid out this way.
+inline void mul4(const float* m, const float* v, float* out) {
+    for (int r = 0; r < 4; ++r) out[r] = m[r * 4] * v[0] + m[r * 4 + 1] * v[1] + m[r * 4 + 2] * v[2] + m[r * 4 + 3] * v[3];
+}
+
+// General inverse (Gauss-Jordan, partial pivoting, double precision). False if singular.
+inline bool invert4(const float* m, float* out) {
+    double a[4][8];
+    for (int r = 0; r < 4; ++r)
+        for (int c = 0; c < 8; ++c) a[r][c] = c < 4 ? m[r * 4 + c] : (c - 4 == r ? 1.0 : 0.0);
+    for (int col = 0; col < 4; ++col) {
+        int piv = col;
+        for (int r = col + 1; r < 4; ++r)
+            if (std::fabs(a[r][col]) > std::fabs(a[piv][col])) piv = r;
+        if (std::fabs(a[piv][col]) < 1e-12) return false;
+        if (piv != col)
+            for (int c = 0; c < 8; ++c) std::swap(a[piv][c], a[col][c]);
+        const double inv = 1.0 / a[col][col];
+        for (int c = 0; c < 8; ++c) a[col][c] *= inv;
+        for (int r = 0; r < 4; ++r) {
+            if (r == col) continue;
+            const double f = a[r][col];
+            for (int c = 0; c < 8; ++c) a[r][c] -= f * a[col][c];
+        }
+    }
+    for (int r = 0; r < 4; ++r)
+        for (int c = 0; c < 4; ++c) out[r * 4 + c] = static_cast<float>(a[r][c + 4]);
+    return true;
+}
+
 }  // namespace mecvr::vm

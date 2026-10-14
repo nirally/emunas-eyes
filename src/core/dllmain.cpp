@@ -15,6 +15,8 @@
 #include "diagnostics/log.h"
 #include "diagnostics/typeinfo_dump.h"
 #include "diagnostics/time_recon.h"
+#include "diagnostics/mem_find.h"
+#include "render/ctx_hooks.h"
 
 namespace mecvr::recon { void probe_strings(); }
 namespace mecvr::code_dump { void poll(const std::filesystem::path& dir); }
@@ -27,6 +29,8 @@ namespace mecvr::bug_report { void poll(const std::filesystem::path& mod_dir, co
 #include "render/present_hook.h"
 #include "render/stereo_views.h"
 #include "render/time_sync.h"
+#include "render/taa_eyes.h"
+#include "render/motion_fix.h"
 #include "render/xr_session.h"
 
 namespace fs = std::filesystem;
@@ -110,6 +114,7 @@ fs::path g_dir_for_frame;
 void on_frame(IDXGISwapChain* chain) {
     xr_session::on_present(chain);
     screenshot::on_present(chain, g_dir_for_frame);
+    ctx_hooks::on_present(chain, g_dir_for_frame);
     static LARGE_INTEGER freq{}, last{};
     LARGE_INTEGER now;
     QueryPerformanceCounter(&now);
@@ -183,9 +188,15 @@ DWORD WINAPI main_thread(LPVOID) {
                 camera_override::set_full_fov(g_config.get_bool("rendering.full_fov"));
                 camera_override::set_fov_test(g_config.get_bool("diagnostics.fov_test"));
                 camera_override::set_zero_ipd(g_config.get_bool("diagnostics.zero_ipd"));
+                camera_override::set_ipd_scale(static_cast<float>(g_config.get_number("diagnostics.ipd_scale")));
+                camera_override::set_ipd_vertical(g_config.get_bool("diagnostics.ipd_vertical"));
                 time_sync::set_enabled(g_config.get_bool("stereo.sync"));
                 time_sync::set_hold_dt(g_config.get_number("diagnostics.sync_hold_dt"));
                 time_sync::install();
+                taa_eyes::set_enabled(g_config.get_bool("rendering.taa_per_eye"));
+                taa_eyes::set_motion_fix(g_config.get_bool("diagnostics.taa_motion_fix"));
+                motion_fix::set_debug_zero(g_config.get_bool("diagnostics.motion_fix_debug"));
+                motion_fix::set_jitter_mode(static_cast<float>(g_config.get_number("diagnostics.motion_fix_jitter")));
             }
             present_hook::set_frame_callback(&on_frame);
             if (g_config.get_bool("diagnostics.time_recon")) time_recon::install(dir / L"time_recon.txt");
@@ -209,8 +220,20 @@ DWORD WINAPI main_thread(LPVOID) {
         if (old_v["diagnostics.stereo_experiment"] != new_v["diagnostics.stereo_experiment"])
             stereo_views::set_enabled(new_v["diagnostics.stereo_experiment"].get<bool>());
         if (old_v["stereo.sync"] != new_v["stereo.sync"]) time_sync::set_enabled(new_v["stereo.sync"].get<bool>());
+        if (old_v["diagnostics.motion_fix_jitter"] != new_v["diagnostics.motion_fix_jitter"])
+            motion_fix::set_jitter_mode(new_v["diagnostics.motion_fix_jitter"].get<float>());
+        if (old_v["diagnostics.motion_fix_debug"] != new_v["diagnostics.motion_fix_debug"])
+            motion_fix::set_debug_zero(new_v["diagnostics.motion_fix_debug"].get<bool>());
+        if (old_v["diagnostics.taa_motion_fix"] != new_v["diagnostics.taa_motion_fix"])
+            taa_eyes::set_motion_fix(new_v["diagnostics.taa_motion_fix"].get<bool>());
+        if (old_v["rendering.taa_per_eye"] != new_v["rendering.taa_per_eye"])
+            taa_eyes::set_enabled(new_v["rendering.taa_per_eye"].get<bool>());
         if (old_v["diagnostics.sync_hold_dt"] != new_v["diagnostics.sync_hold_dt"])
             time_sync::set_hold_dt(new_v["diagnostics.sync_hold_dt"].get<double>());
+        if (old_v["diagnostics.ipd_vertical"] != new_v["diagnostics.ipd_vertical"])
+            camera_override::set_ipd_vertical(new_v["diagnostics.ipd_vertical"].get<bool>());
+        if (old_v["diagnostics.ipd_scale"] != new_v["diagnostics.ipd_scale"])
+            camera_override::set_ipd_scale(new_v["diagnostics.ipd_scale"].get<float>());
         if (old_v["diagnostics.zero_ipd"] != new_v["diagnostics.zero_ipd"])
             camera_override::set_zero_ipd(new_v["diagnostics.zero_ipd"].get<bool>());
         if (old_v["stereo.mode"] != new_v["stereo.mode"])
@@ -235,8 +258,10 @@ DWORD WINAPI main_thread(LPVOID) {
         if (++tick % 20 == 0) log_export_calls();  // every 10 s; only logs exports whose count changed
         if (tick % 4 == 0) code_dump::poll(dir);
         if (tick % 4 == 0) view_recon::poll(dir);
+        if (tick % 4 == 0) mem_find::poll(dir);
         bug_report::poll(dir, g_config.values().dump());
         if (time_sync::take_changed()) g_config.set_user_value("stereo.sync", time_sync::enabled());
+        if (taa_eyes::take_changed()) g_config.set_user_value("rendering.taa_per_eye", taa_eyes::enabled());
         if (camera_override::take_stereo_changed())
             g_config.set_user_value("stereo.mode", camera_override::stereo() ? "alternate" : "mono");
         if (camera_override::take_full_fov_changed())

@@ -5,7 +5,7 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-14
-Mode: agentic | Gate: hard | Stage 2 of 10 — anti-aliasing per eye
+Mode: agentic | Gate: hard | Stage 2 of 10 — anti-aliasing per eye (testing)
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
 ✅ Stage 2 so far: real 3D by alternating eyes, pairs shown together (PLAYTEST-2a: depth, right size, no artefacts, comfortable)
@@ -13,12 +13,13 @@ Mode: agentic | Gate: hard | Stage 2 of 10 — anti-aliasing per eye
 ✅ Sharper picture via NVIDIA DSR, 2880x1620 recommended (PLAYTEST-2c: much clearer, no performance loss, resolution changes clean)
 ✅ Eye sync: moving things match in both eyes, full game speed, body flicker fixed (PLAYTEST-2e: moving things 5/5, a little better than off, very comfortable)
 ✅ Log complete again in PLAYTEST-2d (BUG-009 monitoring; the two-process case hasn't recurred)
-🚧 In progress: Stage 2 — next: anti-aliasing per eye, then effects per eye (shadows, reflections, sky)
+🔧 Built, not yet tested: anti-aliasing per eye — much steadier fine detail, a little softer (D-023, Shift+F9 to compare) → PLAYTEST-2f
+🚧 In progress: Stage 2 — next: effects per eye (shadows, reflections, sky)
 ⬜ Not started: controllers, movement, hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: nothing right now
+❓ Need from you: PLAYTEST-2f (~10 min, headset)
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: Me: anti-aliasing per eye, then effects per eye (shadows, reflections, sky).
+▶ Next: You: PLAYTEST-2f. Me: effects per eye while you test.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
