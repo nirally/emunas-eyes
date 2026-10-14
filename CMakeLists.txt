@@ -41,6 +41,7 @@ add_library(mecvr SHARED
     src/diagnostics/hwbp.cpp
     src/diagnostics/code_dump.cpp
     src/core/head_pose.cpp
+    src/core/hand_pose.cpp
     src/render/camera_override.cpp
     src/render/xr_session.cpp
     src/diagnostics/bug_report.cpp
@@ -55,7 +56,8 @@ add_library(mecvr SHARED
     src/render/motion_fix.cpp
     src/input/xinput_hook.cpp
     src/input/xr_input.cpp
-    src/input/yaw_drive.cpp)
+    src/input/yaw_drive.cpp
+    src/render/hand_render.cpp)
 target_link_libraries(mecvr PRIVATE mecvr_core minhook dxguid)
 set_target_properties(mecvr PROPERTIES OUTPUT_NAME "mecvr")
 

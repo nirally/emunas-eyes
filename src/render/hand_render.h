@@ -1,0 +1,17 @@
+#pragma once
+
+struct ID3D11Device;
+struct ID3D11DeviceContext;
+struct ID3D11Texture2D;
+
+namespace mecvr::hand_render {
+
+// Stage 5 hands (D-031): drawn into the HDR scene right after the TAA pass (before bloom and tonemap,
+// so they're exposed like the scene), with the frame's own unjittered view-projection, depth-tested
+// against the scene depth (reverse-Z, read-only). 5a: markers at the controllers' grip poses.
+// Render thread; saves and restores all pipeline state it touches.
+void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_color, ID3D11Texture2D* depth,
+          const float* vp);
+void set_enabled(bool on);  // hands.show
+
+}  // namespace mecvr::hand_render

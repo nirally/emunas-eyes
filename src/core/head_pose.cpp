@@ -136,3 +136,15 @@ void set_sim_offset(float x, float z) {
 namespace mecvr::head_pose {
 unsigned recenter_count() { return g_recenters.load(); }
 }  // namespace mecvr::head_pose
+
+namespace mecvr::head_pose {
+Pose to_relative(const Pose& absolute) {
+    std::lock_guard lock(g_mutex);
+    Pose r;
+    const vm::Quat inv = g_origin_rot.conjugate();
+    r.rotation = (inv * absolute.rotation).normalized();
+    r.position = inv.rotate(absolute.position - g_origin_pos);
+    r.valid = absolute.valid;
+    return r;
+}
+}  // namespace mecvr::head_pose

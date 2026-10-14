@@ -14,6 +14,7 @@
 
 #include <MinHook.h>
 
+#include "core/hand_pose.h"
 #include "core/head_pose.h"
 #include "core/sigscan.h"
 #include "core/vmath.h"
@@ -128,16 +129,17 @@ void note_caller(uintptr_t ra) {
 
 // Recent (rendered rotation -> absolute head pose) pairs, so the render thread can
 // tell which head pose the frame it is presenting was drawn with.
-struct Used { vm::Quat rot; vm::Vec3 pos; head_pose::Pose abs; int eye; };
+struct Used { vm::Quat rot; vm::Vec3 pos; head_pose::Pose abs; int eye; Hands hands; };
+Hands g_rendered_hands;                  // hands of the frame the render thread is drawing (g_used_mutex)
 std::atomic<uint64_t> g_eye_matched[4];  // presented frames matched to: mono, left, right, unmatched
 std::atomic<int> g_render_eye{-1};       // eye of the frame the render thread is drawing now (-1 mono/unknown)
 Used g_used[16];
 unsigned g_used_next = 0;
 std::mutex g_used_mutex;
 
-void remember(vm::Quat rot, vm::Vec3 pos, const head_pose::Pose& abs, int eye) {
+void remember(vm::Quat rot, vm::Vec3 pos, const head_pose::Pose& abs, int eye, const Hands& hands) {
     std::lock_guard lock(g_used_mutex);
-    g_used[g_used_next++ % 16] = {rot, pos, abs, eye};
+    g_used[g_used_next++ % 16] = {rot, pos, abs, eye, hands};
 }
 
 void match_rendered(const vm::LinearTransform& view, vm::Vec3 cam_pos) {
@@ -145,15 +147,18 @@ void match_rendered(const vm::LinearTransform& view, vm::Vec3 cam_pos) {
     float best = -1;
     head_pose::Pose found;
     int found_eye = -1;
+    Hands found_hands;
     std::lock_guard lock(g_used_mutex);
     for (auto& u : g_used) {
         if (!u.abs.valid) continue;
         // Rotation agreement (max 2) minus position mismatch: separates the two eyes, which
         // share a rotation but sit an IPD apart.
         float score = u.rot.rotate({1, 0, 0}).dot(r) + u.rot.rotate({0, 0, 1}).dot(b) - (u.pos - cam_pos).length();
-        if (score > best) { best = score; found = u.abs; found_eye = u.eye; }
+        if (score > best) { best = score; found = u.abs; found_eye = u.eye; found_hands = u.hands; }
     }
     if (best > 1.99f) head_pose::set_rendered(found, found_eye);
+    if (best > 1.99f) g_rendered_hands = found_hands;
+    else g_rendered_hands = {};
     g_render_eye = best > 1.99f ? found_eye : -1;
     ++g_eye_matched[best > 1.99f ? found_eye + 1 : 3];
 }
@@ -170,6 +175,7 @@ struct ComposeState {
     vm::Quat pair_rot;
     vm::Vec3 pair_pos;
     head_pose::Pose pair_abs;
+    Hands pair_hands;
 };
 ComposeState g_main_state, g_view_state;
 
@@ -183,7 +189,24 @@ float angle_deg(vm::Vec3 a, vm::Vec3 b) {
 void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, vm::Vec3& out_pos,
                   head_pose::Pose& out_abs);
 void finish(vm::LinearTransform* a, vm::LinearTransform* b, int eye_index, vm::Quat final_rot, vm::Vec3 final_pos,
-            head_pose::Pose abs);
+            head_pose::Pose abs, const Hands& hands);
+
+// The hands in the world, placed relative to this frame's head-level camera: offset and turn of each
+// controller from the real head, applied to the composed camera, so they stay glued to the view.
+Hands place_hands(vm::Quat cam_rot, vm::Vec3 cam_pos) {
+    Hands h;
+    const head_pose::Pose head = head_pose::current().relative;
+    if (!head.valid) return h;
+    const vm::Quat inv_head = head.rotation.conjugate();
+    for (int i = 0; i < 2; ++i) {
+        const head_pose::Pose p = hand_pose::get(i);
+        if (!p.valid) continue;
+        h.pos[i] = cam_pos + cam_rot.rotate(inv_head.rotate(p.position - head.position));
+        h.rot[i] = (cam_rot * inv_head * p.rotation).normalized();
+        h.valid[i] = true;
+    }
+    return h;
+}
 
 void compose(uint8_t* data, ComposeState& st) {
     auto* a = reinterpret_cast<vm::LinearTransform*>(data);
@@ -194,19 +217,23 @@ void compose(uint8_t* data, ComposeState& st) {
     vm::Quat rot;
     vm::Vec3 pos;
     head_pose::Pose abs;
+    Hands hands;
     if (eye_index == 1 && st.pair_valid) {
         rot = st.pair_rot;
         pos = st.pair_pos;
         abs = st.pair_abs;
+        hands = st.pair_hands;
         st.pair_valid = false;
     } else {
         compose_head(a, st, rot, pos, abs);
+        hands = place_hands(rot, pos);
         st.pair_valid = eye_index == 0;
         st.pair_rot = rot;
         st.pair_pos = pos;
         st.pair_abs = abs;
+        st.pair_hands = hands;
     }
-    finish(a, b, eye_index, rot, pos, abs);
+    finish(a, b, eye_index, rot, pos, abs, hands);
 }
 
 // The head-level view (no eye offset) from the game camera and the current head pose.
@@ -270,7 +297,7 @@ void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, v
 
 // Moves the head-level view to this frame's eye and writes it into both transforms.
 void finish(vm::LinearTransform* a, vm::LinearTransform* b, int eye_index, vm::Quat final_rot, vm::Vec3 final_pos,
-            head_pose::Pose abs) {
+            head_pose::Pose abs, const Hands& hands) {
     // Stereo: move to this frame's eye (offset and rotation in head space, from the runtime).
     vm::Quat head_rot_for_roll = final_rot;
     if (eye_index >= 0 && !g_zero_ipd.load()) {
@@ -291,7 +318,7 @@ void finish(vm::LinearTransform* a, vm::LinearTransform* b, int eye_index, vm::Q
     expect.set(head_rot_for_roll, final_pos);
     g_last_head_roll = vm::roll_of(expect);
     g_last_override_tick = GetTickCount64();
-    remember(final_rot, final_pos, abs, eye_index);
+    remember(final_rot, final_pos, abs, eye_index, hands);
 }
 
 // Once per game frame: Faith's movement in her body frame -> room model -> walking stick + view offset.
@@ -804,4 +831,11 @@ void room_offset(float& x, float& z) {
 
 namespace mecvr::camera_override {
 vm::Vec3 game_position() { return {g_game_px.load(), 0, g_game_pz.load()}; }
+}  // namespace mecvr::camera_override
+
+namespace mecvr::camera_override {
+Hands rendered_hands() {
+    std::lock_guard lock(g_used_mutex);
+    return g_rendered_hands;
+}
 }  // namespace mecvr::camera_override

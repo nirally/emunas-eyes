@@ -16,11 +16,12 @@ Mode: agentic | Gate: hard | Stage 4 of 10 — movement and comfort
 ✅ Room-scale: Faith moves with your steps (4f: much better), walls stop the view, fights better (4e); comfort 5
 ✅ Recentre = hold right stick click 1 s (PLAYTEST-4g)
 🚧 In progress: Stage 4 — next: the Stage 4 gate (a longer session)
-⬜ Not started: hands, punching, body, HUD, settings menu, packaging
+🔧 Built, not yet tested: hand markers at the controllers (D-031) → PLAYTEST-5a
+⬜ Not started: punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-4h, Stage 4 sign-off: one full mission (~20-30 min)
+❓ Need from you: PLAYTEST-4h, Stage 4 sign-off: one full mission (~20-30 min); PLAYTEST-5a (~5 min)
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-4h. Me: Stage 5a (controller poses) offline while you play; tested in game afterwards.
+▶ Next: You: PLAYTEST-4h (Stage 4 sign-off) and PLAYTEST-5a (~5 min). Me: hand models (5b).
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -157,7 +158,7 @@ Plan (each step tested in game with the drive tools, then a short playtest):
   5e Faith's own arms per Q-501 (hide, or keep until Stage 7 IK replaces them).
 Verify: hands line up with real hands (5a), look and light right (5b), don't pass through walls (5c), interacting by reach works on doors/buttons/Gridnodes/collectibles (5d); comfort; Stage 5 gate = a mission played with hands on.
 Risk: lighting mismatch (hands look pasted on), hands drawn over the game's own UI, double hands while Faith's arms animate (Q-501/Q-503), cost of an extra pass (small).
-- [ ] Physics-driven hands, collision, break distance, frame-rate independent
+- [~] Hands at the controllers (D-031): 5a markers built (sim-verified) → PLAYTEST-5a; collision/break distance 5c
 - [ ] ★ Collectibles, doors, buttons, Gridnodes by touch; pointer fallback
 
 ### Stage 6 — Combat and gadgets (L)

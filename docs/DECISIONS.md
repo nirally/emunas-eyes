@@ -231,3 +231,8 @@ D-029 update (PLAYTEST-4e "move with my head"): follow the head's velocity (feed
 ### D-030 — Comfort options: recentre button only (user choice)
 Date: 2026-10-14  Stage: 4
 Asked which comfort options to build (recentre button, seated mode, vignette, traversal fades): the user picked only the recentre button. Built: hold the right stick click 1 s = recentre view heading, position and height (short buzz on both hands); a tap is still Runner's Vision (now sent on release, ~0.1 s later). A recentre resets room-scale (new origin) and the crouch reference (relative height). Seated mode, vignette and traversal fades are not built (not wanted; comfort has been 5); they stay possible later.
+
+### D-031 — Hands drawn by the mod into the scene (Stage 5)
+Date: 2026-10-14  Stage: 5  (Q-501: a)
+Chose: controller grip poses from OpenXR (pose action + action spaces, located at the frame's predicted display time, converted to the recentred frame); each hand placed relative to the real head and applied to the frame's composed head-level camera, so hands stay glued to the view (stereo pairs reuse them, D-019; carried in the per-frame camera record matched to each rendered frame). Drawn by our own pass right after the TAA draw into the HDR scene colour (before bloom/tonemap, exposed like the scene), with the eye's unjittered view-projection, depth-tested against the scene depth (reverse-Z, read-only DSV), state saved/restored (render/d3d_state.h, shared with motion_fix). hands.show (default on). Faith's own arms stay (Q-501 a) until Stage 7.
+5a: markers (palm box + pointer, left blue / right orange). Verified in game with simulated hands (diagnostics.hand_sim): drawn, lit, occluded correctly by Faith's own arm. Needs per-eye TAA on (the pass hooks the TAA draw).

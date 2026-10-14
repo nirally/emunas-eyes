@@ -73,6 +73,14 @@ void set_room_sim(bool on);                // diagnostics.room_sim (developer)
 void room_offset(float& x, float& z);     // view offset Faith hasn't caught up with (m, body frame)
 vm::Vec3 game_position();                  // game camera position, horizontal (tests)
 
+// Stage 5: both hands in the game world for the frame the render thread is drawing (render thread).
+struct Hands {
+    vm::Quat rot[2];
+    vm::Vec3 pos[2];
+    bool valid[2] = {false, false};
+};
+Hands rendered_hands();
+
 // rendering.full_fov: with a headset, the game camera's FOV and aspect are set to cover both eyes'
 // full field of view (from the runtime), so the picture fills the headset instead of a window.
 void set_full_fov(bool on);  // F9 toggles; saved

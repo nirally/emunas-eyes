@@ -221,7 +221,7 @@ bool init(IDXGISwapChain* chain) {
     if (FAILED(chain->GetDevice(__uuidof(ID3D11Device), reinterpret_cast<void**>(&g_device)))) return false;
     g_device->GetImmediateContext(&g_ctx);
     if (!(load_loader() && create_instance() && create_session() && create_swapchain(chain))) return false;
-    if (!xr_input::create(g_instance, g_session, g_gipa)) LOG_W("xr", "controllers unavailable - keyboard/mouse/pad still work");
+    if (!xr_input::create(g_instance, g_session, g_local, g_gipa)) LOG_W("xr", "controllers unavailable - keyboard/mouse/pad still work");
     return true;
 }
 

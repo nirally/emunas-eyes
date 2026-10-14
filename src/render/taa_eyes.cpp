@@ -21,6 +21,7 @@
 
 #include "diagnostics/log.h"
 #include "render/camera_override.h"
+#include "render/hand_render.h"
 #include "render/motion_fix.h"
 
 namespace mecvr::taa_eyes {
@@ -51,6 +52,10 @@ struct Saved {
 };
 Saved g_saved[2];
 int g_pending_eye = -1;
+// For the hand pass after the TAA draw (Stage 5): scene depth and this eye's unjittered view-projection.
+ID3D11Texture2D* g_draw_depth = nullptr;
+float g_draw_vp[16];
+bool g_draw_ok = false;
 uint64_t g_passes = 0, g_swapped = 0, g_skipped = 0, g_fixed = 0;
 
 // Per-view constant buffer (284 floats; docs/recon/taa/viewcb_1.txt): 40..55 the frame's jittered
@@ -310,6 +315,10 @@ bool before_draw(ID3D11DeviceContext* ctx) {
             if (ok) {
                 g_pending_eye = eye;
                 acted = true;
+                D3D11_TEXTURE2D_DESC dd{};
+                g_draw_depth = tex_of(depth, &dd);
+                memcpy(g_draw_vp, own.latest.vp, sizeof(g_draw_vp));
+                g_draw_ok = g_draw_depth != nullptr;
             }
         }
     }
@@ -323,6 +332,12 @@ void after_draw(ID3D11DeviceContext* ctx) {
     if (eye < 0) return;
     for (int i = 0; i < kHist; ++i) ctx->CopyResource(g_saved[eye].tex[i], g_targets[kOutTarget[i]]);
     g_saved[eye].valid = true;
+    // Hands go into the anti-aliased HDR scene colour (r1), before bloom and tonemap.
+    if (g_draw_ok) {
+        D3D11_TEXTURE2D_DESC sd{};
+        hand_render::draw(g_dev, ctx, tex2d(g_targets[1], &sd), g_draw_depth, g_draw_vp);
+        g_draw_ok = false;
+    }
 }
 
 }  // namespace mecvr::taa_eyes

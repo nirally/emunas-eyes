@@ -23,6 +23,8 @@ Sample current();
 void set_headset_pose(const Pose& absolute, bool valid);
 void request_recenter();     // next headset sample becomes the origin (heading + position)
 unsigned recenter_count();   // recentres completed so far
+// A tracking-space pose (e.g. a controller) in the same recentred frame as Sample::relative.
+Pose to_relative(const Pose& absolute);
 
 // Per-eye geometry relative to the head (from the runtime; defaults to 63 mm IPD, 90 deg FOV).
 struct Eye {

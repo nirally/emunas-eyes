@@ -10,6 +10,7 @@
 #include <cstring>
 
 #include "diagnostics/log.h"
+#include "core/hand_pose.h"
 #include "core/head_pose.h"
 #include "core/pad_map.h"
 #include "input/xinput_hook.h"
@@ -22,14 +23,17 @@ namespace {
 #define XRI_FUNCS(X) \
     X(xrStringToPath) X(xrPathToString) X(xrCreateActionSet) X(xrCreateAction) X(xrSuggestInteractionProfileBindings) \
     X(xrAttachSessionActionSets) X(xrSyncActions) X(xrGetActionStateBoolean) X(xrGetActionStateFloat) \
-    X(xrGetActionStateVector2f) X(xrApplyHapticFeedback) X(xrStopHapticFeedback) X(xrGetCurrentInteractionProfile)
+    X(xrGetActionStateVector2f) X(xrApplyHapticFeedback) X(xrStopHapticFeedback) X(xrGetCurrentInteractionProfile) \
+    X(xrCreateActionSpace) X(xrLocateSpace)
 XRI_FUNCS(XRI_FN)
 
 XrInstance g_instance = XR_NULL_HANDLE;
 XrSession g_session = XR_NULL_HANDLE;
 XrActionSet g_set = XR_NULL_HANDLE;
 XrPath g_hand[2] = {};  // 0 left, 1 right
-enum Act { kStick, kStickClick, kTrigger, kGrip, kPrimary, kSecondary, kMenu, kHaptic, kActCount };
+enum Act { kStick, kStickClick, kTrigger, kGrip, kPrimary, kSecondary, kMenu, kHaptic, kGripPose, kActCount };
+XrSpace g_base = XR_NULL_HANDLE;          // LOCAL space (the head pose's space)
+XrSpace g_hand_space[2] = {XR_NULL_HANDLE, XR_NULL_HANDLE};
 XrAction g_act[kActCount] = {};
 bool g_ready = false;
 std::atomic<bool> g_left_handed{false}, g_stick_pitch{false};
@@ -140,8 +144,9 @@ void log_profile() {
 
 }  // namespace
 
-bool create(XrInstance instance, XrSession session, PFN_xrGetInstanceProcAddr gipa) {
+bool create(XrInstance instance, XrSession session, XrSpace base, PFN_xrGetInstanceProcAddr gipa) {
     g_instance = instance;
+    g_base = base;
     g_session = session;
 #define XRI_RESOLVE(name) \
     if (XR_FAILED(gipa(instance, #name, reinterpret_cast<PFN_xrVoidFunction*>(&p##name))) || !p##name) { \
@@ -162,7 +167,8 @@ bool create(XrInstance instance, XrSession session, PFN_xrGetInstanceProcAddr gi
               make_action(kPrimary, "primary", "A / X button", XR_ACTION_TYPE_BOOLEAN_INPUT) &&
               make_action(kSecondary, "secondary", "B / Y button", XR_ACTION_TYPE_BOOLEAN_INPUT) &&
               make_action(kMenu, "menu", "Menu button", XR_ACTION_TYPE_BOOLEAN_INPUT) &&
-              make_action(kHaptic, "rumble", "Vibration", XR_ACTION_TYPE_VIBRATION_OUTPUT);
+              make_action(kHaptic, "rumble", "Vibration", XR_ACTION_TYPE_VIBRATION_OUTPUT) &&
+              make_action(kGripPose, "hand_pose", "Hand pose", XR_ACTION_TYPE_POSE_INPUT);
     if (!ok) return false;
 
     const Binding touch[] = {
@@ -174,6 +180,7 @@ bool create(XrInstance instance, XrSession session, PFN_xrGetInstanceProcAddr gi
         {kSecondary, "/user/hand/left/input/y/click"},       {kSecondary, "/user/hand/right/input/b/click"},
         {kMenu, "/user/hand/left/input/menu/click"},
         {kHaptic, "/user/hand/left/output/haptic"},          {kHaptic, "/user/hand/right/output/haptic"},
+        {kGripPose, "/user/hand/left/input/grip/pose"},      {kGripPose, "/user/hand/right/input/grip/pose"},
     };
     suggest("/interaction_profiles/oculus/touch_controller", touch, sizeof(touch) / sizeof(touch[0]));
     const Binding index[] = {
@@ -185,12 +192,14 @@ bool create(XrInstance instance, XrSession session, PFN_xrGetInstanceProcAddr gi
         {kSecondary, "/user/hand/left/input/b/click"},       {kSecondary, "/user/hand/right/input/b/click"},
         {kMenu, "/user/hand/left/input/system/click"},
         {kHaptic, "/user/hand/left/output/haptic"},          {kHaptic, "/user/hand/right/output/haptic"},
+        {kGripPose, "/user/hand/left/input/grip/pose"},      {kGripPose, "/user/hand/right/input/grip/pose"},
     };
     suggest("/interaction_profiles/valve/index_controller", index, sizeof(index) / sizeof(index[0]));
     const Binding simple[] = {
         {kTrigger, "/user/hand/left/input/select/click"}, {kTrigger, "/user/hand/right/input/select/click"},
         {kMenu, "/user/hand/left/input/menu/click"},
         {kHaptic, "/user/hand/left/output/haptic"},       {kHaptic, "/user/hand/right/output/haptic"},
+        {kGripPose, "/user/hand/left/input/grip/pose"},   {kGripPose, "/user/hand/right/input/grip/pose"},
     };
     suggest("/interaction_profiles/khr/simple_controller", simple, sizeof(simple) / sizeof(simple[0]));
 
@@ -198,13 +207,36 @@ bool create(XrInstance instance, XrSession session, PFN_xrGetInstanceProcAddr gi
     ai.countActionSets = 1;
     ai.actionSets = &g_set;
     if (XR_FAILED(pxrAttachSessionActionSets(session, &ai))) { LOG_E("input", "xrAttachSessionActionSets failed"); return false; }
+    for (int h = 0; h < 2; ++h) {
+        XrActionSpaceCreateInfo sci{XR_TYPE_ACTION_SPACE_CREATE_INFO};
+        sci.action = g_act[kGripPose];
+        sci.subactionPath = g_hand[h];
+        sci.poseInActionSpace.orientation.w = 1;
+        if (XR_FAILED(pxrCreateActionSpace(session, &sci, &g_hand_space[h]))) LOG_W("input", "no hand space for hand %d", h);
+    }
     g_ready = true;
     LOG_I("input", "controller actions ready (%s-handed, stick pitch %s)", g_left_handed.load() ? "left" : "right",
           g_stick_pitch.load() ? "on" : "off");
     return true;
 }
 
-void sync(XrTime /*time*/, bool focused) {
+void locate_hands(XrTime time) {
+    for (int h = 0; h < 2; ++h) {
+        head_pose::Pose p;
+        XrSpaceLocation loc{XR_TYPE_SPACE_LOCATION};
+        if (g_hand_space[h] && XR_SUCCEEDED(pxrLocateSpace(g_hand_space[h], g_base, time, &loc)) &&
+            (loc.locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT) &&
+            (loc.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT)) {
+            p.rotation = {loc.pose.orientation.x, loc.pose.orientation.y, loc.pose.orientation.z, loc.pose.orientation.w};
+            p.position = {loc.pose.position.x, loc.pose.position.y, loc.pose.position.z};
+            p.valid = true;
+            p = head_pose::to_relative(p);
+        }
+        hand_pose::set(h, p);
+    }
+}
+
+void sync(XrTime time, bool focused) {
     if (!g_ready) return;
     bool active = false;
     if (focused) {
@@ -213,6 +245,7 @@ void sync(XrTime /*time*/, bool focused) {
         si.countActiveActionSets = 1;
         si.activeActionSets = &as;
         if (XR_SUCCEEDED(pxrSyncActions(g_session, &si))) {
+            locate_hands(time);
             // Physical hands; for a left-handed player the roles swap ("move" hand = right).
             const int move = g_left_handed.load() ? 1 : 0, turn = 1 - move;
             pad_map::Hand hand[2];

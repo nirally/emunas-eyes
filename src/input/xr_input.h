@@ -16,7 +16,7 @@ namespace mecvr::xr_input {
 // The game's vibration (XInputSetState) is played on the matching hand.
 
 // After xrCreateSession: creates and attaches the action set. False keeps the game on keyboard/mouse.
-bool create(XrInstance instance, XrSession session, PFN_xrGetInstanceProcAddr gipa);
+bool create(XrInstance instance, XrSession session, XrSpace base, PFN_xrGetInstanceProcAddr gipa);
 
 // Render thread, once per OpenXR frame. `focused`: session state FOCUSED (input is only valid then).
 void sync(XrTime time, bool focused);
