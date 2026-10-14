@@ -58,6 +58,7 @@ void set_turn_input(float x);  // turn stick, -1..1, + = right (render thread)
 void set_turn_options(float speed_deg_s, bool snap, float snap_deg);
 bool turning_active();
 void set_turning_sim(bool on);  // diagnostics.mod_turning_sim (developer)
+void set_body_follows_head(bool on);  // input.body_follows_head (default off, PLAYTEST-4a: stick sets the direction)
 float world_heading();          // W
 void report_turning();  // every 10 s
 

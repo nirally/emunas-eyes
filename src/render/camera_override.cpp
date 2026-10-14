@@ -74,6 +74,7 @@ std::atomic<bool> g_snap{false};
 std::atomic<float> g_snap_angle{0.785f};
 std::atomic<float> g_world_yaw{0};          // W, for both camera sites
 std::atomic<bool> g_turning_sim{false};    // diagnostics.mod_turning_sim: also without a headset (tests)
+std::atomic<bool> g_body_follows_head{false}; // input.body_follows_head: steer the game to where the head looks
 yaw_model::Model g_yaw;
 yaw_model::Snap g_snap_state;
 uint64_t g_inject_counts = 0, g_game_turns_seen = 0;
@@ -287,7 +288,9 @@ void update_turning(const vm::LinearTransform& game_cam) {
     const vm::Vec3 f = s.relative.rotation.rotate({0, 0, -1});
     const float head_yaw = std::atan2(-f.x, -f.z);
     const float before = g_yaw.world;
-    const int counts = g_yaw.update(t, vm::heading_of(game_cam), head_yaw, turn, !time_sync::game_paused());
+    // Steer the game to the view heading (stick-controlled body), or to where the head looks.
+    const float steer_to = g_body_follows_head.load() ? head_yaw : 0.f;
+    const int counts = g_yaw.update(t, vm::heading_of(game_cam), steer_to, turn, !time_sync::game_paused());
     if (std::fabs(yaw_model::wrap(g_yaw.world - before - turn)) > 0.01f) ++g_game_turns_seen;
     if (counts && yaw_drive::inject(counts)) g_inject_counts += uint64_t(counts < 0 ? -counts : counts);
     g_world_yaw = g_yaw.world;
@@ -701,6 +704,7 @@ float game_heading() {
 namespace mecvr::camera_override {
 void set_mod_turning(bool on) { g_mod_turning = on; }
 void set_turning_sim(bool on) { g_turning_sim = on; }
+void set_body_follows_head(bool on) { g_body_follows_head = on; }
 float world_heading() { return g_world_yaw.load(); }
 void set_turn_input(float x) { g_turn_x = x; }
 void set_turn_options(float speed_deg_s, bool snap, float snap_deg) {

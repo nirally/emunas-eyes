@@ -198,6 +198,7 @@ DWORD WINAPI main_thread(LPVOID) {
                 time_sync::install();
                 camera_override::set_mod_turning(g_config.get_bool("input.mod_turning"));
                 camera_override::set_turning_sim(g_config.get_bool("diagnostics.mod_turning_sim"));
+                camera_override::set_body_follows_head(g_config.get_bool("input.body_follows_head"));
                 camera_override::set_turn_options(static_cast<float>(g_config.get_number("input.turn_speed")), g_config.get_bool("input.snap_turn"),
                                                   static_cast<float>(g_config.get_number("input.snap_angle")));
                 xr_input::set_left_handed(g_config.get_bool("input.left_handed"));
@@ -237,6 +238,8 @@ DWORD WINAPI main_thread(LPVOID) {
             motion_fix::set_debug_zero(new_v["diagnostics.motion_fix_debug"].get<bool>());
         if (old_v["diagnostics.taa_motion_fix"] != new_v["diagnostics.taa_motion_fix"])
             taa_eyes::set_motion_fix(new_v["diagnostics.taa_motion_fix"].get<bool>());
+        if (old_v["input.body_follows_head"] != new_v["input.body_follows_head"])
+            camera_override::set_body_follows_head(new_v["input.body_follows_head"].get<bool>());
         if (old_v["diagnostics.mod_turning_sim"] != new_v["diagnostics.mod_turning_sim"])
             camera_override::set_turning_sim(new_v["diagnostics.mod_turning_sim"].get<bool>());
         if (old_v["input.mod_turning"] != new_v["input.mod_turning"])

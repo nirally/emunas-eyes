@@ -61,7 +61,8 @@ TEST(pad_map_stick_click_no_longer_maps_back_directly) {
 }
 
 TEST(pad_map_physical_crouch_hysteresis) {
-    Crouch c;  // 0.30 m, 0.08 m hysteresis
+    Crouch c;
+    c.depth = 0.30f;  // 0.08 m hysteresis
     CHECK(!c.update(0.f));
     CHECK(!c.update(-0.29f));
     CHECK(c.update(-0.31f));   // crouched

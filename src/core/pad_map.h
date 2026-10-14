@@ -82,7 +82,7 @@ struct TapHold {
 // Physical crouch (Stage 4): head height below standing (recentred, metres; negative = lower) holds
 // Down actions. Enters below -depth, leaves above -depth + hysteresis.
 struct Crouch {
-    float depth = 0.30f, hysteresis = 0.08f;
+    float depth = 0.25f, hysteresis = 0.08f;
     bool down = false;
     bool update(float head_dy) {
         if (!down && head_dy < -depth) down = true;

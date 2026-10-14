@@ -41,6 +41,7 @@ ULONGLONG g_hello_until = 0;     // short buzz on both hands when the virtual pa
 // Vibration diagnostics (PLAYTEST-3a: none felt): strongest request and haptic call results per 10 s.
 uint16_t g_vib_max[2] = {0, 0};
 uint32_t g_haptic_ok = 0, g_haptic_fail = 0;
+float g_head_dy_min = 0;  // lowest head height vs standing per 10 s (crouch diagnostics)
 
 XrPath path(const char* s) {
     XrPath p = XR_NULL_PATH;
@@ -226,8 +227,12 @@ void sync(XrTime /*time*/, bool focused) {
             }
             if (active) {
                 pad_map::Pad pad = pad_map::map(hand[0], hand[1], g_left_handed.load(), g_stick_pitch.load());
-                if (g_crouch_on.load() && g_crouch.update(head_pose::current().relative.position.y))
-                    pad.left_trigger = 255;  // physical crouch -> Down actions (crouch / slide)
+                const float head_dy = head_pose::current().relative.position.y;
+                if (head_dy < g_head_dy_min) g_head_dy_min = head_dy;
+                const bool was_down = g_crouch.down;
+                if (g_crouch_on.load() && g_crouch.update(head_dy)) pad.left_trigger = 255;  // -> Down actions (slide)
+                if (g_crouch.down != was_down)
+                    LOG_I("input", "physical crouch %s (head %.2f m from standing)", g_crouch.down ? "DOWN" : "up", head_dy);
                 if (camera_override::turning_active()) {  // the mod turns the view; the game follows (D-028)
                     camera_override::set_turn_input(hand[turn].x);
                     pad.rx = 0;
@@ -259,8 +264,9 @@ void sync(XrTime /*time*/, bool focused) {
     if (GetTickCount64() - last_report >= 10000) {
         last_report = GetTickCount64();
         if (g_pad_on)
-            LOG_I("input", "vibration requested by the game: max low %u high %u; haptic calls ok %u failed %u", g_vib_max[0],
-                  g_vib_max[1], g_haptic_ok, g_haptic_fail);
+            LOG_I("input", "vibration requested by the game: max low %u high %u; haptic calls ok %u failed %u; lowest head %.2f m",
+                  g_vib_max[0], g_vib_max[1], g_haptic_ok, g_haptic_fail, g_head_dy_min);
+        g_head_dy_min = 0;
         g_vib_max[0] = g_vib_max[1] = 0;
         g_haptic_ok = g_haptic_fail = 0;
     }
