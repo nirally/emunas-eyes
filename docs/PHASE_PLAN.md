@@ -128,10 +128,10 @@ Risk: injected mouse while the game shows a mouse cursor (menus) -> steering onl
 - [x] ★ Smooth locomotion: the game's own stick movement (momentum native); body-relative by user choice (D-028 update)
 - [x] ★ **Smooth turn default**: the game's stick turning (mod turning tried, D-028, off: the game ignores mouse while running); snap turn not offered yet
 - [x] Recentre on the controllers: hold right stick click 1 s (D-030); height offset F2/F3 (Stage 1); vignette, seated mode, traversal fades not wanted by the user (D-030)
-- [~] ★ Physical crouch → slide (PLAYTEST-4d); jump on the left grip (Stage 3); room-scale: Faith moves with your steps, walls stop the view (D-029, PLAYTEST-4e/4f)
+- [x] ★ Physical crouch → slide (PLAYTEST-4d); jump on the left grip (Stage 3); room-scale: Faith moves with your steps, walls stop the view (D-029, PLAYTEST-4e/4f)
 - [x] ★ Vaults, ledge climbs, wall-runs, wall-climbs, bars, ziplines, ladders/pipes: the game camera motion passes through (D-014, user wants it); fades not wanted (D-030)
 - [x] ★ MAG Rope swing: game camera motion (D-014/D-015a, PLAYTEST-1f: smooth); no extra option wanted (D-030)
-- [ ] Teleport: not built (D-003)
+- [x] Teleport: not built, by decision (D-003)
 
 ### Stage 5 — Physics hands and grabbing (M)
 - [ ] Physics-driven hands, collision, break distance, frame-rate independent
