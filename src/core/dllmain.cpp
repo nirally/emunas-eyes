@@ -1,6 +1,7 @@
 // Entry point. DllMain only sets up forwarding and starts a worker thread;
 // everything else happens on that thread, outside the loader lock.
 #include <windows.h>
+#include <tlhelp32.h>
 
 #include <MinHook.h>
 
@@ -49,6 +50,18 @@ const char* role_name(proxy::Role r) {
         case proxy::Role::NvCameraMissingOriginal: return "NvCameraSDK64.dll (ORIGINAL MISSING)";
         default: return "unknown";
     }
+}
+
+// Parent pid via the toolhelp process list (0 if not found). Tells launcher stages apart in the log.
+DWORD parent_pid() {
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snap == INVALID_HANDLE_VALUE) return 0;
+    PROCESSENTRY32W pe{sizeof(pe)};
+    DWORD self = GetCurrentProcessId(), parent = 0;
+    for (BOOL ok = Process32FirstW(snap, &pe); ok; ok = Process32NextW(snap, &pe))
+        if (pe.th32ProcessID == self) { parent = pe.th32ParentProcessID; break; }
+    CloseHandle(snap);
+    return parent;
 }
 
 // Retries until the game window exists (it appears a few seconds after load).
@@ -119,6 +132,12 @@ DWORD WINAPI main_thread(LPVOID) {
     log::init(dir / L"mecvr.log");
     LOG_I("core", "MEC VR %s starting, loaded as %s, pid %lu", MECVR_VERSION, role_name(g_role),
           GetCurrentProcessId());
+    {
+        const wchar_t* wcmd = GetCommandLineW();
+        std::string cmd(WideCharToMultiByte(CP_UTF8, 0, wcmd, -1, nullptr, 0, nullptr, nullptr), '\0');
+        if (!cmd.empty()) WideCharToMultiByte(CP_UTF8, 0, wcmd, -1, cmd.data(), int(cmd.size()), nullptr, nullptr);
+        LOG_I("core", "parent pid %lu, command line: %s", parent_pid(), cmd.c_str());
+    }
 
     if (g_role == proxy::Role::NvCameraMissingOriginal)
         LOG_E("core", "mecvr\\NvCameraSDK64_orig.dll not found - photo mode calls are stubbed. Re-run the installer.");

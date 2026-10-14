@@ -36,6 +36,14 @@ void init(const std::filesystem::path& file) {
     std::error_code ec;
     std::filesystem::create_directories(file.parent_path(), ec);
     g_file = _wfsopen(file.c_str(), L"w", _SH_DENYWR);
+    if (!g_file) {
+        // Another process holding the mod already has the main log open (PLAYTEST-2c: a second process
+        // loaded us and logged nothing) - write to a per-process file instead of going silent.
+        std::filesystem::path alt = file;
+        alt.replace_filename(file.stem().wstring() + L"." + std::to_wstring(GetCurrentProcessId()) +
+                             file.extension().wstring());
+        g_file = _wfsopen(alt.c_str(), L"w", _SH_DENYWR);
+    }
 }
 
 void set_level(Level level) { g_level = level; }

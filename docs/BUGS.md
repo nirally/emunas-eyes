@@ -62,3 +62,9 @@ Hypotheses: (1) our view was composed from the camera manager's raw camera, whic
 Root cause (PLAYTEST-1f log): hypothesis 2. Hypothesis 1 disproven: "max blend 0.0 deg" in every window; the render-view camera equals the raw one.
 Fix: at the render-view step, compose directly from the game's blended camera (separate state per site). The baseline now follows at most 0.35 rad/s, never a step. The log now reports how much the game blends ("max blend").
 Verified: pending PLAYTEST-1f
+
+### BUG-009 — Mod log went silent for a whole session while the mod worked
+Status: fix built, verify at next playtest | Severity: 3 (lost playtest evidence) | Stage: 2 | Reported: agent, PLAYTEST-2c log review
+Evidence: the 17:02 launch (the only one; user confirms full 3D worked all session) left mecvr.log with 3 lines (start, exe version, config) and nothing after; mecvr.prev.log was still yesterday's, so no other launch rotated it. Every line is flushed and log_level was debug.
+Hypothesis: two processes loaded the mod (launcher stage or a self-restart after the DSR fullscreen resolution change). The first opened mecvr.log deny-write and stopped early; the real game process could neither rotate nor open it, so it ran with no log.
+Fix: if mecvr.log is held, log to mecvr.<pid>.log instead; startup now logs parent pid and command line to tell the processes apart.

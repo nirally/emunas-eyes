@@ -4,19 +4,20 @@ Mode: agentic
 Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
-## Status — Mirror's Edge Catalyst VR — 2026-10-13
-Mode: agentic | Gate: hard | Stage 2 of 10 — sharpness
+## Status — Mirror's Edge Catalyst VR — 2026-10-14
+Mode: agentic | Gate: hard | Stage 2 of 10 — eye synchronisation
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
 ✅ Stage 2 so far: real 3D by alternating eyes, pairs shown together (PLAYTEST-2a: depth, right size, no artefacts, comfortable)
-✅ Full headset field of view (PLAYTEST-2b: fills the headset, right size, smooth); sharpness 3/5
-🔧 Built, not yet tested: higher resolution via NVIDIA DSR (mod follows the resolution) → PLAYTEST-2c
+✅ Full headset field of view (PLAYTEST-2b: fills the headset, right size, smooth)
+✅ Sharper picture via NVIDIA DSR, 2880x1620 recommended (PLAYTEST-2c: much clearer, no performance loss, resolution changes clean)
+🔧 Built, not yet tested: log no longer goes silent when two game processes load the mod (BUG-009) — checked at the next playtest
 🚧 In progress: Stage 2 — next: synchronising the two eyes (moving things), anti-aliasing per eye
 ⬜ Not started: controllers, movement, hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-2c (~15 min, headset)
-🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-2c. Me: synchronising the eyes while you test.
+❓ Need from you: nothing right now — keep the game at 2880x1620
+🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-009 sev-3 (fix built); BUG-001 sev-4
+▶ Next: Me: synchronising the eyes. You: next playtest when that's built.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
