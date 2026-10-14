@@ -13,14 +13,13 @@ Mode: agentic | Gate: hard | Stage 4 of 10 — movement and comfort
 ✅ Stage 3 passed (D-027): Quest 2 controllers play the whole game; pause = tap left stick click, map = hold; vibration; comfort 5
 ⚠ Mod turning (180°/s) tried in 4a/4b: the game ignores it while Faith runs → off; the game's stick turning is back. "Run where you look" off (user prefers the stick)
 ✅ Turning with the game's stick, comfortable; real crouch = slide, view at Faith's head (PLAYTEST-4c/4d: "great", comfort 5)
-✅ Real steps move Faith; walls stop the view; fights better (PLAYTEST-4e)
-🔧 Built, not yet tested: Faith moves with your steps instead of after them → PLAYTEST-4f
+✅ Room-scale: Faith moves with your steps (4f: much better), walls stop the view, fights better (4e); comfort 5
 🚧 In progress: Stage 4 — next: comfort options (vignette, recentre button, seated), traversal options
 ⬜ Not started: hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-4f (~5 min, standing)
+❓ Need from you: nothing right now
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-4f. Me: comfort options while you test.
+▶ Next: Me: comfort options (recentre button, seated mode), then traversal.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -128,7 +127,7 @@ Risk: injected mouse while the game shows a mouse cursor (menus) -> steering onl
 - [ ] ★ Smooth locomotion (head/controller-relative) mapped to Faith's run with momentum preserved
 - [x] ★ **Smooth turn default**: the game's stick turning (mod turning tried, D-028, off: the game ignores mouse while running); snap turn not offered yet
 - [ ] Vignette (default: low, user-adjustable), seated/standing, height offset, recenter
-- [~] ★ Physical crouch → slide (PLAYTEST-4d); jump on the left grip (Stage 3); room-scale: Faith walks to where you stand, walls stop the view (D-029) — PLAYTEST-4e
+- [~] ★ Physical crouch → slide (PLAYTEST-4d); jump on the left grip (Stage 3); room-scale: Faith moves with your steps, walls stop the view (D-029, PLAYTEST-4e/4f)
 - [ ] ★ Vaults, ledge climbs, wall-runs, wall-climbs, bars, ziplines, ladders/pipes: world moves under fixed head + optional fade per type
 - [ ] ★ MAG Rope swing comfort option
 - [ ] Teleport: not built (D-003)

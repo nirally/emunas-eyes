@@ -50,7 +50,7 @@ Fix: heading read from the camera's right axis (unchanged by a forward roll), wi
 Verified: pending PLAYTEST-1d
 
 ### BUG-007 — In fights the player feels "in front of" Faith; only knuckles visible when punching
-Status: fix built (room-scale, D-029), verify PLAYTEST-4e | Severity: 3 | Stage: 1 (framing) → Stage 4 room-scale; arms Stages 5–7 | Reported: PLAYTEST-1d
+Status: partly fixed (PLAYTEST-4e: fights "better" with room-scale); arms/knuckles framing → Stages 5–7 | Severity: 3 | Stage: 1 (framing) → Stage 4 room-scale; arms Stages 5–7 | Reported: PLAYTEST-1d
 Hypotheses, in order: (1) the mono picture uses the game's 55° vertical FOV, so arms at the edges are cut off (Stage 2 gives the headset's full FOV); (2) camera +0.14 m above Faith's eyes (height offset) moves the viewpoint up and over the arms; (3) physical head offset from the recentre point moves the camera ahead of Faith's head. Head offset is now logged every 2 s (debug) to check (3).
 Workaround: F6 while standing naturally; try F2 a few steps to see whether the arms frame better.
 Structural fix: Stage 5–7 (physics hands + IK: Faith's arms follow the real hands; punches are physical, user priority).
