@@ -70,7 +70,7 @@ Hypothesis: two processes loaded the mod (launcher stage or a self-restart after
 Fix: if mecvr.log is held, log to mecvr.<pid>.log instead; startup now logs parent pid and command line to tell the processes apart.
 
 ### BUG-010 — Faith's body stutters/flickers when looking down, with eye sync on
-Status: fixed, verify in PLAYTEST-2e | Severity: 2 (flicker near the eyes) | Stage: 2 | Reported: PLAYTEST-2d
+Status: closed (verified PLAYTEST-2e: "no you fixed it") | Severity: 2 (flicker near the eyes) | Stage: 2 | Reported: PLAYTEST-2d
 Repro: eye sync on (D-021), look down at Faith's body, especially while running. Gone with Shift+F4 (sync off).
 Evidence (agent, without headset, diagnostics.zero_ipd so both eyes share a viewpoint; 4-frame PAIR captures while running): held left->right steps had the world pixel-identical but Faith's legs/torso in a different pose (1.27%, 0.61% of pixels, all in the body; docs/recon/time/pairs/). The right-eye body matched neither the previous nor the next frame.
 Root cause: the game treats a frame with dt exactly 0 specially for the player body. Same test with the held frame reporting 0.1 ms: held steps 0.00-0.01% (identical); 1 ms also identical.
