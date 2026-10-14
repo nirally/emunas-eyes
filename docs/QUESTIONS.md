@@ -17,3 +17,10 @@ Default: try it at the menu first.
 ### Q-204 — Mouse look up/down: keep it, or head only? — ANSWERED 2026-10-14: (a) mouse pitch stays
 Context: PLAYTEST-2d, a mouse look-down drifts back to level within a few seconds (game camera motion removes mouse pitch gradually, D-014).
 Options: (a) camera.pitch_source = game: mouse pitch is added on top of the head and stays; the view can tilt away from the real horizon. (b) keep auto: the head does up/down, mouse pitch fades out (today). (c) head only, mouse pitch ignored immediately (no drift, no effect).
+
+### Q-501 — Your hands in the game: what should they look like, and what about Faith's own arms? — OPEN (asked 2026-10-14)
+Context: Stage 5 puts hands where your controllers are. Faith's own first-person arms also appear in the game (climbing, ledge grabs, attacks, Gridnodes), animated by the game.
+Options:
+ (a) Faith-style gloved hands drawn by the mod, always at your controllers; Faith's own arms stay visible during her moves (you may see both briefly) until Stage 7 drives her arms from your hands. (Recommended: fastest to a good result; Stage 7 later merges them.)
+ (b) Same hands, and hide Faith's own arms when possible (if they can be told apart in the frame; some moves may look odd without arms).
+ (c) No separate hands: wait for Stage 7 to move Faith's own arms with yours (much later).

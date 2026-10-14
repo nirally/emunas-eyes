@@ -18,9 +18,9 @@ Mode: agentic | Gate: hard | Stage 4 of 10 — movement and comfort
 🚧 In progress: Stage 4 — next: the Stage 4 gate (a longer session)
 ⬜ Not started: hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-4h, Stage 4 sign-off: one full mission (~20-30 min)
+❓ Need from you: PLAYTEST-4h, Stage 4 sign-off: one full mission (~20-30 min); Q-501 (hands look)
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-4h. Me: Stage 5 brief (hands) while you play.
+▶ Next: You: PLAYTEST-4h, and answer Q-501 (how your hands look). Me: Stage 5 recon after that (no game changes while you play).
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -134,6 +134,29 @@ Risk: injected mouse while the game shows a mouse cursor (menus) -> steering onl
 - [x] Teleport: not built, by decision (D-003)
 
 ### Stage 5 — Physics hands and grabbing (M)
+
+#### Stage 5 brief
+Goal: your real hands are in the game: you see them where your controllers are, they don't pass through walls, their fingers follow how you hold the controllers, and you use the world with them (reach and grab to interact) instead of a button where it makes sense.
+Known: OpenXR already runs; controller poses are one action away (grip/aim pose actions). We own the frame: the per-view constants give the view/projection each eye was drawn with (D-023), the scene depth and the HDR colour target before tonemapping are known (TAA recon: depth t0, scene colour r1, composite at the end). Faith's own first-person arms are game animation (climbs, attacks, ledge grabs, Gridnodes). The game's interact is "A when a prompt shows" (Stage 3).
+Unknowns:
+  Q-501 (user) what the hands look like and what happens to Faith's own arms (see QUESTIONS.md).
+  Q-502 where to draw our hands so they're lit/exposed like the scene: after TAA on the HDR target, before bloom + tonemap (expected) — check exposure and fog match.
+  Q-503 can Faith's game arms be told apart in the frame (own draws/shaders/vertex buffers) to hide them, or does that wait for Stage 7 IK?
+  Q-504 is the game's interact prompt readable (memory or UI draw), so "touch to interact" only fires when an interaction is actually available?
+  Q-505 pose timing: predicted controller pose for the frame's display time vs the frame the game simulated (eye sync D-021 pairs).
+Hypotheses:
+  H1 Our own hand meshes drawn into the HDR scene target with the frame's own view-projection, depth-tested against the scene depth (reverse-Z), simple lighting from the sun direction/ambient in the view constants — no engine changes, independent of game animations.
+  H2 Collision without engine physics: the hand is held at the first surface along the line from the shoulder to the controller, from the scene depth (screen-space), plus a short haptic tick on contact; break distance: past 0.3 m from the real controller the hand snaps back.
+  H3 Fingers from Touch capacitive/analog inputs (trigger/grip values, thumb touch) -> open / point / fist poses blended.
+  H4 Interact by reach: grip near the centre of the view while the game shows its interact prompt -> press Interact (A); A stays as the pointer-free fallback.
+Plan (each step tested in game with the drive tools, then a short playtest):
+  5a controller poses: OpenXR grip/aim poses -> world (same body frame as the head), logged and shown as simple debug shapes at the controllers, to verify they line up with your real hands in the headset (PLAYTEST-5a).
+  5b hand meshes: a glove hand model (CC0/MIT asset or procedural), lit/exposed like the scene, depth-tested; fingers from controller inputs.
+  5c collision + haptics: depth-buffer clamp, break distance, contact buzz.
+  5d interaction: reach-and-grab Interact while the prompt shows; prompt detection recon (Q-504).
+  5e Faith's own arms per Q-501 (hide, or keep until Stage 7 IK replaces them).
+Verify: hands line up with real hands (5a), look and light right (5b), don't pass through walls (5c), interacting by reach works on doors/buttons/Gridnodes/collectibles (5d); comfort; Stage 5 gate = a mission played with hands on.
+Risk: lighting mismatch (hands look pasted on), hands drawn over the game's own UI, double hands while Faith's arms animate (Q-501/Q-503), cost of an extra pass (small).
 - [ ] Physics-driven hands, collision, break distance, frame-rate independent
 - [ ] ★ Collectibles, doors, buttons, Gridnodes by touch; pointer fallback
 
