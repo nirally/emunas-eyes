@@ -49,15 +49,26 @@ void poll_test(const std::filesystem::path& dir) {
             const vm::Vec3 p = camera_override::game_position();
             LOG_I("room", "room test %s: Faith at (%.2f, %.2f), view offset (%+.2f, %+.2f) m", when, p.x, p.z, x, z);
         };
+        // A real-speed step: 0.5 m forward over 0.6 s; the gap (how far Faith's body is from you) every 50 ms.
         report("start");
-        head_pose::set_sim_offset(0, -0.5f);
-        Sleep(150);
-        report("just stepped forward 0.5 m");
-        Sleep(3000);
-        report("3 s later");
+        float peak = 0;
+        char trace[1024] = "";
+        size_t len = 0;
+        for (int i = 0; i < 50; ++i) {
+            const float z = i < 12 ? -0.5f * (i + 1) / 12.f : -0.5f;
+            head_pose::set_sim_offset(0, z);
+            Sleep(50);
+            float gx = 0, gz = 0;
+            camera_override::room_offset(gx, gz);
+            const float g = std::sqrt(gx * gx + gz * gz);
+            if (g > peak) peak = g;
+            if (i % 2 == 0) len += snprintf(trace + len, sizeof(trace) - len, " %.2f", g);
+        }
+        LOG_I("room", "room test step: gap every 100 ms (m):%s; peak %.2f", trace, peak);
+        report("2.5 s after the step");
         head_pose::set_sim_offset(0, 0);
-        Sleep(3000);
-        report("stepped back, 3 s later");
+        Sleep(2500);
+        report("stepped back, 2.5 s later");
         xinput_hook::set_virtual(false);
         return;
     }

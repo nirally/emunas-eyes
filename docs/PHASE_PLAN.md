@@ -13,13 +13,14 @@ Mode: agentic | Gate: hard | Stage 4 of 10 — movement and comfort
 ✅ Stage 3 passed (D-027): Quest 2 controllers play the whole game; pause = tap left stick click, map = hold; vibration; comfort 5
 ⚠ Mod turning (180°/s) tried in 4a/4b: the game ignores it while Faith runs → off; the game's stick turning is back. "Run where you look" off (user prefers the stick)
 ✅ Turning with the game's stick, comfortable; real crouch = slide, view at Faith's head (PLAYTEST-4c/4d: "great", comfort 5)
-🔧 Built, not yet tested: real steps move Faith; no leaning through walls (D-029, BUG-007) → PLAYTEST-4e
+✅ Real steps move Faith; walls stop the view; fights better (PLAYTEST-4e)
+🔧 Built, not yet tested: Faith moves with your steps instead of after them → PLAYTEST-4f
 🚧 In progress: Stage 4 — next: comfort options (vignette, recentre button, seated), traversal options
 ⬜ Not started: hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-4e (~10 min, standing)
+❓ Need from you: PLAYTEST-4f (~5 min, standing)
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-4e. Me: comfort options while you test.
+▶ Next: You: PLAYTEST-4f. Me: comfort options while you test.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
