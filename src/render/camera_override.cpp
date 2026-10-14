@@ -298,6 +298,11 @@ void finish(vm::LinearTransform* a, vm::LinearTransform* b, int eye_index, vm::Q
 void update_room(const vm::LinearTransform& game_cam) {
     const head_pose::Sample s = head_pose::current();
     const bool active = g_room_on.load() && (s.headset || g_room_sim.load()) && s.relative.valid;
+    static unsigned seen_recenters = 0;
+    if (head_pose::recenter_count() != seen_recenters) {  // new origin: room-scale starts fresh
+        seen_recenters = head_pose::recenter_count();
+        g_room.primed = false;
+    }
     g_room_active = active;
     if (!active) {
         g_room.primed = false;

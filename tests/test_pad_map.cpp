@@ -14,7 +14,7 @@ TEST(pad_map_right_handed_layout) {
     CHECK((p.buttons & kLB) && !(p.buttons & kRB));   // left grip: Up actions
     CHECK((p.buttons & kX) && (p.buttons & kB));      // X light attack (left), B disruptor (right)
     CHECK(!(p.buttons & kA) && !(p.buttons & kY));
-    CHECK(!(p.buttons & kBack) && (p.buttons & kRightThumb) && (p.buttons & kStart));  // map/pause via TapHold
+    CHECK(!(p.buttons & kBack) && !(p.buttons & kRightThumb) && (p.buttons & kStart));  // stick clicks via TapHold
 }
 
 TEST(pad_map_left_handed_mirrors) {

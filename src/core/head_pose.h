@@ -22,6 +22,7 @@ Sample current();
 // Headset (render thread, from OpenXR).
 void set_headset_pose(const Pose& absolute, bool valid);
 void request_recenter();     // next headset sample becomes the origin (heading + position)
+unsigned recenter_count();   // recentres completed so far
 
 // Per-eye geometry relative to the head (from the runtime; defaults to 63 mm IPD, 90 deg FOV).
 struct Eye {

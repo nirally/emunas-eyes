@@ -35,6 +35,8 @@ bool g_ready = false;
 std::atomic<bool> g_left_handed{false}, g_stick_pitch{false};
 bool g_pad_on = false;
 pad_map::TapHold g_stick_click;  // move-hand stick click: Pause / Map
+pad_map::TapHold g_turn_click{1.0, 0.15};  // turn-hand stick click: Runner's Vision / recentre (hold 1 s)
+bool g_recentred = false;
 pad_map::Crouch g_crouch;          // physical crouch (comfort.physical_crouch / crouch_depth)
 std::atomic<bool> g_crouch_on{true};
 ULONGLONG g_hello_until = 0;     // short buzz on both hands when the virtual pad comes on
@@ -257,6 +259,17 @@ void sync(XrTime /*time*/, bool focused) {
                 }
                 pad.buttons |= g_stick_click.update(hand[move].stick_click, GetTickCount64() / 1000.0, pad_map::kStart,
                                                     pad_map::kBack);  // tap: pause, hold: map
+                // Turn-hand stick click: tap = Runner's Vision, hold 1 s = recentre (+ a short buzz).
+                constexpr uint16_t kRecentre = 0x0400;  // internal, never sent to the game
+                const uint16_t r3 = g_turn_click.update(hand[turn].stick_click, GetTickCount64() / 1000.0,
+                                                        pad_map::kRightThumb, kRecentre);
+                pad.buttons |= r3 & pad_map::kRightThumb;
+                if ((r3 & kRecentre) && !g_recentred) {
+                    head_pose::request_recenter();
+                    g_hello_until = GetTickCount64() + 150;
+                    LOG_I("input", "recentre (held right stick click)");
+                }
+                g_recentred = (r3 & kRecentre) != 0;
                 xinput_hook::set_pad(pad);
 
                 // The game's rumble: low-frequency motor -> move hand, high-frequency -> turn hand.

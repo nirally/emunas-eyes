@@ -1,5 +1,6 @@
 #include "core/head_pose.h"
 
+#include <atomic>
 #include <windows.h>
 
 #include <cmath>
@@ -13,6 +14,7 @@ std::mutex g_mutex;
 // Headset
 Pose g_headset;
 bool g_recenter_pending = false;
+std::atomic<unsigned> g_recenters{0};  // completed recentres (room-scale starts fresh after one)
 vm::Quat g_origin_rot;   // heading only
 vm::Vec3 g_origin_pos;
 Pose g_rendered;
@@ -42,6 +44,7 @@ void set_headset_pose(const Pose& absolute, bool valid) {
         g_recenter_pending = false;
         g_origin_rot = vm::yaw_quat(heading_of(absolute.rotation));
         g_origin_pos = absolute.position;
+        ++g_recenters;
     }
 }
 
@@ -128,4 +131,8 @@ void set_sim_offset(float x, float z) {
     g_sim_x = x;
     g_sim_z = z;
 }
+}  // namespace mecvr::head_pose
+
+namespace mecvr::head_pose {
+unsigned recenter_count() { return g_recenters.load(); }
 }  // namespace mecvr::head_pose

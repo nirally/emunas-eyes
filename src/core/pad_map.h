@@ -51,7 +51,7 @@ inline Pad map(const Hand& left, const Hand& right, bool left_handed, bool stick
     if (tn.secondary) p.buttons |= kB;         // Disruptor
     if (mv.primary) p.buttons |= kX;           // Light attack
     if (mv.secondary) p.buttons |= kY;         // Heavy attack
-    if (tn.stick_click) p.buttons |= kRightThumb;  // Runner's Vision
+    // Turn-hand stick click: tap = Runner's Vision, hold = recentre (TapHold in xr_input, PLAYTEST-4f).
     // Move-hand stick click: tap = Pause, hold = Map (TapHold below sets these; SteamVR keeps the
     // Touch menu button for its dashboard, PLAYTEST-3a). The menu button stays mapped for runtimes
     // that pass it through.

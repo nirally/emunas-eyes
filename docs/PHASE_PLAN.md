@@ -14,12 +14,13 @@ Mode: agentic | Gate: hard | Stage 4 of 10 — movement and comfort
 ⚠ Mod turning (180°/s) tried in 4a/4b: the game ignores it while Faith runs → off; the game's stick turning is back. "Run where you look" off (user prefers the stick)
 ✅ Turning with the game's stick, comfortable; real crouch = slide, view at Faith's head (PLAYTEST-4c/4d: "great", comfort 5)
 ✅ Room-scale: Faith moves with your steps (4f: much better), walls stop the view, fights better (4e); comfort 5
-🚧 In progress: Stage 4 — next: comfort options (vignette, recentre button, seated), traversal options
+🔧 Built, not yet tested: recentre = hold right stick click 1 s (D-030) → PLAYTEST-4g
+🚧 In progress: Stage 4 — next: the Stage 4 gate (a longer session)
 ⬜ Not started: hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: nothing right now
+❓ Need from you: PLAYTEST-4g (~3 min)
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: Me: comfort options (recentre button, seated mode), then traversal.
+▶ Next: You: PLAYTEST-4g. Then the Stage 4 sign-off.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -124,12 +125,12 @@ Design (D-028): the mod owns the view heading W (stick turns + the game's own tu
 Plan: 4a turning + body-follows-head + physical crouch (built) -> 4b room-scale: real walking moves Faith (push the body toward the head with the move stick, BUG-007) -> 4c comfort: vignette (default low/off), recentre on a button, seated mode, height calibration -> 4d traversal: per-move options (fade/vignette) for vaults, climbs, wall-runs, ziplines, MAG Rope swing.
 Verify: simulator tests for each piece (TURNTEST, PADTEST, MOUSETEST), then PLAYTEST-4a..4d; Stage 4 gate: comfort over a full mission chapter.
 Risk: injected mouse while the game shows a mouse cursor (menus) -> steering only while the game's time runs and the window is in front.
-- [ ] ★ Smooth locomotion (head/controller-relative) mapped to Faith's run with momentum preserved
+- [x] ★ Smooth locomotion: the game's own stick movement (momentum native); body-relative by user choice (D-028 update)
 - [x] ★ **Smooth turn default**: the game's stick turning (mod turning tried, D-028, off: the game ignores mouse while running); snap turn not offered yet
-- [ ] Vignette (default: low, user-adjustable), seated/standing, height offset, recenter
+- [x] Recentre on the controllers: hold right stick click 1 s (D-030); height offset F2/F3 (Stage 1); vignette, seated mode, traversal fades not wanted by the user (D-030)
 - [~] ★ Physical crouch → slide (PLAYTEST-4d); jump on the left grip (Stage 3); room-scale: Faith moves with your steps, walls stop the view (D-029, PLAYTEST-4e/4f)
-- [ ] ★ Vaults, ledge climbs, wall-runs, wall-climbs, bars, ziplines, ladders/pipes: world moves under fixed head + optional fade per type
-- [ ] ★ MAG Rope swing comfort option
+- [x] ★ Vaults, ledge climbs, wall-runs, wall-climbs, bars, ziplines, ladders/pipes: the game camera motion passes through (D-014, user wants it); fades not wanted (D-030)
+- [x] ★ MAG Rope swing: game camera motion (D-014/D-015a, PLAYTEST-1f: smooth); no extra option wanted (D-030)
 - [ ] Teleport: not built (D-003)
 
 ### Stage 5 — Physics hands and grabbing (M)
