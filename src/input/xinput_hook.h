@@ -21,6 +21,10 @@ void set_pad(const Pad& pad);
 // Last vibration the game asked for on controller 0 (0..65535 each).
 void last_vibration(uint16_t& left_motor, uint16_t& right_motor);
 
+// Room-scale walking (D-029): stick added while the player's move stick is idle (y + = forward).
+void set_room_stick(float x, float y);
+bool move_stick_in_use();
+
 void report();  // render/main thread, every 10 s
 
 // Developer test (main loop): PADTEST file plays the pad states listed in padtest.txt.

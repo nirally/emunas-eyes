@@ -18,6 +18,8 @@
     "diagnostics.mod_turning_sim": { "type": "bool", "default": false, "section": "Diagnostics", "label": "Mod-owned turning also without a headset (developer tests)" },
     "comfort.physical_crouch":    { "type": "bool",  "default": true,  "section": "Comfort", "label": "Crouch in real life to slide (when running) - the game has no standing crouch" },
     "comfort.crouch_depth":       { "type": "float", "min": 0.1, "max": 0.8, "default": 0.25, "unit": "m", "section": "Comfort", "label": "How far below standing height counts as crouching" },
+    "comfort.roomscale":          { "type": "bool",  "default": true,  "section": "Comfort", "label": "Real steps move Faith (she walks to where you stand)" },
+    "diagnostics.room_sim":       { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Room-scale also without a headset (developer tests)" },
     "rendering.taa_per_eye":      { "type": "bool",  "default": true,  "section": "Rendering", "label": "Anti-aliasing history kept per eye (sharper, less shimmer in 3D)" },
     "camera.pitch_source":        { "type": "enum",  "values": ["auto", "game", "head"], "default": "auto", "section": "Comfort", "label": "Look up/down from: auto (headset if present), game (mouse/stick), head" },
     "diagnostics.log_level":      { "type": "enum",  "values": ["error", "warn", "info", "debug", "trace"], "default": "info", "section": "Diagnostics", "label": "Log level" },

@@ -17,7 +17,9 @@
 #include "core/head_pose.h"
 #include "core/sigscan.h"
 #include "core/vmath.h"
+#include "core/room_model.h"
 #include "core/yaw_model.h"
+#include "input/xinput_hook.h"
 #include "input/yaw_drive.h"
 #include "render/time_sync.h"
 #include "diagnostics/log.h"
@@ -76,6 +78,15 @@ std::atomic<float> g_world_yaw{0};          // W, for both camera sites
 std::atomic<bool> g_turning_sim{false};    // diagnostics.mod_turning_sim: also without a headset (tests)
 std::atomic<bool> g_body_follows_head{false}; // input.body_follows_head: steer the game to where the head looks
 std::atomic<bool> g_crouch_slide{false};      // physical crouch started a slide: drop the real crouch from the view
+// Room-scale (D-029): Faith walks to where you stand; the view uses the part she hasn't caught up with.
+std::atomic<bool> g_room_on{true};          // comfort.roomscale
+std::atomic<bool> g_room_sim{false};        // diagnostics.room_sim: also without a headset (tests)
+std::atomic<bool> g_room_active{false};
+std::atomic<float> g_room_view_x{0}, g_room_view_z{0};
+room_model::Model g_room;
+vm::Vec3 g_room_last_pos;
+std::atomic<float> g_game_px{0}, g_game_pz{0};  // game camera position (tests)
+bool g_room_have_pos = false;
 float g_crouch_blend = 0;                     // 0 = real head height, 1 = no downward head offset (game thread)
 yaw_model::Model g_yaw;
 yaw_model::Snap g_snap_state;
@@ -240,6 +251,10 @@ void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, v
     // While a crouch-slide runs, the game's camera already holds Faith's low head: blend the real head's
     // downward offset out (0.25 s each way), or the view would drop twice and clip the floor (PLAYTEST-4c).
     vm::Vec3 head_pos = head.position;
+    if (g_room_active.load()) {  // room-scale: only the part of the step Faith hasn't walked yet
+        head_pos.x = g_room_view_x.load();
+        head_pos.z = g_room_view_z.load();
+    }
     {
         static ULONGLONG last = GetTickCount64();
         const ULONGLONG now = GetTickCount64();
@@ -279,6 +294,34 @@ void finish(vm::LinearTransform* a, vm::LinearTransform* b, int eye_index, vm::Q
     remember(final_rot, final_pos, abs, eye_index);
 }
 
+// Once per game frame: Faith's movement in her body frame -> room model -> walking stick + view offset.
+void update_room(const vm::LinearTransform& game_cam) {
+    const head_pose::Sample s = head_pose::current();
+    const bool active = g_room_on.load() && (s.headset || g_room_sim.load()) && s.relative.valid;
+    g_room_active = active;
+    if (!active) {
+        g_room.primed = false;
+        g_room_have_pos = false;
+        xinput_hook::set_room_stick(0, 0);
+        return;
+    }
+    const float heading = g_turning_active.load() ? g_world_yaw.load() : vm::heading_of(game_cam);
+    const vm::Vec3 pos = game_cam.t();
+    vm::Vec3 moved_world = g_room_have_pos ? pos - g_room_last_pos : vm::Vec3{0, 0, 0};
+    g_room_last_pos = pos;
+    g_game_px = pos.x;
+    g_game_pz = pos.z;
+    g_room_have_pos = true;
+    if (moved_world.length() > 2.f) moved_world = {0, 0, 0};  // respawn / teleport: not a step
+    const vm::Vec3 moved = vm::yaw_quat(-heading).rotate(moved_world);
+    room_model::V2 view;
+    const room_model::Stick cmd = g_room.update({s.relative.position.x, s.relative.position.z}, {moved.x, moved.z},
+                                                xinput_hook::move_stick_in_use(), view);
+    xinput_hook::set_room_stick(cmd.x, cmd.y);
+    g_room_view_x = view.x;
+    g_room_view_z = view.z;
+}
+
 // Once per game frame, before composing: advance the turning model and steer the game.
 void update_turning(const vm::LinearTransform& game_cam) {
     const head_pose::Sample s = head_pose::current();
@@ -316,6 +359,7 @@ void apply(uint8_t* data) {
     ++g_main_count;
     auto* a = reinterpret_cast<vm::LinearTransform*>(data);
     update_turning(*a);
+    update_room(*a);
     {
         std::lock_guard lock(g_final_mutex);
         g_game_fwd = (a->b() * -1.f).normalized();
@@ -738,4 +782,17 @@ void report_turning() {
 
 namespace mecvr::camera_override {
 void set_crouch_slide(bool on) { g_crouch_slide = on; }
+}  // namespace mecvr::camera_override
+
+namespace mecvr::camera_override {
+void set_roomscale(bool on) { g_room_on = on; }
+void set_room_sim(bool on) { g_room_sim = on; }
+void room_offset(float& x, float& z) {
+    x = g_room_view_x.load();
+    z = g_room_view_z.load();
+}
+}  // namespace mecvr::camera_override
+
+namespace mecvr::camera_override {
+vm::Vec3 game_position() { return {g_game_px.load(), 0, g_game_pz.load()}; }
 }  // namespace mecvr::camera_override

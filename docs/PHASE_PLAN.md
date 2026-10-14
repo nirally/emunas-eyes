@@ -13,12 +13,13 @@ Mode: agentic | Gate: hard | Stage 4 of 10 — movement and comfort
 ✅ Stage 3 passed (D-027): Quest 2 controllers play the whole game; pause = tap left stick click, map = hold; vibration; comfort 5
 ⚠ Mod turning (180°/s) tried in 4a/4b: the game ignores it while Faith runs → off; the game's stick turning is back. "Run where you look" off (user prefers the stick)
 ✅ Turning with the game's stick, comfortable; real crouch = slide, view at Faith's head (PLAYTEST-4c/4d: "great", comfort 5)
-🚧 In progress: Stage 4 — next: room-scale walking (BUG-007), comfort options, traversal
+🔧 Built, not yet tested: real steps move Faith; no leaning through walls (D-029, BUG-007) → PLAYTEST-4e
+🚧 In progress: Stage 4 — next: comfort options (vignette, recentre button, seated), traversal options
 ⬜ Not started: hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: nothing right now
+❓ Need from you: PLAYTEST-4e (~10 min, standing)
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: Me: room-scale walking (BUG-007), then comfort options.
+▶ Next: You: PLAYTEST-4e. Me: comfort options while you test.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -126,7 +127,7 @@ Risk: injected mouse while the game shows a mouse cursor (menus) -> steering onl
 - [ ] ★ Smooth locomotion (head/controller-relative) mapped to Faith's run with momentum preserved
 - [x] ★ **Smooth turn default**: the game's stick turning (mod turning tried, D-028, off: the game ignores mouse while running); snap turn not offered yet
 - [ ] Vignette (default: low, user-adjustable), seated/standing, height offset, recenter
-- [~] ★ Physical crouch → slide (the game has no crouch-walk; PLAYTEST-4d); jump on the left grip (Stage 3); roomscale collider next
+- [~] ★ Physical crouch → slide (PLAYTEST-4d); jump on the left grip (Stage 3); room-scale: Faith walks to where you stand, walls stop the view (D-029) — PLAYTEST-4e
 - [ ] ★ Vaults, ledge climbs, wall-runs, wall-climbs, bars, ziplines, ladders/pipes: world moves under fixed head + optional fade per type
 - [ ] ★ MAG Rope swing comfort option
 - [ ] Teleport: not built (D-003)

@@ -40,5 +40,7 @@ int rendered_eye();  // -1 = mono frame
 // Desktop simulator (no headset): numpad drives the head.
 //   4/6 yaw, 8/2 pitch, 7/9 roll, +/- height, 5 recentre (also recentres the headset).
 void sim_update(float dt_seconds);
+// Simulated step in the room (metres, x right, z back), for room-scale tests.
+void set_sim_offset(float x, float z);
 
 }  // namespace mecvr::head_pose

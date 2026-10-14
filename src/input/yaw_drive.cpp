@@ -6,6 +6,8 @@
 #include <cmath>
 
 #include "diagnostics/log.h"
+#include "core/head_pose.h"
+#include "core/vmath.h"
 #include "input/xinput_hook.h"
 #include "render/camera_override.h"
 
@@ -37,6 +39,28 @@ bool inject(int dx) {
 
 void poll_test(const std::filesystem::path& dir) {
     std::error_code ec;
+    if (std::filesystem::remove(dir / L"ROOMTEST", ec)) {
+        // Simulated 50 cm step forward, hold, step back; log where Faith is and what the view adds.
+        xinput_hook::set_pad({});
+        xinput_hook::set_virtual(true);
+        auto report = [](const char* when) {
+            float x = 0, z = 0;
+            camera_override::room_offset(x, z);
+            const vm::Vec3 p = camera_override::game_position();
+            LOG_I("room", "room test %s: Faith at (%.2f, %.2f), view offset (%+.2f, %+.2f) m", when, p.x, p.z, x, z);
+        };
+        report("start");
+        head_pose::set_sim_offset(0, -0.5f);
+        Sleep(150);
+        report("just stepped forward 0.5 m");
+        Sleep(3000);
+        report("3 s later");
+        head_pose::set_sim_offset(0, 0);
+        Sleep(3000);
+        report("stepped back, 3 s later");
+        xinput_hook::set_virtual(false);
+        return;
+    }
     // TURNTESTPAD: same with the virtual pad active; TURNTESTRUN: running forward; TURNTESTSLIDE: running + Down.
     const bool run = std::filesystem::remove(dir / L"TURNTESTRUN", ec);
     const bool slide = std::filesystem::remove(dir / L"TURNTESTSLIDE", ec);

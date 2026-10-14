@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
 
+#include "core/vmath.h"
+
 namespace mecvr::camera_override {
 
 enum class PitchSource { Auto, Game, Head };
@@ -64,6 +66,12 @@ void report_turning();  // every 10 s
 
 // Physical crouch started a slide (xr_input): the view stops adding the real crouch while it lasts.
 void set_crouch_slide(bool on);
+
+// Room-scale (D-029, comfort.roomscale): Faith walks to where you stand when your move stick is idle.
+void set_roomscale(bool on);
+void set_room_sim(bool on);                // diagnostics.room_sim (developer)
+void room_offset(float& x, float& z);     // view offset Faith hasn't caught up with (m, body frame)
+vm::Vec3 game_position();                  // game camera position, horizontal (tests)
 
 // rendering.full_fov: with a headset, the game camera's FOV and aspect are set to cover both eyes'
 // full field of view (from the runtime), so the picture fills the headset instead of a window.

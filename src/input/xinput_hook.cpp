@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <cstdio>
+#include <cstdlib>
 #include <mutex>
 #include <filesystem>
 #include <string>
@@ -14,6 +15,7 @@
 #include <MinHook.h>
 
 #include "diagnostics/log.h"
+#include "render/camera_override.h"
 
 namespace mecvr::xinput_hook {
 namespace {
@@ -40,6 +42,7 @@ std::mutex g_pad_mutex;
 Pad g_pad;
 DWORD g_packet = 0;
 std::atomic<uint32_t> g_vibration{0};  // left << 16 | right
+std::atomic<float> g_room_x{0}, g_room_y{0};  // room-scale walking stick (camera thread)
 std::atomic<uint32_t> g_vib_max_slot[4];  // strongest request per controller slot (diagnostics)
 
 // Stats: calls per (dll, entry, user index 0..3), and one caller per entry.
@@ -56,11 +59,18 @@ bool serve(DWORD user, XINPUT_STATE* st) {
     if (!g_virtual.load() || user != 0 || !st) return false;
     std::lock_guard lock(g_pad_mutex);
     st->dwPacketNumber = ++g_packet;
+    // Room-scale walking (D-029): when the player's move stick is idle, walk Faith to the real head.
+    int16_t lx = g_pad.lx, ly = g_pad.ly;
+    const float rx = g_room_x.load(), ry = g_room_y.load();
+    if ((rx != 0 || ry != 0) && std::abs(lx) < 6000 && std::abs(ly) < 6000) {
+        lx = int16_t(rx * 32767.f);
+        ly = int16_t(ry * 32767.f);
+    }
     st->Gamepad.wButtons = g_pad.buttons;
     st->Gamepad.bLeftTrigger = g_pad.left_trigger;
     st->Gamepad.bRightTrigger = g_pad.right_trigger;
-    st->Gamepad.sThumbLX = g_pad.lx;
-    st->Gamepad.sThumbLY = g_pad.ly;
+    st->Gamepad.sThumbLX = lx;
+    st->Gamepad.sThumbLY = ly;
     st->Gamepad.sThumbRX = g_pad.rx;
     st->Gamepad.sThumbRY = g_pad.ry;
     return true;
@@ -219,7 +229,10 @@ void poll_test(const std::filesystem::path& dir) {
         p.left_trigger = uint8_t(lt); p.right_trigger = uint8_t(rt);
         set_pad(p);
         LOG_I("input", "pad test: buttons %04x L(%d,%d) R(%d,%d) T(%d,%d) for %d ms", buttons, lx, ly, rx, ry, lt, rt, ms);
+        const vm::Vec3 p0 = camera_override::game_position();
         Sleep(ms);
+        const vm::Vec3 p1 = camera_override::game_position();
+        LOG_I("input", "pad test step moved Faith %.2f m (%.2f m/s)", (p1 - p0).length(), (p1 - p0).length() * 1000.f / (ms ? ms : 1));
         ++steps;
     }
     fclose(f);
@@ -227,5 +240,16 @@ void poll_test(const std::filesystem::path& dir) {
     Sleep(100);
     g_virtual = was;
     LOG_I("input", "pad test done (%d steps)", steps);
+}
+}  // namespace mecvr::xinput_hook
+
+namespace mecvr::xinput_hook {
+void set_room_stick(float x, float y) {
+    g_room_x = x;
+    g_room_y = y;
+}
+bool move_stick_in_use() {
+    std::lock_guard lock(g_pad_mutex);
+    return std::abs(g_pad.lx) >= 6000 || std::abs(g_pad.ly) >= 6000;
 }
 }  // namespace mecvr::xinput_hook

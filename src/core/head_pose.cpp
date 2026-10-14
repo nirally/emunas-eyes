@@ -21,6 +21,7 @@ Eye g_eyes[2] = {{{-0.0315f, 0, 0}, {}}, {{0.0315f, 0, 0}, {}}};  // fov keeps i
 
 // Simulator
 float g_yaw = 0, g_pitch = 0, g_roll = 0, g_height = 0;
+float g_sim_x = 0, g_sim_z = 0;  // simulated step in the room (ROOMTEST)
 constexpr float kTurnRate = 1.5f;     // rad/s (~86 deg/s)
 constexpr float kHeightRate = 0.5f;   // m/s
 
@@ -113,10 +114,18 @@ Sample current() {
     // Yaw about world up, then pitch about the new right axis, then roll about the view axis.
     s.relative.rotation = vm::yaw_quat(g_yaw) * vm::Quat::axis_angle({1, 0, 0}, g_pitch) *
                           vm::Quat::axis_angle({0, 0, 1}, g_roll);
-    s.relative.position = {0, g_height, 0};
+    s.relative.position = {g_sim_x, g_height, g_sim_z};
     s.relative.valid = true;
     s.absolute = s.relative;
     return s;
 }
 
+}  // namespace mecvr::head_pose
+
+namespace mecvr::head_pose {
+void set_sim_offset(float x, float z) {
+    std::lock_guard lock(g_mutex);
+    g_sim_x = x;
+    g_sim_z = z;
+}
 }  // namespace mecvr::head_pose
