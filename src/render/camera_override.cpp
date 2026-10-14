@@ -18,6 +18,7 @@
 #include "core/sigscan.h"
 #include "core/vmath.h"
 #include "diagnostics/log.h"
+#include "diagnostics/time_recon.h"
 
 namespace mecvr::camera_override {
 namespace {
@@ -57,6 +58,7 @@ std::atomic<bool> g_game_motion{false};     // comfort.game_camera_motion: add t
 std::atomic<bool> g_motion_dirty{false};
 std::atomic<bool> g_stereo{false};          // stereo.mode = alternate: one eye per frame (D-017, H2 step 1)
 std::atomic<int> g_frame_eye{0};             // eye the current game frame renders
+std::atomic<uint64_t> g_main_count{0};        // main-site overrides so far (eye sync checks it advanced)
 std::atomic<bool> g_stereo_dirty{false};
 
 // Last result of the main override, for re-applying at the render-view build.
@@ -242,6 +244,7 @@ void finish(vm::LinearTransform* a, vm::LinearTransform* b, int eye_index, vm::Q
 // Main site: raw camera from the camera manager.
 void apply(uint8_t* data) {
     if (g_stereo.load()) g_frame_eye = g_frame_eye.load() ^ 1;
+    ++g_main_count;
     auto* a = reinterpret_cast<vm::LinearTransform*>(data);
     {
         std::lock_guard lock(g_final_mutex);
@@ -368,6 +371,7 @@ void update_fov(void* cam) {
 void __fastcall setter_detour(void* cam, const void* data) {
     auto ra = reinterpret_cast<uintptr_t>(_ReturnAddress());
     note_caller(ra);
+    if (ra == g_site_return && g_site_return) time_recon::on_game_frame();
     if (ra == g_view_site_return && g_view_site_return && g_enabled.load() && data) {
         alignas(16) uint8_t copy[kDataBytes];
         memcpy(copy, data, kDataBytes);
@@ -510,7 +514,7 @@ void on_present(float dt) {
     if (toggle && !toggle_was) set_enabled(!g_enabled.load());
     toggle_was = toggle;
     static bool stereo_was = false;
-    bool stereo_key = key(VK_F4);
+    bool stereo_key = key(VK_F4) && !key(VK_SHIFT);  // Shift+F4 is eye sync (time_sync)
     static ULONGLONG last_toggle = 0;  // F4/F9: ignore a second press within 0.7 s (key bounce flipped F9 back, PLAYTEST-2b)
     const bool can_toggle = GetTickCount64() - last_toggle > 700;
     if (stereo_key && !stereo_was && can_toggle) {
@@ -624,5 +628,8 @@ void set_stereo(bool on) {
 bool stereo() { return g_stereo.load(); }
 
 bool take_stereo_changed() { return g_stereo_dirty.exchange(false); }
+
+uint64_t main_site_count() { return g_main_count.load(); }
+bool next_frame_is_right_eye() { return g_enabled.load() && g_stereo.load() && g_frame_eye.load() == 0; }
 
 }  // namespace mecvr::camera_override

@@ -14,6 +14,7 @@
 #include "core/window_title.h"
 #include "diagnostics/log.h"
 #include "diagnostics/typeinfo_dump.h"
+#include "diagnostics/time_recon.h"
 
 namespace mecvr::recon { void probe_strings(); }
 namespace mecvr::code_dump { void poll(const std::filesystem::path& dir); }
@@ -25,6 +26,7 @@ namespace mecvr::bug_report { void poll(const std::filesystem::path& mod_dir, co
 #include "render/cb_capture.h"
 #include "render/present_hook.h"
 #include "render/stereo_views.h"
+#include "render/time_sync.h"
 #include "render/xr_session.h"
 
 namespace fs = std::filesystem;
@@ -115,6 +117,7 @@ void on_frame(IDXGISwapChain* chain) {
     float dt = last.QuadPart ? float(now.QuadPart - last.QuadPart) / float(freq.QuadPart) : 0.f;
     last = now;
     camera_override::on_present(dt);
+    time_sync::on_present();
     cb_capture::on_present();
 }
 
@@ -179,8 +182,11 @@ DWORD WINAPI main_thread(LPVOID) {
                 camera_override::set_stereo(g_config.get_string("stereo.mode") == "alternate");
                 camera_override::set_full_fov(g_config.get_bool("rendering.full_fov"));
                 camera_override::set_fov_test(g_config.get_bool("diagnostics.fov_test"));
+                time_sync::set_enabled(g_config.get_bool("stereo.sync"));
+                time_sync::install();
             }
             present_hook::set_frame_callback(&on_frame);
+            if (g_config.get_bool("diagnostics.time_recon")) time_recon::install(dir / L"time_recon.txt");
         }
         if (hooks_ok && !g_config.get_bool("features.vr_enabled")) set_hooks_enabled(false);
     } else {
@@ -200,6 +206,7 @@ DWORD WINAPI main_thread(LPVOID) {
             camera_override::set_height_offset(new_v["comfort.height_offset"].get<float>());
         if (old_v["diagnostics.stereo_experiment"] != new_v["diagnostics.stereo_experiment"])
             stereo_views::set_enabled(new_v["diagnostics.stereo_experiment"].get<bool>());
+        if (old_v["stereo.sync"] != new_v["stereo.sync"]) time_sync::set_enabled(new_v["stereo.sync"].get<bool>());
         if (old_v["stereo.mode"] != new_v["stereo.mode"])
             camera_override::set_stereo(new_v["stereo.mode"].get<std::string>() == "alternate");
         if (old_v["comfort.game_camera_motion"] != new_v["comfort.game_camera_motion"])
@@ -223,6 +230,7 @@ DWORD WINAPI main_thread(LPVOID) {
         if (tick % 4 == 0) code_dump::poll(dir);
         if (tick % 4 == 0) view_recon::poll(dir);
         bug_report::poll(dir, g_config.values().dump());
+        if (time_sync::take_changed()) g_config.set_user_value("stereo.sync", time_sync::enabled());
         if (camera_override::take_stereo_changed())
             g_config.set_user_value("stereo.mode", camera_override::stereo() ? "alternate" : "mono");
         if (camera_override::take_full_fov_changed())

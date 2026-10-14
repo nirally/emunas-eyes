@@ -38,6 +38,10 @@ bool take_motion_changed();
 void set_stereo(bool on);
 bool stereo();
 bool take_stereo_changed();  // F4 toggled it; main thread saves
+// For eye sync (time_sync), game thread: overrides at the main site so far, and whether the next
+// game frame will be drawn as the right eye (the main site flips the eye when it runs).
+uint64_t main_site_count();
+bool next_frame_is_right_eye();
 
 // rendering.full_fov: with a headset, the game camera's FOV and aspect are set to cover both eyes'
 // full field of view (from the runtime), so the picture fills the headset instead of a window.
