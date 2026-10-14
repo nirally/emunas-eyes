@@ -10,8 +10,10 @@
 #include <cstring>
 
 #include "diagnostics/log.h"
+#include "core/head_pose.h"
 #include "core/pad_map.h"
 #include "input/xinput_hook.h"
+#include "render/camera_override.h"
 
 namespace mecvr::xr_input {
 namespace {
@@ -33,6 +35,8 @@ bool g_ready = false;
 std::atomic<bool> g_left_handed{false}, g_stick_pitch{false};
 bool g_pad_on = false;
 pad_map::TapHold g_stick_click;  // move-hand stick click: Pause / Map
+pad_map::Crouch g_crouch;          // physical crouch (comfort.physical_crouch / crouch_depth)
+std::atomic<bool> g_crouch_on{true};
 ULONGLONG g_hello_until = 0;     // short buzz on both hands when the virtual pad comes on
 // Vibration diagnostics (PLAYTEST-3a: none felt): strongest request and haptic call results per 10 s.
 uint16_t g_vib_max[2] = {0, 0};
@@ -222,6 +226,14 @@ void sync(XrTime /*time*/, bool focused) {
             }
             if (active) {
                 pad_map::Pad pad = pad_map::map(hand[0], hand[1], g_left_handed.load(), g_stick_pitch.load());
+                if (g_crouch_on.load() && g_crouch.update(head_pose::current().relative.position.y))
+                    pad.left_trigger = 255;  // physical crouch -> Down actions (crouch / slide)
+                if (camera_override::turning_active()) {  // the mod turns the view; the game follows (D-028)
+                    camera_override::set_turn_input(hand[turn].x);
+                    pad.rx = 0;
+                } else {
+                    camera_override::set_turn_input(0);
+                }
                 pad.buttons |= g_stick_click.update(hand[move].stick_click, GetTickCount64() / 1000.0, pad_map::kStart,
                                                     pad_map::kBack);  // tap: pause, hold: map
                 xinput_hook::set_pad(pad);
@@ -265,5 +277,9 @@ void sync(XrTime /*time*/, bool focused) {
 
 void set_left_handed(bool on) { g_left_handed = on; }
 void set_stick_pitch(bool on) { g_stick_pitch = on; }
+void set_physical_crouch(bool on, float depth_m) {
+    g_crouch_on = on;
+    g_crouch.depth = depth_m;
+}
 
 }  // namespace mecvr::xr_input

@@ -53,6 +53,7 @@ uint64_t g_main_seen = 0;
 bool g_froze_last = false;
 std::atomic<uint64_t> g_frames{0}, g_frozen{0}, g_ticks_held{0};
 std::atomic<int32_t> g_tick_now{0};  // simulation tick reached (stats: should advance 30 per second)
+std::atomic<bool> g_paused{false};  // the game's own dt was 0 on the last normal frame (menus, pause)
 
 void __fastcall update_detour(uint8_t* timer) {
     if (reinterpret_cast<uintptr_t>(_ReturnAddress()) != g_site_return) { g_orig(timer); return; }
@@ -67,6 +68,7 @@ void __fastcall update_detour(uint8_t* timer) {
     g_froze_last = freeze;
     if (!freeze) {
         g_orig(timer);
+        g_paused = *reinterpret_cast<double*>(timer + kDt) <= 0.0;
         if (g_owed > 0) {
             for (int off : {kDt, kDtRaw}) {
                 auto& dt = *reinterpret_cast<double*>(timer + off);
@@ -158,4 +160,8 @@ void on_present() {
     }
 }
 
+}  // namespace mecvr::time_sync
+
+namespace mecvr::time_sync {
+bool game_paused() { return g_paused.load(); }
 }  // namespace mecvr::time_sync

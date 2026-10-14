@@ -16,6 +16,9 @@ bool enabled();
 bool take_changed();        // toggled by key; main thread saves
 void set_hold_dt(double seconds);  // diagnostics.sync_hold_dt: dt held frames report (0 = exactly zero)
 
+// True while the game's own time stands still (pause menu, menus): from the timer the game reads.
+bool game_paused();
+
 // Render thread, once per presented frame: Shift+F4, 10-second stats line.
 void on_present();
 

@@ -32,6 +32,7 @@ namespace mecvr::bug_report { void poll(const std::filesystem::path& mod_dir, co
 #include "render/taa_eyes.h"
 #include "input/xinput_hook.h"
 #include "input/xr_input.h"
+#include "input/yaw_drive.h"
 #include "render/motion_fix.h"
 #include "render/xr_session.h"
 
@@ -195,8 +196,14 @@ DWORD WINAPI main_thread(LPVOID) {
                 time_sync::set_enabled(g_config.get_bool("stereo.sync"));
                 time_sync::set_hold_dt(g_config.get_number("diagnostics.sync_hold_dt"));
                 time_sync::install();
+                camera_override::set_mod_turning(g_config.get_bool("input.mod_turning"));
+                camera_override::set_turning_sim(g_config.get_bool("diagnostics.mod_turning_sim"));
+                camera_override::set_turn_options(static_cast<float>(g_config.get_number("input.turn_speed")), g_config.get_bool("input.snap_turn"),
+                                                  static_cast<float>(g_config.get_number("input.snap_angle")));
                 xr_input::set_left_handed(g_config.get_bool("input.left_handed"));
                 xr_input::set_stick_pitch(g_config.get_bool("input.stick_pitch"));
+                xr_input::set_physical_crouch(g_config.get_bool("comfort.physical_crouch"),
+                                              static_cast<float>(g_config.get_number("comfort.crouch_depth")));
                 taa_eyes::set_enabled(g_config.get_bool("rendering.taa_per_eye"));
                 taa_eyes::set_motion_fix(g_config.get_bool("diagnostics.taa_motion_fix"));
                 motion_fix::set_debug_zero(g_config.get_bool("diagnostics.motion_fix_debug"));
@@ -230,8 +237,18 @@ DWORD WINAPI main_thread(LPVOID) {
             motion_fix::set_debug_zero(new_v["diagnostics.motion_fix_debug"].get<bool>());
         if (old_v["diagnostics.taa_motion_fix"] != new_v["diagnostics.taa_motion_fix"])
             taa_eyes::set_motion_fix(new_v["diagnostics.taa_motion_fix"].get<bool>());
+        if (old_v["diagnostics.mod_turning_sim"] != new_v["diagnostics.mod_turning_sim"])
+            camera_override::set_turning_sim(new_v["diagnostics.mod_turning_sim"].get<bool>());
+        if (old_v["input.mod_turning"] != new_v["input.mod_turning"])
+            camera_override::set_mod_turning(new_v["input.mod_turning"].get<bool>());
+        if (old_v["input.turn_speed"] != new_v["input.turn_speed"] || old_v["input.snap_turn"] != new_v["input.snap_turn"] ||
+            old_v["input.snap_angle"] != new_v["input.snap_angle"])
+            camera_override::set_turn_options(new_v["input.turn_speed"].get<float>(), new_v["input.snap_turn"].get<bool>(),
+                                              new_v["input.snap_angle"].get<float>());
         if (old_v["input.left_handed"] != new_v["input.left_handed"])
             xr_input::set_left_handed(new_v["input.left_handed"].get<bool>());
+        if (old_v["comfort.physical_crouch"] != new_v["comfort.physical_crouch"] || old_v["comfort.crouch_depth"] != new_v["comfort.crouch_depth"])
+            xr_input::set_physical_crouch(new_v["comfort.physical_crouch"].get<bool>(), new_v["comfort.crouch_depth"].get<float>());
         if (old_v["input.stick_pitch"] != new_v["input.stick_pitch"])
             xr_input::set_stick_pitch(new_v["input.stick_pitch"].get<bool>());
         if (old_v["rendering.taa_per_eye"] != new_v["rendering.taa_per_eye"])
@@ -266,7 +283,9 @@ DWORD WINAPI main_thread(LPVOID) {
         if (++tick % 20 == 0) log_export_calls();  // every 10 s; only logs exports whose count changed
         xinput_hook::poll_install();
         xinput_hook::poll_test(dir);
+        yaw_drive::poll_test(dir);
         if (tick % 20 == 0) xinput_hook::report();
+        if (tick % 20 == 0) camera_override::report_turning();
         if (tick % 4 == 0) code_dump::poll(dir);
         if (tick % 4 == 0) view_recon::poll(dir);
         if (tick % 4 == 0) mem_find::poll(dir);

@@ -17,6 +17,9 @@
 #include "core/head_pose.h"
 #include "core/sigscan.h"
 #include "core/vmath.h"
+#include "core/yaw_model.h"
+#include "input/yaw_drive.h"
+#include "render/time_sync.h"
 #include "diagnostics/log.h"
 #include "diagnostics/time_recon.h"
 
@@ -62,6 +65,18 @@ std::atomic<uint64_t> g_main_count{0};        // main-site overrides so far (eye
 std::atomic<bool> g_zero_ipd{false};           // diagnostics.zero_ipd: both eyes at the head centre (eye-sync checks)
 std::atomic<float> g_ipd_scale{1.f};          // diagnostics.ipd_scale: exaggerate the eye offset (TAA eye-mixing checks)
 std::atomic<bool> g_ipd_vertical{false};      // diagnostics.ipd_vertical: eyes above each other (motion-fix y check)
+// Mod-owned turning (D-028): the view heading W comes from yaw_model; the game is steered after it.
+std::atomic<bool> g_mod_turning{true};     // input.mod_turning (only with a headset)
+std::atomic<bool> g_turning_active{false}; // in effect this frame
+std::atomic<float> g_turn_x{0};            // turn stick, + = right (render thread -> game thread)
+std::atomic<float> g_turn_speed{3.14159f}; // rad/s at full stick (input.turn_speed)
+std::atomic<bool> g_snap{false};
+std::atomic<float> g_snap_angle{0.785f};
+std::atomic<float> g_world_yaw{0};          // W, for both camera sites
+std::atomic<bool> g_turning_sim{false};    // diagnostics.mod_turning_sim: also without a headset (tests)
+yaw_model::Model g_yaw;
+yaw_model::Snap g_snap_state;
+uint64_t g_inject_counts = 0, g_game_turns_seen = 0;
 std::atomic<bool> g_stereo_dirty{false};
 
 // Last result of the main override, for re-applying at the render-view build.
@@ -192,7 +207,8 @@ void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, v
     // Body frame: game heading only. Pitch from the game only when no headset drives it.
     PitchSource ps = g_pitch_source.load();
     bool game_pitch_on = ps == PitchSource::Game || (ps == PitchSource::Auto && !s.headset);
-    vm::Quat body = vm::yaw_quat(game_yaw);
+    // Body frame: the mod's heading when it owns turning (D-028), else the game's.
+    vm::Quat body = vm::yaw_quat(g_turning_active.load() ? g_world_yaw.load() : game_yaw);
     vm::Quat view = game_pitch_on ? body * vm::Quat::axis_angle({1, 0, 0}, game_pitch) : body;
 
     vm::Quat final_rot = (view * head.rotation).normalized();
@@ -248,11 +264,41 @@ void finish(vm::LinearTransform* a, vm::LinearTransform* b, int eye_index, vm::Q
     remember(final_rot, final_pos, abs, eye_index);
 }
 
+// Once per game frame, before composing: advance the turning model and steer the game.
+void update_turning(const vm::LinearTransform& game_cam) {
+    const head_pose::Sample s = head_pose::current();
+    const bool active = g_mod_turning.load() && (s.headset || g_turning_sim.load()) && s.relative.valid;
+    g_turning_active = active;
+    if (!active) {
+        g_yaw.primed = false;  // re-primes without a jump next time
+        return;
+    }
+    static LARGE_INTEGER freq{}, last{};
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    if (!freq.QuadPart) QueryPerformanceFrequency(&freq);
+    const double t = double(now.QuadPart) / double(freq.QuadPart);
+    const float dt = last.QuadPart ? float(double(now.QuadPart - last.QuadPart) / double(freq.QuadPart)) : 0.f;
+    last = now;
+    const float x = g_turn_x.load();
+    float turn = 0;
+    if (g_snap.load()) turn = g_snap_state.update(x, g_snap_angle.load());
+    else if (std::fabs(x) > 0.15f) turn = -x * g_turn_speed.load() * (dt < 0.1f ? dt : 0.1f);
+    const vm::Vec3 f = s.relative.rotation.rotate({0, 0, -1});
+    const float head_yaw = std::atan2(-f.x, -f.z);
+    const float before = g_yaw.world;
+    const int counts = g_yaw.update(t, vm::heading_of(game_cam), head_yaw, turn, !time_sync::game_paused());
+    if (std::fabs(yaw_model::wrap(g_yaw.world - before - turn)) > 0.01f) ++g_game_turns_seen;
+    if (counts && yaw_drive::inject(counts)) g_inject_counts += uint64_t(counts < 0 ? -counts : counts);
+    g_world_yaw = g_yaw.world;
+}
+
 // Main site: raw camera from the camera manager.
 void apply(uint8_t* data) {
     if (g_stereo.load()) g_frame_eye = g_frame_eye.load() ^ 1;
     ++g_main_count;
     auto* a = reinterpret_cast<vm::LinearTransform*>(data);
+    update_turning(*a);
     {
         std::lock_guard lock(g_final_mutex);
         g_game_fwd = (a->b() * -1.f).normalized();
@@ -643,4 +689,31 @@ void set_ipd_scale(float s) { g_ipd_scale = s; }
 void set_ipd_vertical(bool on) { g_ipd_vertical = on; }
 int rendering_eye() { return g_render_eye.load(); }
 
+}  // namespace mecvr::camera_override
+
+namespace mecvr::camera_override {
+float game_heading() {
+    std::lock_guard lock(g_final_mutex);
+    return std::atan2(-g_game_fwd.x, -g_game_fwd.z);  // 0 = looking down -Z, + = turned left (yaw_of convention)
+}
+}  // namespace mecvr::camera_override
+
+namespace mecvr::camera_override {
+void set_mod_turning(bool on) { g_mod_turning = on; }
+void set_turning_sim(bool on) { g_turning_sim = on; }
+float world_heading() { return g_world_yaw.load(); }
+void set_turn_input(float x) { g_turn_x = x; }
+void set_turn_options(float speed_deg_s, bool snap, float snap_deg) {
+    g_turn_speed = speed_deg_s / 57.29578f;
+    g_snap = snap;
+    g_snap_angle = snap_deg / 57.29578f;
+}
+bool turning_active() { return g_turning_active.load(); }
+void report_turning() {
+    if (!g_turning_active.load()) return;
+    LOG_I("camera", "turning: view heading %.1f deg, game %.1f deg off it; mouse counts injected %llu; game's own turns %llu frames",
+          g_world_yaw.load() * 57.29578f, yaw_model::wrap(game_heading() - g_world_yaw.load()) * 57.29578f,
+          (unsigned long long)g_inject_counts, (unsigned long long)g_game_turns_seen);
+    g_inject_counts = g_game_turns_seen = 0;
+}
 }  // namespace mecvr::camera_override

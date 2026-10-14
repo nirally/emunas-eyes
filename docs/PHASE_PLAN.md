@@ -5,18 +5,19 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-14
-Mode: agentic | Gate: hard | Stage 4 of 10 — movement and comfort (brief)
+Mode: agentic | Gate: hard | Stage 4 of 10 — movement and comfort
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
 ✅ Stage 2 passed (D-025): true 3D, full headset view, sharp at 2880x1620 (DSR), eyes in sync, anti-aliasing per eye, effects correct in both eyes; size/depth 5/5, comfort 5
 ✅ Log complete again in PLAYTEST-2d (BUG-009 monitoring; the two-process case hasn't recurred)
 ✅ Stage 3 passed (D-027): Quest 2 controllers play the whole game; pause = tap left stick click, map = hold; vibration; comfort 5
-🚧 In progress: Stage 4 — movement and comfort: planning
+🔧 Built, not yet tested: forward = where you look, mod turning (180°/s, snap optional), real crouch (D-028) → PLAYTEST-4a
+🚧 In progress: Stage 4 — next: room-scale walking (BUG-007), comfort options, traversal
 ⬜ Not started: hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: nothing right now
+❓ Need from you: PLAYTEST-4a (~15 min, headset)
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: Me: Stage 4 brief and first build.
+▶ Next: You: PLAYTEST-4a. Me: room-scale walking while you test.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -113,6 +114,14 @@ Risk: the game may mix keyboard/mouse and pad prompts or switch input mode when 
 - [x] Haptics: the game's rumble played on the hands, scaled to be felt (PLAYTEST-3c)
 
 ### Stage 4 — Locomotion and comfort (M)
+
+#### Stage 4 brief
+Goal: moving in VR feels natural and comfortable: forward is where you look, turning is the player's (smooth by default, fast enough, snap optional), real crouching and real walking work, traversal moves are comfortable.
+Known: the game turns linearly from raw mouse input (-0.001691 rad per count at the user's sensitivity, symmetric, no acceleration; MOUSETEST). The game camera already passes rolls/tilts/dips (D-014) and its own yaw turns (quick turn, wall-runs).
+Design (D-028): the mod owns the view heading W (stick turns + the game's own turns); the game's heading is steered after W + head yaw by injected mouse counts each frame, so Faith's body faces where you look. Injection that the game ignores (climbing, menus) is dropped after 0.25 s; turns the injection doesn't explain are the game's and go to W.
+Plan: 4a turning + body-follows-head + physical crouch (built) -> 4b room-scale: real walking moves Faith (push the body toward the head with the move stick, BUG-007) -> 4c comfort: vignette (default low/off), recentre on a button, seated mode, height calibration -> 4d traversal: per-move options (fade/vignette) for vaults, climbs, wall-runs, ziplines, MAG Rope swing.
+Verify: simulator tests for each piece (TURNTEST, PADTEST, MOUSETEST), then PLAYTEST-4a..4d; Stage 4 gate: comfort over a full mission chapter.
+Risk: injected mouse while the game shows a mouse cursor (menus) -> steering only while the game's time runs and the window is in front.
 - [ ] ★ Smooth locomotion (head/controller-relative) mapped to Faith's run with momentum preserved
 - [ ] ★ **Smooth turn default** (user hates snap); snap turn available but off
 - [ ] Vignette (default: low, user-adjustable), seated/standing, height offset, recenter

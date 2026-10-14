@@ -23,5 +23,8 @@ void sync(XrTime time, bool focused);
 
 void set_left_handed(bool on);   // input.left_handed
 void set_stick_pitch(bool on);   // input.stick_pitch
+// comfort.physical_crouch / comfort.crouch_depth: really crouching (head this far below standing height)
+// holds Down actions (crouch, or slide when running).
+void set_physical_crouch(bool on, float depth_m);
 
 }  // namespace mecvr::xr_input

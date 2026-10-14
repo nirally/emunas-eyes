@@ -48,6 +48,18 @@ void set_ipd_vertical(bool on);  // diagnostics.ipd_vertical: eyes stacked verti
 // Render thread: eye of the frame being drawn now, from its view constants (0 left, 1 right, -1 mono or
 // not matched). Set when the frame's view constants are uploaded, early in the frame.
 int rendering_eye();
+// The game camera's heading (radians, + = turned left), from the latest main-site camera.
+float game_heading();
+
+// Mod-owned turning (D-028, input.mod_turning, headset only): the view heading is the mod's; the right
+// stick turns it (smooth at speed_deg_s, or snap); the game is steered after the view by mouse injection.
+void set_mod_turning(bool on);
+void set_turn_input(float x);  // turn stick, -1..1, + = right (render thread)
+void set_turn_options(float speed_deg_s, bool snap, float snap_deg);
+bool turning_active();
+void set_turning_sim(bool on);  // diagnostics.mod_turning_sim (developer)
+float world_heading();          // W
+void report_turning();  // every 10 s
 
 // rendering.full_fov: with a headset, the game camera's FOV and aspect are set to cover both eyes'
 // full field of view (from the runtime), so the picture fills the headset instead of a window.
