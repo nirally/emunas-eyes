@@ -12,14 +12,13 @@ Mode: agentic | Gate: hard | Stage 4 of 10 — movement and comfort
 ✅ Log complete again in PLAYTEST-2d (BUG-009 monitoring; the two-process case hasn't recurred)
 ✅ Stage 3 passed (D-027): Quest 2 controllers play the whole game; pause = tap left stick click, map = hold; vibration; comfort 5
 ⚠ Mod turning (180°/s) tried in 4a/4b: the game ignores it while Faith runs → off; the game's stick turning is back. "Run where you look" off (user prefers the stick)
-✅ Turning back to the game's stick, comfortable; crouch-slide works (PLAYTEST-4c)
-🔧 Built, not yet tested: no double drop / floor clipping during crouch-slides → PLAYTEST-4d
+✅ Turning with the game's stick, comfortable; real crouch = slide, view at Faith's head (PLAYTEST-4c/4d: "great", comfort 5)
 🚧 In progress: Stage 4 — next: room-scale walking (BUG-007), comfort options, traversal
 ⬜ Not started: hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-4d (~5 min)
+❓ Need from you: nothing right now
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-4d. Me: room-scale walking while you test.
+▶ Next: Me: room-scale walking (BUG-007), then comfort options.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -125,9 +124,9 @@ Plan: 4a turning + body-follows-head + physical crouch (built) -> 4b room-scale:
 Verify: simulator tests for each piece (TURNTEST, PADTEST, MOUSETEST), then PLAYTEST-4a..4d; Stage 4 gate: comfort over a full mission chapter.
 Risk: injected mouse while the game shows a mouse cursor (menus) -> steering only while the game's time runs and the window is in front.
 - [ ] ★ Smooth locomotion (head/controller-relative) mapped to Faith's run with momentum preserved
-- [ ] ★ **Smooth turn default** (user hates snap); snap turn available but off
+- [x] ★ **Smooth turn default**: the game's stick turning (mod turning tried, D-028, off: the game ignores mouse while running); snap turn not offered yet
 - [ ] Vignette (default: low, user-adjustable), seated/standing, height offset, recenter
-- [ ] ★ Physical crouch → crouch/slide; jump binding; roomscale collider
+- [~] ★ Physical crouch → slide (the game has no crouch-walk; PLAYTEST-4d); jump on the left grip (Stage 3); roomscale collider next
 - [ ] ★ Vaults, ledge climbs, wall-runs, wall-climbs, bars, ziplines, ladders/pipes: world moves under fixed head + optional fade per type
 - [ ] ★ MAG Rope swing comfort option
 - [ ] Teleport: not built (D-003)
