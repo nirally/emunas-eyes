@@ -11,12 +11,12 @@ Mode: agentic | Gate: hard | Stage 2 of 10 — anti-aliasing per eye
 ✅ Stage 2 so far: real 3D by alternating eyes, pairs shown together (PLAYTEST-2a: depth, right size, no artefacts, comfortable)
 ✅ Full headset field of view (PLAYTEST-2b: fills the headset, right size, smooth)
 ✅ Sharper picture via NVIDIA DSR, 2880x1620 recommended (PLAYTEST-2c: much clearer, no performance loss, resolution changes clean)
-✅ Eye sync: moving things match in both eyes, full game speed, body flicker fixed (PLAYTEST-2e: moving things 5/5, a little better than off)
+✅ Eye sync: moving things match in both eyes, full game speed, body flicker fixed (PLAYTEST-2e: moving things 5/5, a little better than off, very comfortable)
 ✅ Log complete again in PLAYTEST-2d (BUG-009 monitoring; the two-process case hasn't recurred)
 🚧 In progress: Stage 2 — next: anti-aliasing per eye, then effects per eye (shadows, reflections, sky)
 ⬜ Not started: controllers, movement, hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: confirm comfort score (1 = no nausea, 5 = bad?)
+❓ Need from you: nothing right now
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
 ▶ Next: Me: anti-aliasing per eye, then effects per eye (shadows, reflections, sky).
 

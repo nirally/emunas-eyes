@@ -6,5 +6,5 @@
 - Eye sync on vs off: a little better with sync on -> keep on (default).
 - Nothing new (no stutter, frozen eye or wrong speed).
 - Mouse pitch staying (D-022): OK and comfortable.
-- Comfort: "5" — scale ambiguous against the script's example (1 = no nausea); asked the user to confirm.
+- Comfort: very comfortable, no nausea or eye strain (user confirmed: their 5 = best).
 - Log: eye sync held half of game frames, simulation +300 ticks per 10 s in play; short windows (+41..+183) during loading/pause; 0 errors; left/right presented frames balanced.
