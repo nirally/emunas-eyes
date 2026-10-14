@@ -14,13 +14,13 @@ Mode: agentic | Gate: hard | Stage 4 of 10 — movement and comfort
 ⚠ Mod turning (180°/s) tried in 4a/4b: the game ignores it while Faith runs → off; the game's stick turning is back. "Run where you look" off (user prefers the stick)
 ✅ Turning with the game's stick, comfortable; real crouch = slide, view at Faith's head (PLAYTEST-4c/4d: "great", comfort 5)
 ✅ Room-scale: Faith moves with your steps (4f: much better), walls stop the view, fights better (4e); comfort 5
-🔧 Built, not yet tested: recentre = hold right stick click 1 s (D-030) → PLAYTEST-4g
+✅ Recentre = hold right stick click 1 s (PLAYTEST-4g)
 🚧 In progress: Stage 4 — next: the Stage 4 gate (a longer session)
 ⬜ Not started: hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-4g (~3 min)
+❓ Need from you: PLAYTEST-4h, Stage 4 sign-off: one full mission (~20-30 min)
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-4g. Then the Stage 4 sign-off.
+▶ Next: You: PLAYTEST-4h. Me: Stage 5 brief (hands) while you play.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
