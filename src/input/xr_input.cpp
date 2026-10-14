@@ -42,6 +42,8 @@ ULONGLONG g_hello_until = 0;     // short buzz on both hands when the virtual pa
 uint16_t g_vib_max[2] = {0, 0};
 uint32_t g_haptic_ok = 0, g_haptic_fail = 0;
 float g_head_dy_min = 0;  // lowest head height vs standing per 10 s (crouch diagnostics)
+float g_run_was = 1.f;    // move-stick size last frame (crouched)
+int g_release_frames = 0;
 
 XrPath path(const char* s) {
     XrPath p = XR_NULL_PATH;
@@ -230,7 +232,17 @@ void sync(XrTime /*time*/, bool focused) {
                 const float head_dy = head_pose::current().relative.position.y;
                 if (head_dy < g_head_dy_min) g_head_dy_min = head_dy;
                 const bool was_down = g_crouch.down;
-                if (g_crouch_on.load() && g_crouch.update(head_dy)) pad.left_trigger = 255;  // -> Down actions (slide)
+                if (g_crouch_on.load() && g_crouch.update(head_dy)) {
+                    // Down actions (slide). The game slides on a fresh press while running, so starting to run
+                    // while already crouched releases it for two frames first (PLAYTEST-4b).
+                    const float run = std::sqrt(hand[move].x * hand[move].x + hand[move].y * hand[move].y);
+                    if (g_run_was < 0.5f && run >= 0.7f) g_release_frames = 2;
+                    g_run_was = run;
+                    if (g_release_frames > 0) --g_release_frames;
+                    else pad.left_trigger = 255;
+                } else {
+                    g_run_was = 1.f;  // no re-press until crouched again and starting from slow
+                }
                 if (g_crouch.down != was_down)
                     LOG_I("input", "physical crouch %s (head %.2f m from standing)", g_crouch.down ? "DOWN" : "up", head_dy);
                 if (camera_override::turning_active()) {  // the mod turns the view; the game follows (D-028)

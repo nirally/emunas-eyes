@@ -10,7 +10,7 @@
     "stereo.sync":                { "type": "bool",  "default": true,  "section": "Rendering", "label": "3D eye sync: hold the world still while the second eye is drawn (Shift+F4)" },
     "input.left_handed":          { "type": "bool",  "default": false, "section": "Controls", "label": "Left-handed: move with the right stick (mirrors all controls)" },
     "input.stick_pitch":          { "type": "bool",  "default": false, "section": "Controls", "label": "Right stick up/down also looks up/down (off: head and mouse only)" },
-    "input.mod_turning":          { "type": "bool",  "default": true,  "section": "Controls", "label": "VR turning: the right stick turns smoothly at the speed below (or snaps)" },
+    "input.mod_turning":          { "type": "bool",  "default": false, "section": "Controls", "label": "Mod turning (experimental): the mod turns the view; the game only follows while Faith stands still" },
     "input.body_follows_head":    { "type": "bool",  "default": false, "section": "Controls", "label": "Run where you look (off: the stick and turning set the running direction)" },
     "input.turn_speed":           { "type": "float", "min": 30, "max": 720, "default": 180, "unit": "deg/s", "section": "Controls", "label": "Smooth turn speed at full stick" },
     "input.snap_turn":            { "type": "bool",  "default": false, "section": "Controls", "label": "Snap turn instead of smooth" },

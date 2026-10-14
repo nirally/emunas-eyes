@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include "diagnostics/log.h"
+#include "input/xinput_hook.h"
 #include "render/camera_override.h"
 
 namespace mecvr::yaw_drive {
@@ -36,7 +37,19 @@ bool inject(int dx) {
 
 void poll_test(const std::filesystem::path& dir) {
     std::error_code ec;
-    if (std::filesystem::remove(dir / L"TURNTEST", ec)) {
+    // TURNTESTPAD: same with the virtual pad active; TURNTESTRUN: running forward; TURNTESTSLIDE: running + Down.
+    const bool run = std::filesystem::remove(dir / L"TURNTESTRUN", ec);
+    const bool slide = std::filesystem::remove(dir / L"TURNTESTSLIDE", ec);
+    const bool with_pad = run || slide || std::filesystem::remove(dir / L"TURNTESTPAD", ec);
+    if (with_pad || std::filesystem::remove(dir / L"TURNTEST", ec)) {
+        if (with_pad) {
+            xinput_hook::Pad p;
+            if (run || slide) p.ly = 32767;
+            xinput_hook::set_pad(p);
+            xinput_hook::set_virtual(true);
+            Sleep(run || slide ? 1000 : 300);  // get up to speed
+            if (slide) { p.left_trigger = 255; xinput_hook::set_pad(p); }
+        }
         // Full right-stick turn for 0.5 s; the view should turn input.turn_speed/2 (right = negative) and
         // the game follow.
         const float w0 = camera_override::world_heading(), g0 = camera_override::game_heading();
@@ -45,8 +58,10 @@ void poll_test(const std::filesystem::path& dir) {
         camera_override::set_turn_input(0.f);
         Sleep(500);
         const float w1 = camera_override::world_heading(), g1 = camera_override::game_heading();
-        LOG_I("yaw", "turn test: view turned %+.1f deg, game turned %+.1f deg, game now %+.1f deg off the view",
-              wrap(w1 - w0) * 57.29578f, wrap(g1 - g0) * 57.29578f, wrap(g1 - w1) * 57.29578f);
+        LOG_I("yaw", "turn test%s: view turned %+.1f deg, game turned %+.1f deg, game now %+.1f deg off the view",
+              slide ? " (sliding)" : run ? " (running)" : with_pad ? " (virtual pad on)" : "", wrap(w1 - w0) * 57.29578f, wrap(g1 - g0) * 57.29578f, wrap(g1 - w1) * 57.29578f);
+        if (with_pad) xinput_hook::set_pad({});
+        if (with_pad) xinput_hook::set_virtual(false);
         return;
     }
     if (!std::filesystem::remove(dir / L"MOUSETEST", ec)) return;

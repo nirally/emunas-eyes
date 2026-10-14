@@ -66,7 +66,7 @@ std::atomic<bool> g_zero_ipd{false};           // diagnostics.zero_ipd: both eye
 std::atomic<float> g_ipd_scale{1.f};          // diagnostics.ipd_scale: exaggerate the eye offset (TAA eye-mixing checks)
 std::atomic<bool> g_ipd_vertical{false};      // diagnostics.ipd_vertical: eyes above each other (motion-fix y check)
 // Mod-owned turning (D-028): the view heading W comes from yaw_model; the game is steered after it.
-std::atomic<bool> g_mod_turning{true};     // input.mod_turning (only with a headset)
+std::atomic<bool> g_mod_turning{false};    // input.mod_turning (only with a headset); off: the game turns (PLAYTEST-4b)
 std::atomic<bool> g_turning_active{false}; // in effect this frame
 std::atomic<float> g_turn_x{0};            // turn stick, + = right (render thread -> game thread)
 std::atomic<float> g_turn_speed{3.14159f}; // rad/s at full stick (input.turn_speed)
