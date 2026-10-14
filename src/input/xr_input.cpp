@@ -33,6 +33,7 @@ bool g_ready = false;
 std::atomic<bool> g_left_handed{false}, g_stick_pitch{false};
 bool g_pad_on = false;
 pad_map::TapHold g_stick_click;  // move-hand stick click: Pause / Map
+ULONGLONG g_hello_until = 0;     // short buzz on both hands when the virtual pad comes on
 // Vibration diagnostics (PLAYTEST-3a: none felt): strongest request and haptic call results per 10 s.
 uint16_t g_vib_max[2] = {0, 0};
 uint32_t g_haptic_ok = 0, g_haptic_fail = 0;
@@ -230,8 +231,15 @@ void sync(XrTime /*time*/, bool focused) {
                 xinput_hook::last_vibration(low, high);
                 if (low > g_vib_max[0]) g_vib_max[0] = low;
                 if (high > g_vib_max[1]) g_vib_max[1] = high;
-                haptic(move, low / 65535.f);
-                haptic(turn, high / 65535.f);
+                // The game asks for at most half strength (32767); Quest motors need more to be felt.
+                auto strength = [](uint16_t v) { return v ? std::fmin(1.f, 0.35f + 2.f * v / 65535.f) : 0.f; };
+                if (GetTickCount64() < g_hello_until) {  // greeting buzz when the controllers connect
+                    haptic(move, 0.8f);
+                    haptic(turn, 0.8f);
+                } else {
+                    haptic(move, strength(low));
+                    haptic(turn, strength(high));
+                }
             }
         }
     }
@@ -248,7 +256,10 @@ void sync(XrTime /*time*/, bool focused) {
         g_pad_on = active;
         xinput_hook::set_pad(xinput_hook::Pad{});
         xinput_hook::set_virtual(active);
-        if (active) log_profile();
+        if (active) {
+            log_profile();
+            g_hello_until = GetTickCount64() + 200;
+        }
     }
 }
 

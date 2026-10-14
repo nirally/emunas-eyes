@@ -40,6 +40,7 @@ std::mutex g_pad_mutex;
 Pad g_pad;
 DWORD g_packet = 0;
 std::atomic<uint32_t> g_vibration{0};  // left << 16 | right
+std::atomic<uint32_t> g_vib_max_slot[4];  // strongest request per controller slot (diagnostics)
 
 // Stats: calls per (dll, entry, user index 0..3), and one caller per entry.
 std::atomic<uint64_t> g_calls[kDllCount][kEntryCount][4];
@@ -83,6 +84,10 @@ template <int D>
 DWORD WINAPI set_state(DWORD user, XINPUT_VIBRATION* v) {
     note(D, kSetState, user, _ReturnAddress());
     if (user == 0 && v) g_vibration = (uint32_t(v->wLeftMotorSpeed) << 16) | v->wRightMotorSpeed;
+    if (user < 4 && v) {
+        const uint32_t m = v->wLeftMotorSpeed > v->wRightMotorSpeed ? v->wLeftMotorSpeed : v->wRightMotorSpeed;
+        if (m > g_vib_max_slot[user].load()) g_vib_max_slot[user] = m;
+    }
     if (g_virtual.load() && user == 0) return ERROR_SUCCESS;
     return g_set[D](user, v);
 }
@@ -173,6 +178,10 @@ void last_vibration(uint16_t& left_motor, uint16_t& right_motor) {
 }
 
 void report() {
+    uint32_t vm[4];
+    for (int u = 0; u < 4; ++u) vm[u] = g_vib_max_slot[u].exchange(0);
+    if (vm[0] | vm[1] | vm[2] | vm[3])
+        LOG_I("input", "rumble requested per slot (max /10 s): pad0 %u pad1 %u pad2 %u pad3 %u", vm[0], vm[1], vm[2], vm[3]);
     for (int d = 0; d < kDllCount; ++d) {
         if (!g_hooked[d]) continue;
         for (int e = 0; e < kEntryCount; ++e) {
