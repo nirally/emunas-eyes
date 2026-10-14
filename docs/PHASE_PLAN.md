@@ -17,9 +17,9 @@ Mode: agentic | Gate: hard | Stage 2 of 10 — eye sync testing
 🚧 In progress: Stage 2 — next: anti-aliasing per eye, then effects per eye (shadows, reflections, sky)
 ⬜ Not started: controllers, movement, hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-2e (~10 min, headset); Q-204 mouse look up/down
+❓ Need from you: PLAYTEST-2e (~10 min, headset)
 🐞 Open bugs: BUG-010 sev-2 (fix built); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-2e + Q-204. Me: anti-aliasing per eye while you test.
+▶ Next: You: PLAYTEST-2e (mouse pitch now stays, D-022). Me: anti-aliasing per eye while you test.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

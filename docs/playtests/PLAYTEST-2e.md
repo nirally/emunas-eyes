@@ -7,6 +7,7 @@ In the headset (eye sync ON, game at 2880x1620):
 2. Run a stretch with moving things (people, enemies, drones, Faith's arms). Solid and in the right depth, 1-5?
 3. Shift+F4 off and on once: better with sync on, off, or the same?
 4. Anything new (stutter, frozen eye, wrong speed)?
-5. Comfort 1-5: nausea / eye strain.
+5. Mouse up/down now stays where you put it (your choice). Look down with the mouse and hold: OK? Comfortable?
+6. Comfort 1-5: nausea / eye strain.
 
-Reply example: "1 no, 2 4, 3 on better, 4 nothing, 5 1/1".
+Reply example: "1 no, 2 4, 3 on better, 4 nothing, 5 ok, 6 1/1".

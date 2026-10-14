@@ -173,3 +173,7 @@ Not covered: the second timer (exe+0x2a2d7dc, [this+0x68], UI/real time) keeps r
 Date: 2026-10-14  Stage: 2
 PLAYTEST-2d: game speed with sync on confirmed in gameplay (+300 ticks per 10 s, every window), but Faith's body flickered (BUG-010). Frame-diff captures showed the game poses the player body differently on dt == 0 frames. Held frames now report dt 0.1 ms (diagnostics.sync_hold_dt), subtracted from the next frame's dt so total time is unchanged; a paused game (left frame dt 0) keeps exactly 0. Measured: held steps identical; ticks +300 per 10 s.
 Tools added for this: PAIR trigger file (4 consecutive frames, neighbouring diffs logged and saved), diagnostics.zero_ipd, and an input/screenshot loop the agent can drive at the menu and in gameplay without a headset.
+
+### D-022 — Mouse pitch stays (user choice, Q-204)
+Date: 2026-10-14  Stage: 2
+User chose (a): mouse up/down adds to the head and stays. Set camera.pitch_source = game in the user's config (default stays auto for others until the settings menu, Stage 9). With game camera motion on, the look-pitch baseline is 0 in this mode, so the full game camera rotation (mouse pitch + animation) is applied on top of the head. Revisit at Stage 6 (aim decoupled from the view).
