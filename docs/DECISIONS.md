@@ -192,3 +192,9 @@ Date: 2026-10-14  Stage: 2
 The Helix 3D Vision fix list exists because 3D Vision fakes stereo by shifting one render's vertices; here each eye is a full engine render from its own camera, so shadows, lights (incl. compute lights), sky/sun/moon and lens flares are computed per eye by construction.
 Passes that reuse the previous frame (history_reads.awk over a frame trace, docs/recon/taa/trace_effects.txt): the AO-type temporal filter (R8, reprojects its own history with the engine's motion vectors), screen-space reflections (previous scene colour + hi-Z + G-buffer, reprojected with the engine's previous camera) and a half-res colour reuse. Their history is the other eye's and so is the engine's previous camera, so they stay consistent; the motion-vector fix runs later (just before TAA) and doesn't touch them. TAA was the one inconsistent pass (D-023).
 Verified: at 10x eye separation near geometry (ledge, metal pipe reflections, gravel, contact shadows) shows single clean images, no ghosting. Headset confirmation in PLAYTEST-2g.
+
+### D-025 — Stage 2 gate: pass
+Date: 2026-10-14  Stage: 2
+Passed on: true 3D with correct size and depth (2a, 2g 5/5), full headset FOV (2b), sharp picture at 2880x1620 via DSR (2c), eyes synchronised with exact game speed (2d log, 2e), per-eye anti-aliasing (2f, preferred), effects consistent in both eyes and nothing popping at the edges (2g), comfort 5 throughout, 0 errors in the sign-off log.
+Rung: alternate-eye rendering (fallback after native two-view failed, D-017), labelled; costs half the per-eye frame rate, mitigated by eye sync and reprojection by the runtime. Native two-view stays a later revisit.
+Carried: cutscene/takedown check (not encountered in 7 sessions) → every Stage 3 playtest.

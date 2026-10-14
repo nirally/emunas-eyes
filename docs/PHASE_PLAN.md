@@ -5,9 +5,9 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-14
-Mode: agentic | Gate: hard | Stage 2 of 10 — gate playtest
+Mode: agentic | Gate: hard | Stage 3 of 10 — controllers (recon)
 
-✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
+✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent); Stage 2 (3D picture — passed PLAYTEST-2g, D-025)
 ✅ Stage 2 so far: real 3D by alternating eyes, pairs shown together (PLAYTEST-2a: depth, right size, no artefacts, comfortable)
 ✅ Full headset field of view (PLAYTEST-2b: fills the headset, right size, smooth)
 ✅ Sharper picture via NVIDIA DSR, 2880x1620 recommended (PLAYTEST-2c: much clearer, no performance loss, resolution changes clean)
@@ -15,12 +15,12 @@ Mode: agentic | Gate: hard | Stage 2 of 10 — gate playtest
 ✅ Log complete again in PLAYTEST-2d (BUG-009 monitoring; the two-process case hasn't recurred)
 ✅ Anti-aliasing per eye: steady fine detail, no ghosting (PLAYTEST-2f: preferred on, comfort 5)
 ✅ Effects per eye checked: shadows, lights, sky, reflections, ambient occlusion consistent in both eyes (D-024)
-🚧 In progress: Stage 2 gate — your sign-off playtest, then Stage 3 (Quest 2 controllers)
+🚧 In progress: Stage 3 — Quest 2 controllers: recon of how the game reads the gamepad
 ⬜ Not started: controllers, movement, hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-2g, the Stage 2 sign-off (~15 min, headset)
+❓ Need from you: nothing right now
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-2g. Me: Stage 3 brief (controllers) while you test.
+▶ Next: Me: gamepad recon, then the controller mapping. You: PLAYTEST-3a when the controllers work.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -93,10 +93,22 @@ Plan: recon the view list and the render-frame call graph at the menu (no user t
 Verify: PLAYTEST-2: depth looks right, objects the right size (D-016), no eye-locked effects, cutscene/takedown check (D-016), comfort.
 Risk: high. Frostbite's frame graph may assume one view; per-view resources (TAA history, shadow cascades) may need duplication.
 - [x] Highest viable rung: native two-view failed twice (D-017) → alternate-eye rendering (labelled fallback), made whole: pairs shown together (D-019), eye sync (D-021/D-021a), per-eye TAA (D-023)
-- [x] ★ Effects correct per eye (D-024): each eye is a full render from its own camera; history-based passes (SSR, AO filter, half-res colour) self-consistent; TAA fixed (D-023); no ghosting at 10x eye separation; motion blur off — confirm in PLAYTEST-2g
-- [ ] Culling widened (each eye renders the full both-eye FOV, D-020); no eye-locked artifacts; correct size of known objects (PLAYTEST-2a) — edges confirmed in PLAYTEST-2g
+- [x] ★ Effects correct per eye (D-024): each eye is a full render from its own camera; history-based passes (SSR, AO filter, half-res colour) self-consistent; TAA fixed (D-023); no ghosting at 10x eye separation; motion blur off — confirmed in PLAYTEST-2g
+- [x] Culling widened (each eye renders the full both-eye FOV, D-020); no eye-locked artifacts; correct size of known objects (PLAYTEST-2a, 2g)
 
 ### Stage 3 — XR runtime, input, simulator (M)
+
+#### Stage 3 brief
+Goal: play with the Quest 2 Touch controllers instead of keyboard and mouse: every game action on a controller, dominant hand selectable, vibration, remappable bindings for other controllers.
+Known: OpenXR via SteamVR already runs (head pose, eyes, swapchains). Catalyst supports an Xbox gamepad natively (full action set incl. combat, MAG Rope, Disruptor, Runner Vision). BF2VR (Frostbite) fed a virtual gamepad via ViGEm.
+Unknowns: Q-301 how Catalyst reads the gamepad (XInput version/entry point, or DirectInput / raw input); Q-302 whether it accepts gamepad and mouse at once (look with the head + mouse pitch while moving with the stick); Q-303 which actions need analog (move, look) vs buttons.
+Hypotheses:
+  H1 Hook the game's XInputGetState (and XInputSetState for haptics) in-process and return a virtual pad built from the OpenXR action state — no driver install, deterministic, testable with the desktop simulator.
+  H2 Fallback: ViGEmBus virtual Xbox pad (needs a driver install by the user).
+  H3 Later (Stage 6): direct engine input for gestures (punch, MAG Rope aim) on top of the pad.
+Plan: recon at the menu (which XInput DLL/entry the game calls, how often, which user index) → OpenXR action set + Touch bindings (bindings.json) → virtual pad via H1 → map: left stick move, right stick turn (smooth, D-003/Stage 4), A jump, B crouch/slide, triggers attack/shift, grips gadget/Runner Vision, menu → pause; dominant hand swap → haptics → simulator drives the same path.
+Verify: in-game test at the menu/gameplay without a headset (simulator pad), then PLAYTEST-3a with the Touch controllers: every action reachable, no stuck inputs, menus navigable, comfort.
+Risk: the game may mix keyboard/mouse and pad prompts or switch input mode when both are active; anti-cheat not present (offline).
 - [ ] OpenXR via SteamVR; runtime and connection logged on startup
 - [ ] Action map with Touch defaults + all controller families in bindings.json
 - [ ] Dominant/off hand abstraction; handedness swap end to end
