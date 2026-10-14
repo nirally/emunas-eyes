@@ -186,3 +186,9 @@ Verified without a headset: motion vectors in a still scene 0.00 px after the fi
 Trade-off for the user: steady but softer vs crisp but shimmering. rendering.taa_per_eye, Shift+F9 toggles (F9 alone ignores Shift), saved; default off for new configs until a playtest decides; the user's config has it on for PLAYTEST-2f.
 PLAYTEST-2f: user preferred ON ("on better"), no ghosting/smearing, comfort 5. Default is now on.
 Tools added: TRACE (draw/dispatch trace), VIEWCB, VELOCITY, MEMFIND/WATCH triggers; diagnostics.ipd_scale / ipd_vertical / taa_motion_fix / motion_fix_debug / motion_fix_jitter.
+
+### D-024 — Effects per eye: no fixes needed beyond TAA
+Date: 2026-10-14  Stage: 2
+The Helix 3D Vision fix list exists because 3D Vision fakes stereo by shifting one render's vertices; here each eye is a full engine render from its own camera, so shadows, lights (incl. compute lights), sky/sun/moon and lens flares are computed per eye by construction.
+Passes that reuse the previous frame (history_reads.awk over a frame trace, docs/recon/taa/trace_effects.txt): the AO-type temporal filter (R8, reprojects its own history with the engine's motion vectors), screen-space reflections (previous scene colour + hi-Z + G-buffer, reprojected with the engine's previous camera) and a half-res colour reuse. Their history is the other eye's and so is the engine's previous camera, so they stay consistent; the motion-vector fix runs later (just before TAA) and doesn't touch them. TAA was the one inconsistent pass (D-023).
+Verified: at 10x eye separation near geometry (ledge, metal pipe reflections, gravel, contact shadows) shows single clean images, no ghosting. Headset confirmation in PLAYTEST-2g.

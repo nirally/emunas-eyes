@@ -5,7 +5,7 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-14
-Mode: agentic | Gate: hard | Stage 2 of 10 — effects per eye
+Mode: agentic | Gate: hard | Stage 2 of 10 — gate playtest
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
 ✅ Stage 2 so far: real 3D by alternating eyes, pairs shown together (PLAYTEST-2a: depth, right size, no artefacts, comfortable)
@@ -14,12 +14,13 @@ Mode: agentic | Gate: hard | Stage 2 of 10 — effects per eye
 ✅ Eye sync: moving things match in both eyes, full game speed, body flicker fixed (PLAYTEST-2e: moving things 5/5, a little better than off, very comfortable)
 ✅ Log complete again in PLAYTEST-2d (BUG-009 monitoring; the two-process case hasn't recurred)
 ✅ Anti-aliasing per eye: steady fine detail, no ghosting (PLAYTEST-2f: preferred on, comfort 5)
-🚧 In progress: Stage 2 — next: effects per eye (shadows, reflections, sky)
+✅ Effects per eye checked: shadows, lights, sky, reflections, ambient occlusion consistent in both eyes (D-024)
+🚧 In progress: Stage 2 gate — your sign-off playtest, then Stage 3 (Quest 2 controllers)
 ⬜ Not started: controllers, movement, hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: nothing right now
+❓ Need from you: PLAYTEST-2g, the Stage 2 sign-off (~15 min, headset)
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: Me: effects per eye (shadows, reflections, sky), then the Stage 2 gate playtest.
+▶ Next: You: PLAYTEST-2g. Me: Stage 3 brief (controllers) while you test.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -91,9 +92,9 @@ Hypotheses:
 Plan: recon the view list and the render-frame call graph at the menu (no user time) → try H1 with a duplicated view → per-eye target capture → asymmetric projection → effects pass (Helix list), TAA per eye → widen culling → resolution/render scale. Performance guardrail: a GTX 1080 Ti over Steam Link; render scale slider early.
 Verify: PLAYTEST-2: depth looks right, objects the right size (D-016), no eye-locked effects, cutscene/takedown check (D-016), comfort.
 Risk: high. Frostbite's frame graph may assume one view; per-view resources (TAA history, shadow cascades) may need duplication.
-- [ ] Highest viable rung (native per-eye → instanced → dual pass). Alternate-eye rendering rejected unless everything else fails
-- [ ] ★ Effects from the Helix fix list correct per eye: shadows, lights (incl. compute-shader lights), reflections/SSR, sky/sun/moon, lens flares; motion blur off
-- [ ] Culling widened; no eye-locked artifacts; correct size of known objects
+- [x] Highest viable rung: native two-view failed twice (D-017) → alternate-eye rendering (labelled fallback), made whole: pairs shown together (D-019), eye sync (D-021/D-021a), per-eye TAA (D-023)
+- [x] ★ Effects correct per eye (D-024): each eye is a full render from its own camera; history-based passes (SSR, AO filter, half-res colour) self-consistent; TAA fixed (D-023); no ghosting at 10x eye separation; motion blur off — confirm in PLAYTEST-2g
+- [ ] Culling widened (each eye renders the full both-eye FOV, D-020); no eye-locked artifacts; correct size of known objects (PLAYTEST-2a) — edges confirmed in PLAYTEST-2g
 
 ### Stage 3 — XR runtime, input, simulator (M)
 - [ ] OpenXR via SteamVR; runtime and connection logged on startup
