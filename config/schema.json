@@ -16,6 +16,8 @@
     "diagnostics.fov_test":       { "type": "bool", "default": false, "section": "Diagnostics", "label": "Apply the full-FOV override without a headset, with a stand-in 90 deg FOV (developer)" },
     "diagnostics.cb_capture":     { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Recon: F10 captures one frame of shader constants (developer)" },
     "diagnostics.time_recon":     { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Recon: record which code reads the clock, once, at the menu (developer)" },
+    "diagnostics.zero_ipd":       { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Both eyes drawn from the head centre - for checking that the eyes of a pair match (developer)" },
+    "diagnostics.sync_hold_dt":   { "type": "float", "min": 0.0, "max": 0.01, "default": 0.0001, "unit": "s", "section": "Diagnostics", "label": "Eye sync: dt reported on held frames (developer)" },
     "input.dominant_hand":        { "type": "enum",  "values": ["right", "left"], "default": "right", "section": "Input", "label": "Dominant hand" },
     "comfort.turn_mode":          { "type": "enum",  "values": ["smooth", "snap"], "default": "smooth", "section": "Comfort", "label": "Turn mode" },
     "comfort.smooth_turn_speed":  { "type": "float", "min": 30, "max": 360, "default": 120, "unit": "deg/s", "section": "Comfort", "label": "Smooth turn speed" },

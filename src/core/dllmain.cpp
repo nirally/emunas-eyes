@@ -182,7 +182,9 @@ DWORD WINAPI main_thread(LPVOID) {
                 camera_override::set_stereo(g_config.get_string("stereo.mode") == "alternate");
                 camera_override::set_full_fov(g_config.get_bool("rendering.full_fov"));
                 camera_override::set_fov_test(g_config.get_bool("diagnostics.fov_test"));
+                camera_override::set_zero_ipd(g_config.get_bool("diagnostics.zero_ipd"));
                 time_sync::set_enabled(g_config.get_bool("stereo.sync"));
+                time_sync::set_hold_dt(g_config.get_number("diagnostics.sync_hold_dt"));
                 time_sync::install();
             }
             present_hook::set_frame_callback(&on_frame);
@@ -207,6 +209,10 @@ DWORD WINAPI main_thread(LPVOID) {
         if (old_v["diagnostics.stereo_experiment"] != new_v["diagnostics.stereo_experiment"])
             stereo_views::set_enabled(new_v["diagnostics.stereo_experiment"].get<bool>());
         if (old_v["stereo.sync"] != new_v["stereo.sync"]) time_sync::set_enabled(new_v["stereo.sync"].get<bool>());
+        if (old_v["diagnostics.sync_hold_dt"] != new_v["diagnostics.sync_hold_dt"])
+            time_sync::set_hold_dt(new_v["diagnostics.sync_hold_dt"].get<double>());
+        if (old_v["diagnostics.zero_ipd"] != new_v["diagnostics.zero_ipd"])
+            camera_override::set_zero_ipd(new_v["diagnostics.zero_ipd"].get<bool>());
         if (old_v["stereo.mode"] != new_v["stereo.mode"])
             camera_override::set_stereo(new_v["stereo.mode"].get<std::string>() == "alternate");
         if (old_v["comfort.game_camera_motion"] != new_v["comfort.game_camera_motion"])

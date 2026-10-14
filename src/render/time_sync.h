@@ -14,6 +14,7 @@ bool install();
 void set_enabled(bool on);  // stereo.sync; Shift+F4 toggles; saved
 bool enabled();
 bool take_changed();        // toggled by key; main thread saves
+void set_hold_dt(double seconds);  // diagnostics.sync_hold_dt: dt held frames report (0 = exactly zero)
 
 // Render thread, once per presented frame: Shift+F4, 10-second stats line.
 void on_present();

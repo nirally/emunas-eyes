@@ -11,14 +11,15 @@ Mode: agentic | Gate: hard | Stage 2 of 10 — eye sync testing
 ✅ Stage 2 so far: real 3D by alternating eyes, pairs shown together (PLAYTEST-2a: depth, right size, no artefacts, comfortable)
 ✅ Full headset field of view (PLAYTEST-2b: fills the headset, right size, smooth)
 ✅ Sharper picture via NVIDIA DSR, 2880x1620 recommended (PLAYTEST-2c: much clearer, no performance loss, resolution changes clean)
-🔧 Built, not yet tested: eye sync — the world holds still while the right eye is drawn, so moving things match in both eyes (D-021, Shift+F4 to compare) → PLAYTEST-2d
-🔧 Built, not yet tested: log no longer goes silent when two game processes load the mod (BUG-009) — checked in PLAYTEST-2d
+✅ Eye sync runs at full game speed (PLAYTEST-2d log: 30 updates/s with sync on)
+🔧 Built, not yet tested: body flicker with eye sync fixed (BUG-010; identical eyes in an automated test) → PLAYTEST-2e
+✅ Log complete again in PLAYTEST-2d (BUG-009 monitoring; the two-process case hasn't recurred)
 🚧 In progress: Stage 2 — next: anti-aliasing per eye, then effects per eye (shadows, reflections, sky)
 ⬜ Not started: controllers, movement, hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-2d (~15 min, headset)
-🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-009 sev-3 (fix built); BUG-001 sev-4
-▶ Next: You: PLAYTEST-2d. Me: anti-aliasing per eye while you test.
+❓ Need from you: PLAYTEST-2e (~10 min, headset); Q-204 mouse look up/down
+🐞 Open bugs: BUG-010 sev-2 (fix built); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: You: PLAYTEST-2e + Q-204. Me: anti-aliasing per eye while you test.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

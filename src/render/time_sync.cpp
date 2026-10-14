@@ -41,6 +41,11 @@ using UpdateFn = void (*)(uint8_t*);
 UpdateFn g_orig = nullptr;
 uintptr_t g_site_return = 0;
 std::atomic<bool> g_enabled{true}, g_dirty{false};
+// dt reported on held frames (diagnostics.sync_hold_dt). Not 0: on a dt == 0 frame the game poses
+// Faith's body differently (PLAYTEST-2d: body flickered; frame diffs: held pairs 1.3% different at
+// 0, identical at 0.1 ms). The next frame gives it back, so game time stays exact.
+std::atomic<double> g_hold_dt{0.0001};
+double g_owed = 0;  // game thread: dt handed out on the last held frame
 bool g_installed = false;
 
 // Game thread only.
@@ -62,6 +67,13 @@ void __fastcall update_detour(uint8_t* timer) {
     g_froze_last = freeze;
     if (!freeze) {
         g_orig(timer);
+        if (g_owed > 0) {
+            for (int off : {kDt, kDtRaw}) {
+                auto& dt = *reinterpret_cast<double*>(timer + off);
+                if (dt > g_owed) dt -= g_owed;
+            }
+            g_owed = 0;
+        }
         g_tick_now = *reinterpret_cast<int32_t*>(timer + kTickTarget);
         return;
     }
@@ -70,8 +82,11 @@ void __fastcall update_detour(uint8_t* timer) {
     auto& done = *reinterpret_cast<int32_t*>(timer + kTickDone);
     if (target != done) g_ticks_held += 1;  // this frame would otherwise have repeated last frame's ticks
     done = target;
-    *reinterpret_cast<double*>(timer + kDt) = 0.0;
-    *reinterpret_cast<double*>(timer + kDtRaw) = 0.0;
+    // The fields still hold the left frame's dt; 0 there means the game is paused (time scale 0)
+    // and the held frame must stay at exactly 0 too.
+    g_owed = *reinterpret_cast<double*>(timer + kDt) > 0 ? g_hold_dt.load() : 0.0;
+    *reinterpret_cast<double*>(timer + kDt) = g_owed;
+    *reinterpret_cast<double*>(timer + kDtRaw) = g_owed;
 }
 
 bool key(int vk) { return (GetAsyncKeyState(vk) & 0x8000) != 0; }
@@ -117,6 +132,7 @@ void set_enabled(bool on) {
 }
 bool enabled() { return g_enabled.load(); }
 bool take_changed() { return g_dirty.exchange(false); }
+void set_hold_dt(double s) { g_hold_dt = s; LOG_I("sync", "held frames report dt %.6f s", s); }
 
 void on_present() {
     if (!g_installed) return;

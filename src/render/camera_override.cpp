@@ -59,6 +59,7 @@ std::atomic<bool> g_motion_dirty{false};
 std::atomic<bool> g_stereo{false};          // stereo.mode = alternate: one eye per frame (D-017, H2 step 1)
 std::atomic<int> g_frame_eye{0};             // eye the current game frame renders
 std::atomic<uint64_t> g_main_count{0};        // main-site overrides so far (eye sync checks it advanced)
+std::atomic<bool> g_zero_ipd{false};           // diagnostics.zero_ipd: both eyes at the head centre (eye-sync checks)
 std::atomic<bool> g_stereo_dirty{false};
 
 // Last result of the main override, for re-applying at the render-view build.
@@ -222,7 +223,7 @@ void finish(vm::LinearTransform* a, vm::LinearTransform* b, int eye_index, vm::Q
             head_pose::Pose abs) {
     // Stereo: move to this frame's eye (offset and rotation in head space, from the runtime).
     vm::Quat head_rot_for_roll = final_rot;
-    if (eye_index >= 0) {
+    if (eye_index >= 0 && !g_zero_ipd.load()) {
         head_pose::Eye e = head_pose::eye(eye_index);
         final_pos = final_pos + final_rot.rotate(e.offset);
         final_rot = (final_rot * e.rotation).normalized();
@@ -631,5 +632,6 @@ bool take_stereo_changed() { return g_stereo_dirty.exchange(false); }
 
 uint64_t main_site_count() { return g_main_count.load(); }
 bool next_frame_is_right_eye() { return g_enabled.load() && g_stereo.load() && g_frame_eye.load() == 0; }
+void set_zero_ipd(bool on) { g_zero_ipd = on; }
 
 }  // namespace mecvr::camera_override
