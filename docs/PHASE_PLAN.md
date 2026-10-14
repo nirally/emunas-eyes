@@ -7,16 +7,11 @@ Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 ## Status — Mirror's Edge Catalyst VR — 2026-10-14
 Mode: agentic | Gate: hard | Stage 3 of 10 — controllers (recon)
 
-✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent); Stage 2 (3D picture — passed PLAYTEST-2g, D-025)
-✅ Stage 2 so far: real 3D by alternating eyes, pairs shown together (PLAYTEST-2a: depth, right size, no artefacts, comfortable)
-✅ Full headset field of view (PLAYTEST-2b: fills the headset, right size, smooth)
-✅ Sharper picture via NVIDIA DSR, 2880x1620 recommended (PLAYTEST-2c: much clearer, no performance loss, resolution changes clean)
-✅ Eye sync: moving things match in both eyes, full game speed, body flicker fixed (PLAYTEST-2e: moving things 5/5, a little better than off, very comfortable)
+✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
+✅ Stage 2 passed (D-025): true 3D, full headset view, sharp at 2880x1620 (DSR), eyes in sync, anti-aliasing per eye, effects correct in both eyes; size/depth 5/5, comfort 5
 ✅ Log complete again in PLAYTEST-2d (BUG-009 monitoring; the two-process case hasn't recurred)
-✅ Anti-aliasing per eye: steady fine detail, no ghosting (PLAYTEST-2f: preferred on, comfort 5)
-✅ Effects per eye checked: shadows, lights, sky, reflections, ambient occlusion consistent in both eyes (D-024)
 🚧 In progress: Stage 3 — Quest 2 controllers: recon of how the game reads the gamepad
-⬜ Not started: controllers, movement, hands, punching, body, HUD, settings menu, packaging
+⬜ Not started: movement, hands, punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
 ❓ Need from you: nothing right now
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
