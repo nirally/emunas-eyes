@@ -75,3 +75,11 @@ Repro: eye sync on (D-021), look down at Faith's body, especially while running.
 Evidence (agent, without headset, diagnostics.zero_ipd so both eyes share a viewpoint; 4-frame PAIR captures while running): held left->right steps had the world pixel-identical but Faith's legs/torso in a different pose (1.27%, 0.61% of pixels, all in the body; docs/recon/time/pairs/). The right-eye body matched neither the previous nor the next frame.
 Root cause: the game treats a frame with dt exactly 0 specially for the player body. Same test with the held frame reporting 0.1 ms: held steps 0.00-0.01% (identical); 1 ms also identical.
 Fix: held frames report dt 0.1 ms (diagnostics.sync_hold_dt), given back on the next frame so game time stays exact; exactly 0 kept while the game is paused. Verified: held steps 0.00-0.01% over 6 sequences; simulation +300 ticks per 10 s.
+
+### BUG-011 — Hand markers only flash; per-eye TAA almost never runs in the headset
+Status: open (fix attempt + diagnostics built, PLAYTEST-5b) | Severity: 2 | Stage: 5 (latent since Stage 2) | Reported: PLAYTEST-5a
+Repro: headset session, gameplay, look at a controller.
+Expected: markers at the controllers every frame. Actual: "I saw it flash for a split second"; nothing otherwise.
+Evidence: the hands are drawn right after the game's TAA pass (D-031). In every headset log since PLAYTEST-2f the TAA pass is recognised only 0-8 times per 10 s (it should be ~one per frame, ~900); on the desktop (simulator, same graphics settings and the same resize sequence) ~1,240 per 10 s. So per-eye TAA (D-023) has effectively been off in the headset too; it didn't show as a visible problem.
+Hypothesis: in headset sessions the pass runs with another pixel shader than the first one learned (the old code only took that one), or its target formats differ.
+Fix attempt: any pixel shader with the pass's inputs/outputs is taken (each logged); the 10 s TAA line now counts 5-target sets, other formats (+ the last ones seen), other contexts, and unmatched inputs. The desktop shows one shader and every 5-target set matched (rebuilt, 43 tests pass, deployed).

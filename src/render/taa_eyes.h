@@ -13,8 +13,8 @@ namespace mecvr::taa_eyes {
 // pass reads, and the pass's new history is saved for this eye afterwards.
 //
 // The pass is recognised by its outputs (5 full-size targets: R8, RGBA16F, RGBA16F, R8, R8) and its
-// inputs (motion vectors RG16F in slot 1, history RGBA16F in slot 4); its pixel shader is learned
-// the first time. The motion vectors are corrected first (motion_fix: the engine measures motion against
+// inputs (motion vectors RG16F in slot 1, history RGBA16F in slot 4); its pixel shaders are logged as
+// they are seen (the pass isn't tied to one: BUG-011). The motion vectors are corrected first (motion_fix: the engine measures motion against
 // the other eye's camera). Does nothing in mono or while the eye of the frame isn't known.
 void set_enabled(bool on);  // rendering.taa_per_eye; Shift+F9 toggles; saved
 bool enabled();

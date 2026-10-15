@@ -42,8 +42,15 @@ std::atomic<bool> g_dirty{false};      // toggled by Shift+F9; the main thread s
 ID3D11DeviceContext* g_imm = nullptr;   // the immediate context (the game renders on it alone)
 ID3D11Device* g_dev = nullptr;
 ID3D11PixelShader* g_ps = nullptr;      // last pixel shader set
-ID3D11PixelShader* g_taa_ps = nullptr;  // learned
+// The TAA pass's pixel shaders, learned (BUG-011: in headset sessions the pass ran with a shader other than
+// the first one learned and was missed almost every frame; any shader with the pass's inputs and outputs counts).
+constexpr int kMaxTaaPs = 8;
+ID3D11PixelShader* g_taa_ps[kMaxTaaPs] = {};
+int g_taa_ps_n = 0;
 bool g_targets_match = false;
+// Why draws weren't taken as the TAA pass (logged with the 10 s count; BUG-011).
+uint64_t g_n_five = 0, g_n_five_fmt = 0, g_n_other_ctx = 0, g_n_srv = 0;
+char g_last_fmt[64] = "";
 ID3D11Resource* g_targets[5] = {};
 
 struct Saved {
@@ -207,10 +214,15 @@ void on_present(IDXGISwapChain* chain) {
     if (GetTickCount64() - last >= 10000) {
         last = GetTickCount64();
         if (g_enabled.load())
-            LOG_I("taa", "TAA passes %llu: per-eye history %llu, motion fixed %llu, skipped %llu (mono / eye unknown / first frame)",
+            LOG_I("taa", "TAA passes %llu: per-eye history %llu, motion fixed %llu, skipped %llu (mono / eye unknown / first frame); "
+                  "5-target sets %llu, other formats %llu%s%s, other context %llu, inputs not matched %llu, shaders %d",
                   (unsigned long long)g_passes, (unsigned long long)g_swapped, (unsigned long long)g_fixed,
-                  (unsigned long long)g_skipped);
+                  (unsigned long long)g_skipped, (unsigned long long)g_n_five, (unsigned long long)g_n_five_fmt,
+                  g_last_fmt[0] ? " last " : "", g_last_fmt, (unsigned long long)g_n_other_ctx,
+                  (unsigned long long)g_n_srv, g_taa_ps_n);
         g_passes = g_swapped = g_fixed = g_skipped = 0;
+        g_n_five = g_n_five_fmt = g_n_other_ctx = g_n_srv = 0;
+        g_last_fmt[0] = 0;
     }
 }
 
@@ -236,29 +248,33 @@ void on_set_ps(ID3D11DeviceContext* ctx, ID3D11PixelShader* ps) {
 }
 
 void on_set_targets(ID3D11DeviceContext* ctx, unsigned count, ID3D11RenderTargetView* const* rtvs) {
+    if (count == 5 && ctx != g_imm) ++g_n_other_ctx;
     if (ctx != g_imm) return;
     g_targets_match = false;
     if (count != 5 || !rtvs) return;
-    UINT w = 0, h = 0;
+    ++g_n_five;
+    ID3D11Resource* res[5] = {};
+    D3D11_TEXTURE2D_DESC desc[5] = {};
+    bool same = true;
     for (int i = 0; i < 5; ++i) {
-        if (!rtvs[i]) return;
-        ID3D11Resource* r = nullptr;
-        rtvs[i]->GetResource(&r);
-        if (!r) return;
-        r->Release();  // the view keeps it alive
-        D3D11_TEXTURE2D_DESC d;
-        if (!tex2d(r, &d) || d.Format != kTargetFormats[i]) return;
-        if (i == 0) { w = d.Width; h = d.Height; }
-        else if (d.Width != w || d.Height != h) return;
-        g_targets[i] = r;
+        if (rtvs[i]) rtvs[i]->GetResource(&res[i]);
+        if (res[i]) res[i]->Release();  // the view keeps it alive
+        same = same && tex2d(res[i], &desc[i]) && desc[i].Format == kTargetFormats[i] &&
+               desc[i].Width == desc[0].Width && desc[i].Height == desc[0].Height;
     }
+    if (!same) {
+        ++g_n_five_fmt;
+        snprintf(g_last_fmt, sizeof(g_last_fmt), "%d,%d,%d,%d,%d @%ux%u", int(desc[0].Format), int(desc[1].Format),
+                 int(desc[2].Format), int(desc[3].Format), int(desc[4].Format), desc[0].Width, desc[0].Height);
+        return;
+    }
+    for (int i = 0; i < 5; ++i) g_targets[i] = res[i];
     g_targets_match = true;
 }
 
 bool before_draw(ID3D11DeviceContext* ctx) {
     // The velocity probe also runs with per-eye history off (for comparison).
     if ((!g_enabled.load() && !g_velocity_probe.load()) || ctx != g_imm || !g_targets_match) return false;
-    if (g_taa_ps && g_ps != g_taa_ps) return false;
     ID3D11ShaderResourceView* srv[7] = {};
     ctx->PSGetShaderResources(0, 7, srv);
     D3D11_TEXTURE2D_DESC d{};
@@ -267,6 +283,7 @@ bool before_draw(ID3D11DeviceContext* ctx) {
     for (int i = 0; i < kHist && ok; ++i) ok = (in[i] = tex_of(srv[kInSlot[i]], &d)) != nullptr;
     ID3D11Texture2D* motion = ok ? tex_of(srv[kMotionSlot], &d) : nullptr;
     ok = ok && motion && d.Format == DXGI_FORMAT_R16G16_FLOAT && srv[kDepthSlot];
+    if (!ok) ++g_n_srv;
     ID3D11ShaderResourceView* depth = srv[kDepthSlot];
     if (depth) depth->AddRef();
     for (auto* v : srv)
@@ -284,9 +301,11 @@ bool before_draw(ID3D11DeviceContext* ctx) {
         LOG_I("taa", "jitter (px), oldest first:%s", line);
     }
     if (ok && g_enabled.load()) {
-        if (!g_taa_ps) {
-            g_taa_ps = g_ps;
-            LOG_I("taa", "TAA pass found (pixel shader %p) - per-eye history active", static_cast<void*>(g_ps));
+        bool known = false;
+        for (int i = 0; i < g_taa_ps_n; ++i) known = known || g_taa_ps[i] == g_ps;
+        if (!known && g_taa_ps_n < kMaxTaaPs) {
+            g_taa_ps[g_taa_ps_n++] = g_ps;
+            LOG_I("taa", "TAA pass found (pixel shader %p, #%d) - per-eye history active", static_cast<void*>(g_ps), g_taa_ps_n);
         }
         ++g_passes;
         const int eye = camera_override::rendering_eye();
