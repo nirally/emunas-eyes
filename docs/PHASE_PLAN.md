@@ -4,8 +4,8 @@ Mode: agentic
 Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
-## Status — Mirror's Edge Catalyst VR — 2026-10-14
-Mode: agentic | Gate: hard | Stage 4 of 10 — movement and comfort
+## Status — Mirror's Edge Catalyst VR — 2026-10-15
+Mode: agentic | Gate: hard | Stage 5 of 10 — hands
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
 ✅ Stage 2 passed (D-025): true 3D, full headset view, sharp at 2880x1620 (DSR), eyes in sync, anti-aliasing per eye, effects correct in both eyes; size/depth 5/5, comfort 5
@@ -15,13 +15,14 @@ Mode: agentic | Gate: hard | Stage 4 of 10 — movement and comfort
 ✅ Turning with the game's stick, comfortable; real crouch = slide, view at Faith's head (PLAYTEST-4c/4d: "great", comfort 5)
 ✅ Room-scale: Faith moves with your steps (4f: much better), walls stop the view, fights better (4e); comfort 5
 ✅ Recentre = hold right stick click 1 s (PLAYTEST-4g)
-🚧 In progress: Stage 4 — next: the Stage 4 gate (a longer session)
+✅ Stage 4 passed (D-032): a full session "great in every way, nothing unwanted"; comfort 5
+🚧 In progress: Stage 5 — hands
 🔧 Built, not yet tested: hand markers at the controllers (D-031) → PLAYTEST-5a
 ⬜ Not started: punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-4h, Stage 4 sign-off: one full mission (~20-30 min); PLAYTEST-5a (~5 min)
+❓ Need from you: PLAYTEST-5a (~5 min)
 🐞 Open bugs: BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-4h (Stage 4 sign-off) and PLAYTEST-5a (~5 min). Me: hand models (5b).
+▶ Next: You: PLAYTEST-5a (~5 min). Me: hand models (5b).
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -125,6 +126,7 @@ Known: the game turns linearly from raw mouse input (-0.001691 rad per count at 
 Design (D-028): the mod owns the view heading W (stick turns + the game's own turns); the game's heading is steered after W + head yaw by injected mouse counts each frame, so Faith's body faces where you look. Injection that the game ignores (climbing, menus) is dropped after 0.25 s; turns the injection doesn't explain are the game's and go to W.
 Plan: 4a turning + body-follows-head + physical crouch (built) -> 4b room-scale: real walking moves Faith (push the body toward the head with the move stick, BUG-007) -> 4c comfort: vignette (default low/off), recentre on a button, seated mode, height calibration -> 4d traversal: per-move options (fade/vignette) for vaults, climbs, wall-runs, ziplines, MAG Rope swing.
 Verify: simulator tests for each piece (TURNTEST, PADTEST, MOUSETEST), then PLAYTEST-4a..4d; Stage 4 gate: comfort over a full mission chapter.
+- [x] Stage 4 gate: PLAYTEST-4h passed 2026-10-15 (D-032)
 Risk: injected mouse while the game shows a mouse cursor (menus) -> steering only while the game's time runs and the window is in front.
 - [x] ★ Smooth locomotion: the game's own stick movement (momentum native); body-relative by user choice (D-028 update)
 - [x] ★ **Smooth turn default**: the game's stick turning (mod turning tried, D-028, off: the game ignores mouse while running); snap turn not offered yet
