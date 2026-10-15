@@ -25,7 +25,8 @@ void probe_velocity_next();     // log mean motion vectors at the next TAA pass 
 // From ctx_hooks (render thread). before_draw returns true when it acted; after_draw must follow.
 void on_present(IDXGISwapChain* chain);
 void on_set_ps(ID3D11DeviceContext* ctx, ID3D11PixelShader* ps);
-void on_set_targets(ID3D11DeviceContext* ctx, unsigned count, ID3D11RenderTargetView* const* rtvs);
+void on_set_targets(ID3D11DeviceContext* ctx, unsigned count, ID3D11RenderTargetView* const* rtvs, const void* caller);
+void on_other_draw(ID3D11DeviceContext* ctx, const char* kind);  // indexed / instanced draws (BUG-011 diagnostics)
 bool before_draw(ID3D11DeviceContext* ctx);
 void after_draw(ID3D11DeviceContext* ctx);
 

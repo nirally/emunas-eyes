@@ -7,6 +7,7 @@
 #include "render/ctx_hooks.h"
 
 #include <d3d11.h>
+#include <intrin.h>
 #include <windows.h>
 
 #include <atomic>
@@ -150,7 +151,7 @@ void STDMETHODCALLTYPE d_cs(ID3D11DeviceContext* c, ID3D11ComputeShader* sh, ID3
     o_cs(c, sh, ci, n);
 }
 void STDMETHODCALLTYPE d_om(ID3D11DeviceContext* c, UINT n, ID3D11RenderTargetView* const* rt, ID3D11DepthStencilView* ds) {
-    taa_eyes::on_set_targets(c, n, rt);
+    taa_eyes::on_set_targets(c, n, rt, _ReturnAddress());
     if (on()) {
         std::lock_guard lock(g_mutex);
         Shadow& s = g_shadow[c];
@@ -161,7 +162,7 @@ void STDMETHODCALLTYPE d_om(ID3D11DeviceContext* c, UINT n, ID3D11RenderTargetVi
 }
 void STDMETHODCALLTYPE d_om_uav(ID3D11DeviceContext* c, UINT n, ID3D11RenderTargetView* const* rt, ID3D11DepthStencilView* ds,
                                 UINT us, UINT un, ID3D11UnorderedAccessView* const* u, const UINT* counts) {
-    if (n != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) taa_eyes::on_set_targets(c, n, rt);
+    if (n != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) taa_eyes::on_set_targets(c, n, rt, _ReturnAddress());
     if (on()) {
         std::lock_guard lock(g_mutex);
         Shadow& s = g_shadow[c];
@@ -186,12 +187,18 @@ void STDMETHODCALLTYPE d_draw(ID3D11DeviceContext* c, UINT a, UINT b) {
     o_draw(c, a, b);
     if (taa) taa_eyes::after_draw(c);
 }
-void STDMETHODCALLTYPE d_draw_idx(ID3D11DeviceContext* c, UINT a, UINT b, INT d) { if (on()) emit(c, "drawidx", false); o_draw_idx(c, a, b, d); }
+void STDMETHODCALLTYPE d_draw_idx(ID3D11DeviceContext* c, UINT a, UINT b, INT d) {
+    taa_eyes::on_other_draw(c, "indexed");
+    if (on()) emit(c, "drawidx", false);
+    o_draw_idx(c, a, b, d);
+}
 void STDMETHODCALLTYPE d_draw_idx_inst(ID3D11DeviceContext* c, UINT a, UINT b, UINT d, INT e, UINT f) {
+    taa_eyes::on_other_draw(c, "indexed inst");
     if (on()) emit(c, "drawidxi", false);
     o_draw_idx_inst(c, a, b, d, e, f);
 }
 void STDMETHODCALLTYPE d_draw_inst(ID3D11DeviceContext* c, UINT a, UINT b, UINT d, UINT e) {
+    taa_eyes::on_other_draw(c, "instanced");
     if (on()) emit(c, "drawi", false);
     o_draw_inst(c, a, b, d, e);
 }

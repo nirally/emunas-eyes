@@ -51,6 +51,22 @@ bool g_targets_match = false;
 // Why draws weren't taken as the TAA pass (logged with the 10 s count; BUG-011).
 uint64_t g_n_five = 0, g_n_five_fmt = 0, g_n_other_ctx = 0, g_n_srv = 0;
 char g_last_fmt[64] = "";
+// What followed a matching 5-target set before a plain Draw (BUG-011): another target set (who called it)
+// or a draw of another kind.
+bool g_watch = false;
+uint64_t g_n_reset = 0, g_n_other_draw = 0;
+char g_reset_by[96] = "", g_other_draw[16] = "";
+
+void describe_caller(const void* addr, char* out, size_t size) {
+    HMODULE m = nullptr;
+    char path[MAX_PATH] = "?";
+    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                           static_cast<const char*>(addr), &m) && m)
+        GetModuleFileNameA(m, path, sizeof(path));
+    const char* base = strrchr(path, '\\');
+    snprintf(out, size, "%s+%llx", base ? base + 1 : path,
+             (unsigned long long)(static_cast<const char*>(addr) - reinterpret_cast<const char*>(m)));
+}
 ID3D11Resource* g_targets[5] = {};
 
 struct Saved {
@@ -215,14 +231,16 @@ void on_present(IDXGISwapChain* chain) {
         last = GetTickCount64();
         if (g_enabled.load())
             LOG_I("taa", "TAA passes %llu: per-eye history %llu, motion fixed %llu, skipped %llu (mono / eye unknown / first frame); "
-                  "5-target sets %llu, other formats %llu%s%s, other context %llu, inputs not matched %llu, shaders %d",
+                  "5-target sets %llu, other formats %llu%s%s, other context %llu, inputs not matched %llu, shaders %d; "
+                  "replaced before the draw %llu (last by %s), other draw kind %llu (%s)",
                   (unsigned long long)g_passes, (unsigned long long)g_swapped, (unsigned long long)g_fixed,
                   (unsigned long long)g_skipped, (unsigned long long)g_n_five, (unsigned long long)g_n_five_fmt,
                   g_last_fmt[0] ? " last " : "", g_last_fmt, (unsigned long long)g_n_other_ctx,
-                  (unsigned long long)g_n_srv, g_taa_ps_n);
+                  (unsigned long long)g_n_srv, g_taa_ps_n, (unsigned long long)g_n_reset, g_reset_by,
+                  (unsigned long long)g_n_other_draw, g_other_draw);
         g_passes = g_swapped = g_fixed = g_skipped = 0;
-        g_n_five = g_n_five_fmt = g_n_other_ctx = g_n_srv = 0;
-        g_last_fmt[0] = 0;
+        g_n_five = g_n_five_fmt = g_n_other_ctx = g_n_srv = g_n_reset = g_n_other_draw = 0;
+        g_last_fmt[0] = g_reset_by[0] = g_other_draw[0] = 0;
     }
 }
 
@@ -247,9 +265,23 @@ void on_set_ps(ID3D11DeviceContext* ctx, ID3D11PixelShader* ps) {
     if (ctx == g_imm) g_ps = ps;
 }
 
-void on_set_targets(ID3D11DeviceContext* ctx, unsigned count, ID3D11RenderTargetView* const* rtvs) {
+void on_other_draw(ID3D11DeviceContext* ctx, const char* kind) {
+    if (ctx != g_imm || !g_watch) return;
+    g_watch = false;
+    ++g_n_other_draw;
+    snprintf(g_other_draw, sizeof(g_other_draw), "%s", kind);
+}
+
+void on_set_targets(ID3D11DeviceContext* ctx, unsigned count, ID3D11RenderTargetView* const* rtvs, const void* caller) {
     if (count == 5 && ctx != g_imm) ++g_n_other_ctx;
     if (ctx != g_imm) return;
+    if (g_watch) {
+        g_watch = false;
+        ++g_n_reset;
+        describe_caller(caller, g_reset_by, sizeof(g_reset_by));
+        const size_t len = strlen(g_reset_by);
+        snprintf(g_reset_by + len, sizeof(g_reset_by) - len, " n=%u", count);
+    }
     g_targets_match = false;
     if (count != 5 || !rtvs) return;
     ++g_n_five;
@@ -270,9 +302,15 @@ void on_set_targets(ID3D11DeviceContext* ctx, unsigned count, ID3D11RenderTarget
     }
     for (int i = 0; i < 5; ++i) g_targets[i] = res[i];
     g_targets_match = true;
+    // Watch for what comes next, unless this set is our own restore after the pass.
+    HMODULE from = nullptr, self = nullptr;
+    GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, static_cast<const char*>(caller), &from);
+    GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, reinterpret_cast<const char*>(&describe_caller), &self);
+    g_watch = from != self;
 }
 
 bool before_draw(ID3D11DeviceContext* ctx) {
+    if (ctx == g_imm) g_watch = false;
     // The velocity probe also runs with per-eye history off (for comparison).
     if ((!g_enabled.load() && !g_velocity_probe.load()) || ctx != g_imm || !g_targets_match) return false;
     ID3D11ShaderResourceView* srv[7] = {};
