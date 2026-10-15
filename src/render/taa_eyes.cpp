@@ -21,6 +21,7 @@
 
 #include "diagnostics/log.h"
 #include "render/camera_override.h"
+#include "render/ctx_hooks.h"
 #include "render/hand_render.h"
 #include "render/motion_fix.h"
 
@@ -238,8 +239,15 @@ void on_present(IDXGISwapChain* chain) {
                   g_last_fmt[0] ? " last " : "", g_last_fmt, (unsigned long long)g_n_other_ctx,
                   (unsigned long long)g_n_srv, g_taa_ps_n, (unsigned long long)g_n_reset, g_reset_by,
                   (unsigned long long)g_n_other_draw, g_other_draw);
+        // BUG-011: the pass's targets are set but its draw is missed - trace two frames once to see why.
+        static bool traced = false;
+        if (g_enabled.load() && !traced && g_n_five > 300 && g_passes * 4 < g_n_five) {
+            traced = true;
+            ctx_hooks::request_trace();
+            LOG_I("taa", "TAA pass missed on most frames - tracing two frames (trace_<n>.txt)");
+        }
         g_passes = g_swapped = g_fixed = g_skipped = 0;
-        g_n_five = g_n_five_fmt = g_n_other_ctx = g_n_srv = g_n_reset = g_n_other_draw = 0;
+        g_n_five =g_n_five_fmt = g_n_other_ctx = g_n_srv = g_n_reset = g_n_other_draw = 0;
         g_last_fmt[0] = g_reset_by[0] = g_other_draw[0] = 0;
     }
 }

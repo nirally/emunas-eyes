@@ -12,6 +12,7 @@
 
 #include <atomic>
 #include <cstdio>
+#include <cstring>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -39,6 +40,7 @@ struct Shadow {  // last state set on one context
 std::mutex g_mutex;
 std::unordered_map<ID3D11DeviceContext*, Shadow> g_shadow;
 std::atomic<bool> g_tracing{false};
+std::atomic<bool> g_trace_request{false};  // request_trace()
 FILE* g_out = nullptr;
 int g_frames_left = 0, g_index = 0;
 uint64_t g_seq = 0;
@@ -122,6 +124,35 @@ OmSetFn o_om;
 OmSetUavFn o_om_uav;
 CsSetUavFn o_cs_uav;
 CopyFn o_copy;
+using DrawAutoFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*);
+using DrawIndirectFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11Buffer*, UINT);
+using ClearRtvFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11RenderTargetView*, const FLOAT[4]);
+using CopyRegionFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11Resource*, UINT, UINT, UINT, UINT, ID3D11Resource*,
+                                              UINT, const D3D11_BOX*);
+using PredicationFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11Predicate*, BOOL);
+DrawAutoFn o_draw_auto;
+DrawIndirectFn o_draw_idx_indirect, o_draw_indirect;
+ClearRtvFn o_clear_rtv;
+CopyRegionFn o_copy_region;
+PredicationFn o_predication;
+
+// Trace lines for calls that aren't draws (BUG-011: what happens between the TAA targets and its draw).
+void note(ID3D11DeviceContext* c, const char* text) {
+    std::lock_guard lock(g_mutex);
+    if (g_out) fprintf(g_out, "%6llu ctx %p %s\n", (unsigned long long)++g_seq, static_cast<void*>(c), text);
+}
+std::string caller_of(const void* addr) {
+    HMODULE m = nullptr;
+    char path[MAX_PATH] = "?";
+    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                           static_cast<const char*>(addr), &m) && m)
+        GetModuleFileNameA(m, path, sizeof(path));
+    const char* base = strrchr(path, '\\');
+    char buf[160];
+    snprintf(buf, sizeof(buf), "%s+%llx", base ? base + 1 : path,
+             (unsigned long long)(static_cast<const char*>(addr) - reinterpret_cast<const char*>(m)));
+    return buf;
+}
 
 bool on() { return g_tracing.load(std::memory_order_relaxed); }
 
@@ -152,6 +183,7 @@ void STDMETHODCALLTYPE d_cs(ID3D11DeviceContext* c, ID3D11ComputeShader* sh, ID3
 }
 void STDMETHODCALLTYPE d_om(ID3D11DeviceContext* c, UINT n, ID3D11RenderTargetView* const* rt, ID3D11DepthStencilView* ds) {
     taa_eyes::on_set_targets(c, n, rt, _ReturnAddress());
+    if (on()) note(c, ("om       n=" + std::to_string(n) + " by " + caller_of(_ReturnAddress())).c_str());
     if (on()) {
         std::lock_guard lock(g_mutex);
         Shadow& s = g_shadow[c];
@@ -163,6 +195,7 @@ void STDMETHODCALLTYPE d_om(ID3D11DeviceContext* c, UINT n, ID3D11RenderTargetVi
 void STDMETHODCALLTYPE d_om_uav(ID3D11DeviceContext* c, UINT n, ID3D11RenderTargetView* const* rt, ID3D11DepthStencilView* ds,
                                 UINT us, UINT un, ID3D11UnorderedAccessView* const* u, const UINT* counts) {
     if (n != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) taa_eyes::on_set_targets(c, n, rt, _ReturnAddress());
+    if (on()) note(c, ("omuav    n=" + std::to_string(n) + " by " + caller_of(_ReturnAddress())).c_str());
     if (on()) {
         std::lock_guard lock(g_mutex);
         Shadow& s = g_shadow[c];
@@ -220,6 +253,39 @@ void STDMETHODCALLTYPE d_copy(ID3D11DeviceContext* c, ID3D11Resource* dst, ID3D1
     o_copy(c, dst, src);
 }
 
+void STDMETHODCALLTYPE d_draw_auto(ID3D11DeviceContext* c) {
+    taa_eyes::on_other_draw(c, "auto");
+    if (on()) emit(c, "drawauto", false);
+    o_draw_auto(c);
+}
+void STDMETHODCALLTYPE d_draw_idx_indirect(ID3D11DeviceContext* c, ID3D11Buffer* b, UINT off) {
+    taa_eyes::on_other_draw(c, "indexed indirect");
+    if (on()) emit(c, "drawidxind", false);
+    o_draw_idx_indirect(c, b, off);
+}
+void STDMETHODCALLTYPE d_draw_indirect(ID3D11DeviceContext* c, ID3D11Buffer* b, UINT off) {
+    taa_eyes::on_other_draw(c, "indirect");
+    if (on()) emit(c, "drawind", false);
+    o_draw_indirect(c, b, off);
+}
+void STDMETHODCALLTYPE d_clear_rtv(ID3D11DeviceContext* c, ID3D11RenderTargetView* v, const FLOAT rgba[4]) {
+    if (on()) note(c, ("clear    " + describe(resource_of(v))).c_str());
+    o_clear_rtv(c, v, rgba);
+}
+void STDMETHODCALLTYPE d_copy_region(ID3D11DeviceContext* c, ID3D11Resource* dst, UINT ds, UINT x, UINT y, UINT z,
+                                     ID3D11Resource* src, UINT ss, const D3D11_BOX* box) {
+    if (on()) note(c, ("copyreg  " + describe(src) + " -> " + describe(dst)).c_str());
+    o_copy_region(c, dst, ds, x, y, z, src, ss, box);
+}
+void STDMETHODCALLTYPE d_predication(ID3D11DeviceContext* c, ID3D11Predicate* p, BOOL v) {
+    if (on()) {
+        char t[64];
+        snprintf(t, sizeof(t), "predication %p value %d", static_cast<void*>(p), v);
+        note(c, t);
+    }
+    o_predication(c, p, v);
+}
+
 template <class T>
 void hook(void** vtbl, int index, void* detour, T* orig) {
     if (MH_CreateHook(vtbl[index], detour, reinterpret_cast<void**>(orig)) == MH_OK) MH_EnableHook(vtbl[index]);
@@ -243,6 +309,12 @@ void install(IDXGISwapChain* chain) {
     hook(vt, 34, reinterpret_cast<void*>(&d_om_uav), &o_om_uav);
     hook(vt, 41, reinterpret_cast<void*>(&d_dispatch), &o_dispatch);
     hook(vt, 47, reinterpret_cast<void*>(&d_copy), &o_copy);
+    hook(vt, 30, reinterpret_cast<void*>(&d_predication), &o_predication);
+    hook(vt, 38, reinterpret_cast<void*>(&d_draw_auto), &o_draw_auto);
+    hook(vt, 39, reinterpret_cast<void*>(&d_draw_idx_indirect), &o_draw_idx_indirect);
+    hook(vt, 40, reinterpret_cast<void*>(&d_draw_indirect), &o_draw_indirect);
+    hook(vt, 46, reinterpret_cast<void*>(&d_copy_region), &o_copy_region);
+    hook(vt, 50, reinterpret_cast<void*>(&d_clear_rtv), &o_clear_rtv);
     hook(vt, 67, reinterpret_cast<void*>(&d_cs_srv), &o_cs_srv);
     hook(vt, 68, reinterpret_cast<void*>(&d_cs_uav), &o_cs_uav);
     hook(vt, 69, reinterpret_cast<void*>(&d_cs), &o_cs);
@@ -271,7 +343,8 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
     }
     if (++poll % 30) return;
     std::error_code ec;
-    if (!std::filesystem::remove(dir / L"TRACE", ec)) return;
+    const bool asked = g_trace_request.exchange(false);
+    if (!std::filesystem::remove(dir / L"TRACE", ec) && !asked) return;
     if (!g_installed) install(chain);
     if (!g_installed) return;
     wchar_t name[32];
@@ -282,5 +355,7 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
     g_frames_left = 3;  // the rest of this frame + two full frames
     g_tracing = g_out != nullptr;
 }
+
+void request_trace() { g_trace_request = true; }
 
 }  // namespace mecvr::ctx_hooks
