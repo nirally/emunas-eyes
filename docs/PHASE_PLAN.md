@@ -17,12 +17,12 @@ Mode: agentic | Gate: hard | Stage 5 of 10 — hands
 ✅ Recentre = hold right stick click 1 s (PLAYTEST-4g)
 ✅ Stage 4 passed (D-032): a full session "great in every way, nothing unwanted"; comfort 5
 🚧 In progress: Stage 5 — hands
-🔧 Built, not yet tested: hand markers at the controllers (D-031); 5a: markers only flashed (BUG-011), 5b/5c: still; 5d: the mod's draw hooks are bypassed in the headset (thread-safe mode); both versions hooked (5e: still a flash); every copy of the runtime's method tables hooked, desktop now catches the pass every frame → PLAYTEST-5f
+🔧 Built, not yet tested: hand markers at the controllers (D-031); 5a: markers only flashed (BUG-011), 5b/5c: still; 5d: the mod's draw hooks are bypassed in the headset (thread-safe mode); both versions hooked (5e: still a flash); every copy of the runtime's method tables hooked, desktop now catches the pass every frame → 5f: steady, but seen twice + ghosting (per-eye TAA, now off) → PLAYTEST-5g
 ⬜ Not started: punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-5f (~3 min)
-🐞 Open bugs: BUG-011 sev-2 (hands only flash, TAA pass missed in the headset); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-5f (~3 min). Me: read its log; hand models once the markers show.
+❓ Need from you: PLAYTEST-5g (~3 min)
+🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosts while turning; off for now), BUG-013 sev-2 (boxes seen twice); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: You: PLAYTEST-5g (~3 min). Me: read its log; fix BUG-012 on the desktop; hand models once the markers are right.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

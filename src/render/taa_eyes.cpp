@@ -319,8 +319,9 @@ void on_set_targets(ID3D11DeviceContext* ctx, unsigned count, ID3D11RenderTarget
 
 bool before_draw(ID3D11DeviceContext* ctx) {
     if (ctx == g_imm) g_watch = false;
-    // The velocity probe also runs with per-eye history off (for comparison).
-    if ((!g_enabled.load() && !g_velocity_probe.load()) || ctx != g_imm || !g_targets_match) return false;
+    // The velocity probe and the hands also run with per-eye history off.
+    if ((!g_enabled.load() && !g_velocity_probe.load() && !hand_render::enabled()) || ctx != g_imm || !g_targets_match)
+        return false;
     ID3D11ShaderResourceView* srv[7] = {};
     ctx->PSGetShaderResources(0, 7, srv);
     D3D11_TEXTURE2D_DESC d{};
@@ -345,6 +346,35 @@ bool before_draw(ID3D11DeviceContext* ctx) {
             len += snprintf(line + len, sizeof(line) - len, " %c(%.2f,%.2f)", j.eye ? 'R' : 'L', j.x * 1440, j.y * 810);
         }
         LOG_I("taa", "jitter (px), oldest first:%s", line);
+        // Where the screen centre (a point ~straight ahead) lands under the recorded cameras, in px from the
+        // centre: tells whether "this eye's previous" really is an older camera (BUG-011 / PLAYTEST-5f ghosting).
+        const int e = camera_override::rendering_eye();
+        if (e >= 0) {
+            const EyeCams& own = g_cams[e];
+            const EyeCams& oth = g_cams[1 - e];
+            float inv[16];
+            if (vm::invert4(own.latest.vp, inv)) {
+                auto mul = [](const float* m, const float* p, float* o) {
+                    for (int r = 0; r < 4; ++r) o[r] = m[r * 4] * p[0] + m[r * 4 + 1] * p[1] + m[r * 4 + 2] * p[2] + m[r * 4 + 3] * p[3];
+                };
+                const float ndc[4] = {0, 0, 0.001f, 1};
+                float w[4];
+                mul(inv, ndc, w);
+                for (float& c : w) c /= w[3];
+                auto px = [&](const Cam& c, float* out) {
+                    float p[4];
+                    mul(c.vp, w, p);
+                    out[0] = p[0] / p[3] * 720;
+                    out[1] = -p[1] / p[3] * 405;
+                };
+                float a[2], b[2], c[2];
+                px(own.prev, a);
+                px(oth.latest, b);
+                px(oth.prev, c);
+                LOG_I("taa", "centre under cameras (eye %d, frame %llu; own %llu, other %llu): own prev %.1f,%.1f  other latest %.1f,%.1f  other prev %.1f,%.1f px",
+                      e, (unsigned long long)g_frame, (unsigned long long)own.frame, (unsigned long long)oth.frame, a[0], a[1], b[0], b[1], c[0], c[1]);
+            }
+        }
     }
     if (ok && g_enabled.load()) {
         bool known = false;
@@ -380,11 +410,18 @@ bool before_draw(ID3D11DeviceContext* ctx) {
             if (ok) {
                 g_pending_eye = eye;
                 acted = true;
-                D3D11_TEXTURE2D_DESC dd{};
-                g_draw_depth = tex_of(depth, &dd);
-                memcpy(g_draw_vp, own.latest.vp, sizeof(g_draw_vp));
-                g_draw_ok = g_draw_depth != nullptr;
             }
+        }
+    }
+    // Hands after the pass, with or without per-eye history: this eye's camera of this frame.
+    if (ok && hand_render::enabled()) {
+        const int eye = camera_override::rendering_eye();
+        const EyeCams* own = eye >= 0 ? &g_cams[eye] : nullptr;
+        D3D11_TEXTURE2D_DESC dd{};
+        if (own && own->frame == g_frame && own->latest.valid && (g_draw_depth = tex_of(depth, &dd)) != nullptr) {
+            memcpy(g_draw_vp, own->latest.vp, sizeof(g_draw_vp));
+            g_draw_ok = true;
+            acted = true;
         }
     }
     if (depth) depth->Release();
@@ -394,9 +431,10 @@ bool before_draw(ID3D11DeviceContext* ctx) {
 void after_draw(ID3D11DeviceContext* ctx) {
     const int eye = g_pending_eye;
     g_pending_eye = -1;
-    if (eye < 0) return;
-    for (int i = 0; i < kHist; ++i) ctx->CopyResource(g_saved[eye].tex[i], g_targets[kOutTarget[i]]);
-    g_saved[eye].valid = true;
+    if (eye >= 0) {
+        for (int i = 0; i < kHist; ++i) ctx->CopyResource(g_saved[eye].tex[i], g_targets[kOutTarget[i]]);
+        g_saved[eye].valid = true;
+    }
     // Hands go into the anti-aliased HDR scene colour (r1), before bloom and tonemap.
     if (g_draw_ok) {
         D3D11_TEXTURE2D_DESC sd{};

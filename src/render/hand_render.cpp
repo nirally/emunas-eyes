@@ -138,6 +138,7 @@ void box(ID3D11DeviceContext* ctx, const float* vp, vm::Quat q, vm::Vec3 p, vm::
 }  // namespace
 
 void set_enabled(bool on) { g_enabled = on; }
+bool enabled() { return g_enabled.load(); }
 
 void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_color, ID3D11Texture2D* depth,
           const float* vp) {

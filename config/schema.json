@@ -22,7 +22,7 @@
     "hands.show":                 { "type": "bool",  "default": true,  "section": "Hands", "label": "Show your hands at the controllers" },
     "diagnostics.hand_sim":       { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Simulated hands in front of you without a headset (developer tests)" },
     "diagnostics.room_sim":       { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Room-scale also without a headset (developer tests)" },
-    "rendering.taa_per_eye":      { "type": "bool",  "default": true,  "section": "Rendering", "label": "Anti-aliasing history kept per eye (sharper, less shimmer in 3D)" },
+    "rendering.taa_per_eye":      { "type": "bool",  "default": false,  "section": "Rendering", "label": "Anti-aliasing history kept per eye (sharper, less shimmer in 3D)" },
     "camera.pitch_source":        { "type": "enum",  "values": ["auto", "game", "head"], "default": "auto", "section": "Comfort", "label": "Look up/down from: auto (headset if present), game (mouse/stick), head" },
     "diagnostics.log_level":      { "type": "enum",  "values": ["error", "warn", "info", "debug", "trace"], "default": "info", "section": "Diagnostics", "label": "Log level" },
     "diagnostics.assertions":     { "type": "bool",  "default": true,  "section": "Diagnostics", "label": "In-game self-checks" },

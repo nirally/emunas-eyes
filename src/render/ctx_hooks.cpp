@@ -23,6 +23,7 @@
 
 #include "diagnostics/log.h"
 #include "render/cb_capture.h"
+#include "render/hand_render.h"
 #include "render/hook_guard.h"
 #include "render/taa_eyes.h"
 
@@ -550,7 +551,7 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
         LOG_I("d3d", "context calls seen per method version /10 s:%s command lists run %u; thread-safe %d; not hooked:%s",
               line[0] ? line : " none;", g_exec_lists.exchange(0), safe, miss[0] ? miss : " none");
     }
-    if (!g_installed && taa_eyes::enabled()) install(chain);
+    if (!g_installed && (taa_eyes::enabled() || hand_render::enabled())) install(chain);
     taa_eyes::on_present(chain);
     if (g_tracing.load()) {
         std::lock_guard lock(g_mutex);

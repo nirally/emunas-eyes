@@ -240,3 +240,10 @@ Chose: controller grip poses from OpenXR (pose action + action spaces, located a
 ### D-032 — Stage 4 gate: pass
 Date: 2026-10-15  Stage: 4
 Passed on: PLAYTEST-4h, a full session with everything in use (running, wall-runs, climbing, crouch slides, real steps, the game's stick turning, fights, recentre): "great in every way, nothing unwanted". Comfort 5 throughout Stage 4 since 4c. Kept: the game's stick turning (mod turning off, D-028 update 2), physical crouch = slide, room-scale following (D-029), hold-to-recentre (D-030). Not built by user choice: vignette, seated mode, traversal fades, snap turn (D-030). The cutscene/takedown check carried since Stage 1 is closed (nothing wrong seen).
+
+### D-033 — Per-eye TAA off by default; hands no longer depend on it
+Date: 2026-10-16  Stage: 5
+Found (BUG-012): before PLAYTEST-5f the mod's per-eye TAA never actually ran in the headset (BUG-011), so every headset verdict on the picture since Stage 2 (sharp, 5/5) was with the game's own TAA. Now that it runs, its motion correction is wrong while the camera turns: ghosting.
+Chose: rendering.taa_per_eye default off (user config set off too; Shift+F9 still toggles). The hand pass runs after the TAA draw whether per-eye history is on or not, and the draw hooks install when either is on.
+Verified on the desktop (thread-safe mode on, as in the headset): boxes in both eye frames, clean while turning, sharpness 5.1-5.7.
+Revisit: fix the correction (BUG-012) and offer per-eye TAA again.

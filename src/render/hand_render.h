@@ -13,5 +13,6 @@ namespace mecvr::hand_render {
 void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_color, ID3D11Texture2D* depth,
           const float* vp);
 void set_enabled(bool on);  // hands.show
+bool enabled();
 
 }  // namespace mecvr::hand_render
