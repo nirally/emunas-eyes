@@ -22,6 +22,8 @@
 #include <MinHook.h>
 
 #include "diagnostics/log.h"
+#include "render/cb_capture.h"
+#include "render/hook_guard.h"
 #include "render/taa_eyes.h"
 
 namespace mecvr::ctx_hooks {
@@ -114,7 +116,7 @@ using OmSetUavFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, UINT, ID3D11Re
 using CsSetUavFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, UINT, UINT, ID3D11UnorderedAccessView* const*, const UINT*);
 using CopyFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11Resource*, ID3D11Resource*);
 
-constexpr int kVersions = 8;  // distinct implementations hooked per method (BUG-011)
+constexpr int kVersions = 16;  // distinct implementations hooked per method (BUG-011)
 SetSrvFn o_ps_srv[kVersions], o_cs_srv[kVersions];
 SetPsFn o_ps[kVersions];
 SetCsFn o_cs[kVersions];
@@ -140,6 +142,12 @@ CopyRegionFn o_copy_region[kVersions];
 PredicationFn o_predication[kVersions];
 using ExecListFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11CommandList*, BOOL);
 ExecListFn o_exec_list[kVersions];
+using MapFn = HRESULT(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11Resource*, UINT, D3D11_MAP, UINT, D3D11_MAPPED_SUBRESOURCE*);
+using UnmapFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11Resource*, UINT);
+using UpdateFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11Resource*, UINT, const D3D11_BOX*, const void*, UINT, UINT);
+MapFn o_map[kVersions];
+UnmapFn o_unmap[kVersions];
+UpdateFn o_update[kVersions];
 std::atomic<uint32_t> g_exec_lists{0};
 
 // Trace lines for calls that aren't draws (BUG-011: what happens between the TAA targets and its draw).
@@ -161,14 +169,7 @@ std::string caller_of(const void* addr) {
 }
 
 bool on() { return g_tracing.load(std::memory_order_relaxed); }
-// A context method can call another hooked version of itself (the thread-safe version locks, then calls the
-// plain one): only the outermost call is seen by the TAA logic, and our own calls made inside it pass through.
-thread_local int g_inside = 0;
-struct Inside {
-    bool nested;
-    Inside() : nested(g_inside++ > 0) {}
-    ~Inside() { --g_inside; }
-};
+using hook_guard::Inside;
 std::atomic<uint32_t> g_hits[kVersions][2];  // Draw, OMSetRenderTargets calls per hooked version (BUG-011)
 
 template <int V>
@@ -348,11 +349,36 @@ void STDMETHODCALLTYPE d_exec_list(ID3D11DeviceContext* c, ID3D11CommandList* l,
     if (on()) note(c, "execlist");
     o_exec_list[V](c, l, restore);
 }
+// Constant-buffer uploads (the view constants say which eye a frame is): cb_capture hooks the version
+// that exists at startup; these cover the others.
+template <int V>
+HRESULT STDMETHODCALLTYPE d_map(ID3D11DeviceContext* c, ID3D11Resource* r, UINT sub, D3D11_MAP type, UINT flags,
+                                D3D11_MAPPED_SUBRESOURCE* out) {
+    const Inside in;
+    const HRESULT hr = o_map[V](c, r, sub, type, flags, out);
+    if (!in.nested) cb_capture::after_map(r, hr, out);
+    return hr;
+}
+template <int V>
+void STDMETHODCALLTYPE d_unmap(ID3D11DeviceContext* c, ID3D11Resource* r, UINT sub) {
+    const Inside in;
+    if (!in.nested) cb_capture::before_unmap(r);
+    o_unmap[V](c, r, sub);
+}
+template <int V>
+void STDMETHODCALLTYPE d_update(ID3D11DeviceContext* c, ID3D11Resource* r, UINT sub, const D3D11_BOX* box, const void* data,
+                                UINT row, UINT depth) {
+    const Inside in;
+    if (!in.nested) cb_capture::before_update(r, box, data);
+    o_update[V](c, r, sub, box, data, row, depth);
+}
 template <class T>
 void hook(void* const* vtbl, int index, void* detour, T* orig) {
     const MH_STATUS c = MH_CreateHook(vtbl[index], detour, reinterpret_cast<void**>(orig));
     const MH_STATUS e = c == MH_OK ? MH_EnableHook(vtbl[index]) : c;
-    if (e != MH_OK) LOG_W("d3d", "hooking context method %d at %p failed (%d)", index, vtbl[index], int(e));
+    // Already created: hooked elsewhere (cb_capture hooks Map / Unmap / UpdateSubresource at startup).
+    if (e != MH_OK && e != MH_ERROR_ALREADY_CREATED)
+        LOG_W("d3d", "hooking context method %d at %p failed (%d)", index, vtbl[index], int(e));
 }
 
 // Hooks one version of the context's methods; implementations already hooked are skipped.
@@ -385,10 +411,14 @@ void hook_all(void* const* vt) {
     h(68, reinterpret_cast<void*>(&d_cs_uav<V>), &o_cs_uav[V]);
     h(69, reinterpret_cast<void*>(&d_cs<V>), &o_cs[V]);
     h(58, reinterpret_cast<void*>(&d_exec_list<V>), &o_exec_list[V]);
+    h(14, reinterpret_cast<void*>(&d_map<V>), &o_map[V]);
+    h(15, reinterpret_cast<void*>(&d_unmap<V>), &o_unmap[V]);
+    h(48, reinterpret_cast<void*>(&d_update<V>), &o_update[V]);
 }
 using HookAllFn = void (*)(void* const*);
-constexpr HookAllFn kHookAll[kVersions] = {hook_all<0>, hook_all<1>, hook_all<2>, hook_all<3>,
-                                           hook_all<4>, hook_all<5>, hook_all<6>, hook_all<7>};
+constexpr HookAllFn kHookAll[kVersions] = {hook_all<0>, hook_all<1>, hook_all<2>,  hook_all<3>,  hook_all<4>,  hook_all<5>,
+                                           hook_all<6>, hook_all<7>, hook_all<8>,  hook_all<9>,  hook_all<10>, hook_all<11>,
+                                           hook_all<12>, hook_all<13>, hook_all<14>, hook_all<15>};
 
 // The context's methods come in versions: each interface the game may hold (ID3D11DeviceContext..4) has
 // its own method table, and each table changes in place when the device's thread-safe mode is switched
@@ -428,6 +458,47 @@ void install(IDXGISwapChain* chain) {
         mt->SetMultithreadProtected(was);
         mt->Release();
     }
+    // The runtime also keeps other copies of the method table (in its read-only data) and can switch the
+    // context's entries to them while the game draws - in the headset the game's draws went through
+    // versions never seen in the table at Present (PLAYTEST-5e). Every such copy is found by its first
+    // entries (QueryInterface, AddRef, Release are shared) with all methods inside the runtime's code.
+    size_t found = 0;
+    HMODULE rt = nullptr;
+    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                           static_cast<const char*>(tables[0].entries[13]), &rt) && rt) {
+        auto* base = reinterpret_cast<const uint8_t*>(rt);
+        const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(base + reinterpret_cast<const IMAGE_DOS_HEADER*>(base)->e_lfanew);
+        const auto* sec = IMAGE_FIRST_SECTION(nt);
+        const uint8_t* code_lo = nullptr;
+        const uint8_t* code_hi = nullptr;
+        for (int s = 0; s < nt->FileHeader.NumberOfSections; ++s)
+            if (sec[s].Characteristics & IMAGE_SCN_MEM_EXECUTE) {
+                const uint8_t* lo = base + sec[s].VirtualAddress;
+                const uint8_t* hi = lo + sec[s].Misc.VirtualSize;
+                if (!code_lo || lo < code_lo) code_lo = lo;
+                if (!code_hi || hi > code_hi) code_hi = hi;
+            }
+        for (int s = 0; s < nt->FileHeader.NumberOfSections; ++s) {
+            if ((sec[s].Characteristics & IMAGE_SCN_MEM_EXECUTE) || !(sec[s].Characteristics & IMAGE_SCN_MEM_READ)) continue;
+            auto* p = reinterpret_cast<void* const*>(base + sec[s].VirtualAddress);
+            const size_t n = sec[s].Misc.VirtualSize / sizeof(void*);
+            for (size_t i = 0; i + kMethods <= n; ++i) {
+                if (p[i] != tables[0].entries[0] || p[i + 1] != tables[0].entries[1] || p[i + 2] != tables[0].entries[2]) continue;
+                bool code = true;
+                for (int k = 0; k < kMethods && code; ++k) {
+                    auto* e = static_cast<const uint8_t*>(p[i + k]);
+                    code = e >= code_lo && e < code_hi;
+                }
+                if (!code) continue;
+                Table t;
+                memcpy(t.entries, p + i, sizeof(t.entries));
+                bool seen = false;
+                for (const Table& o : tables) seen = seen || memcmp(o.entries, t.entries, sizeof(t.entries)) == 0;
+                if (!seen) { tables.push_back(t); ++found; }
+            }
+        }
+    }
+    if (tables.size() > kVersions) LOG_W("d3d", "%zu method tables, only %d hooked", tables.size(), kVersions);
     std::string draws;
     for (size_t i = 0; i < tables.size() && i < kVersions; ++i) {
         kHookAll[i](tables[i].entries);
@@ -439,8 +510,8 @@ void install(IDXGISwapChain* chain) {
     ctx->Release();
     dev->Release();
     g_installed = true;
-    LOG_I("d3d", "device-context hooks installed: %zu interfaces, %zu method tables (thread-safe mode %s), %zu methods hooked; Draw at%s",
-          faces.size(), tables.size(), was ? "on" : "off", g_hooked.size(), draws.c_str());
+    LOG_I("d3d", "device-context hooks installed: %zu interfaces, %zu method tables (%zu from the runtime's data; thread-safe mode %s), %zu methods hooked; Draw at%s",
+          faces.size(), tables.size(), found, was ? "on" : "off", g_hooked.size(), draws.c_str());
 }
 
 }  // namespace

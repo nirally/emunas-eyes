@@ -15,6 +15,7 @@
 
 #include "diagnostics/log.h"
 #include "render/cam_hunt.h"
+#include "render/hook_guard.h"
 #include "render/camera_override.h"
 #include "render/taa_eyes.h"
 #include "render/xr_session.h"
@@ -155,18 +156,17 @@ bool is_constant_buffer(ID3D11Resource* res, UINT* size) {
     return (d.BindFlags & D3D11_BIND_CONSTANT_BUFFER) != 0;
 }
 
-HRESULT STDMETHODCALLTYPE map_detour(ID3D11DeviceContext* ctx, ID3D11Resource* res, UINT sub, D3D11_MAP type,
-                                     UINT flags, D3D11_MAPPED_SUBRESOURCE* out) {
-    HRESULT hr = g_map_orig(ctx, res, sub, type, flags, out);
+}  // namespace
+
+void after_map(ID3D11Resource* res, HRESULT hr, const D3D11_MAPPED_SUBRESOURCE* out) {
     UINT size = 0;
     if (SUCCEEDED(hr) && out && is_constant_buffer(res, &size) && (g_capturing || size == kViewCbBytes)) {
         std::lock_guard lock(g_mutex);
         g_pending[res] = {out->pData, size};
     }
-    return hr;
 }
 
-void STDMETHODCALLTYPE unmap_detour(ID3D11DeviceContext* ctx, ID3D11Resource* res, UINT sub) {
+void before_unmap(ID3D11Resource* res) {
     Pending p{};
     {
         std::lock_guard lock(g_mutex);
@@ -179,11 +179,9 @@ void STDMETHODCALLTYPE unmap_detour(ID3D11DeviceContext* ctx, ID3D11Resource* re
             taa_eyes::record_view_cb(static_cast<const float*>(p.data), p.size / 4);
         if (g_capturing) record("Map", res, p.data, p.size);
     }
-    g_unmap_orig(ctx, res, sub);
 }
 
-void STDMETHODCALLTYPE update_detour(ID3D11DeviceContext* ctx, ID3D11Resource* res, UINT sub, const D3D11_BOX* box,
-                                     const void* data, UINT row, UINT depth) {
+void before_update(ID3D11Resource* res, const D3D11_BOX* box, const void* data) {
     UINT size = 0;
     if (data && !box && is_constant_buffer(res, &size)) {
         watch_view(data, size);
@@ -191,6 +189,26 @@ void STDMETHODCALLTYPE update_detour(ID3D11DeviceContext* ctx, ID3D11Resource* r
         if (size == kViewCbBytes && looks_like_view_cb(static_cast<const float*>(data)))
             taa_eyes::record_view_cb(static_cast<const float*>(data), size / 4);
     }
+}
+
+namespace {
+
+HRESULT STDMETHODCALLTYPE map_detour(ID3D11DeviceContext* ctx, ID3D11Resource* res, UINT sub, D3D11_MAP type,
+                                     UINT flags, D3D11_MAPPED_SUBRESOURCE* out) {
+    const hook_guard::Inside in;
+    const HRESULT hr = g_map_orig(ctx, res, sub, type, flags, out);
+    if (!in.nested) after_map(res, hr, out);
+    return hr;
+}
+void STDMETHODCALLTYPE unmap_detour(ID3D11DeviceContext* ctx, ID3D11Resource* res, UINT sub) {
+    const hook_guard::Inside in;
+    if (!in.nested) before_unmap(res);
+    g_unmap_orig(ctx, res, sub);
+}
+void STDMETHODCALLTYPE update_detour(ID3D11DeviceContext* ctx, ID3D11Resource* res, UINT sub, const D3D11_BOX* box,
+                                     const void* data, UINT row, UINT depth) {
+    const hook_guard::Inside in;
+    if (!in.nested) before_update(res, box, data);
     g_update_orig(ctx, res, sub, box, data, row, depth);
 }
 
