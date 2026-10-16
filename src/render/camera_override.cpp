@@ -203,6 +203,7 @@ Hands place_hands(vm::Quat cam_rot, vm::Vec3 cam_pos) {
         if (!p.valid) continue;
         h.pos[i] = cam_pos + cam_rot.rotate(inv_head.rotate(p.position - head.position));
         h.rot[i] = (cam_rot * inv_head * p.rotation).normalized();
+        h.fingers[i] = hand_pose::fingers(i);
         h.valid[i] = true;
     }
     return h;

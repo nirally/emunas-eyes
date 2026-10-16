@@ -31,7 +31,7 @@ XrInstance g_instance = XR_NULL_HANDLE;
 XrSession g_session = XR_NULL_HANDLE;
 XrActionSet g_set = XR_NULL_HANDLE;
 XrPath g_hand[2] = {};  // 0 left, 1 right
-enum Act { kStick, kStickClick, kTrigger, kGrip, kPrimary, kSecondary, kMenu, kHaptic, kGripPose, kActCount };
+enum Act { kStick, kStickClick, kTrigger, kGrip, kPrimary, kSecondary, kMenu, kHaptic, kGripPose, kTriggerTouch, kThumbTouch, kActCount };
 XrSpace g_base = XR_NULL_HANDLE;          // LOCAL space (the head pose's space)
 XrSpace g_hand_space[2] = {XR_NULL_HANDLE, XR_NULL_HANDLE};
 XrAction g_act[kActCount] = {};
@@ -71,10 +71,10 @@ bool make_action(Act a, const char* name, const char* label, XrActionType type) 
 
 struct Binding { Act act; const char* path; };
 
-void suggest(const char* profile, const Binding* b, size_t n) {
-    XrActionSuggestedBinding sb[24];
+bool suggest(const char* profile, const Binding* b, size_t n) {
+    XrActionSuggestedBinding sb[40];
     size_t k = 0;
-    for (size_t i = 0; i < n && k < 24; ++i) {
+    for (size_t i = 0; i < n && k < 40; ++i) {
         const XrPath p = path(b[i].path);
         if (p != XR_NULL_PATH) sb[k++] = {g_act[b[i].act], p};
     }
@@ -84,6 +84,19 @@ void suggest(const char* profile, const Binding* b, size_t n) {
     s.suggestedBindings = sb;
     const XrResult r = pxrSuggestInteractionProfileBindings(g_instance, &s);
     if (XR_FAILED(r)) LOG_W("input", "bindings for %s not accepted (%d)", profile, r);
+    return XR_SUCCEEDED(r);
+}
+
+// The finger-touch bindings (Stage 5 hands) go in front; a runtime that rejects one of them rejects the
+// whole profile, so the controls are retried without them.
+void suggest_with_touch(const char* profile, const Binding* touch, size_t nt, const Binding* b, size_t n) {
+    Binding all[40];
+    size_t k = 0;
+    for (size_t i = 0; i < nt && k < 40; ++i) all[k++] = touch[i];
+    for (size_t i = 0; i < n && k < 40; ++i) all[k++] = b[i];
+    if (suggest(profile, all, k)) return;
+    LOG_W("input", "%s: retrying without finger-touch bindings (hands won't follow finger touches)", profile);
+    suggest(profile, b, n);
 }
 
 // --- state reading ---
@@ -168,7 +181,9 @@ bool create(XrInstance instance, XrSession session, XrSpace base, PFN_xrGetInsta
               make_action(kSecondary, "secondary", "B / Y button", XR_ACTION_TYPE_BOOLEAN_INPUT) &&
               make_action(kMenu, "menu", "Menu button", XR_ACTION_TYPE_BOOLEAN_INPUT) &&
               make_action(kHaptic, "rumble", "Vibration", XR_ACTION_TYPE_VIBRATION_OUTPUT) &&
-              make_action(kGripPose, "hand_pose", "Hand pose", XR_ACTION_TYPE_POSE_INPUT);
+              make_action(kGripPose, "hand_pose", "Hand pose", XR_ACTION_TYPE_POSE_INPUT) &&
+              make_action(kTriggerTouch, "trigger_touch", "Finger on trigger", XR_ACTION_TYPE_BOOLEAN_INPUT) &&
+              make_action(kThumbTouch, "thumb_touch", "Thumb on stick or buttons", XR_ACTION_TYPE_BOOLEAN_INPUT);
     if (!ok) return false;
 
     const Binding touch[] = {
@@ -182,7 +197,15 @@ bool create(XrInstance instance, XrSession session, XrSpace base, PFN_xrGetInsta
         {kHaptic, "/user/hand/left/output/haptic"},          {kHaptic, "/user/hand/right/output/haptic"},
         {kGripPose, "/user/hand/left/input/grip/pose"},      {kGripPose, "/user/hand/right/input/grip/pose"},
     };
-    suggest("/interaction_profiles/oculus/touch_controller", touch, sizeof(touch) / sizeof(touch[0]));
+    const Binding touch_fingers[] = {
+        {kTriggerTouch, "/user/hand/left/input/trigger/touch"},   {kTriggerTouch, "/user/hand/right/input/trigger/touch"},
+        {kThumbTouch, "/user/hand/left/input/thumbstick/touch"},  {kThumbTouch, "/user/hand/right/input/thumbstick/touch"},
+        {kThumbTouch, "/user/hand/left/input/x/touch"},           {kThumbTouch, "/user/hand/right/input/a/touch"},
+        {kThumbTouch, "/user/hand/left/input/y/touch"},           {kThumbTouch, "/user/hand/right/input/b/touch"},
+        {kThumbTouch, "/user/hand/left/input/thumbrest/touch"},   {kThumbTouch, "/user/hand/right/input/thumbrest/touch"},
+    };
+    suggest_with_touch("/interaction_profiles/oculus/touch_controller", touch_fingers,
+                       sizeof(touch_fingers) / sizeof(touch_fingers[0]), touch, sizeof(touch) / sizeof(touch[0]));
     const Binding index[] = {
         {kStick, "/user/hand/left/input/thumbstick"},         {kStick, "/user/hand/right/input/thumbstick"},
         {kStickClick, "/user/hand/left/input/thumbstick/click"}, {kStickClick, "/user/hand/right/input/thumbstick/click"},
@@ -194,7 +217,15 @@ bool create(XrInstance instance, XrSession session, XrSpace base, PFN_xrGetInsta
         {kHaptic, "/user/hand/left/output/haptic"},          {kHaptic, "/user/hand/right/output/haptic"},
         {kGripPose, "/user/hand/left/input/grip/pose"},      {kGripPose, "/user/hand/right/input/grip/pose"},
     };
-    suggest("/interaction_profiles/valve/index_controller", index, sizeof(index) / sizeof(index[0]));
+    const Binding index_fingers[] = {
+        {kTriggerTouch, "/user/hand/left/input/trigger/touch"},   {kTriggerTouch, "/user/hand/right/input/trigger/touch"},
+        {kThumbTouch, "/user/hand/left/input/thumbstick/touch"},  {kThumbTouch, "/user/hand/right/input/thumbstick/touch"},
+        {kThumbTouch, "/user/hand/left/input/a/touch"},           {kThumbTouch, "/user/hand/right/input/a/touch"},
+        {kThumbTouch, "/user/hand/left/input/b/touch"},           {kThumbTouch, "/user/hand/right/input/b/touch"},
+        {kThumbTouch, "/user/hand/left/input/trackpad/touch"},    {kThumbTouch, "/user/hand/right/input/trackpad/touch"},
+    };
+    suggest_with_touch("/interaction_profiles/valve/index_controller", index_fingers,
+                       sizeof(index_fingers) / sizeof(index_fingers[0]), index, sizeof(index) / sizeof(index[0]));
     const Binding simple[] = {
         {kTrigger, "/user/hand/left/input/select/click"}, {kTrigger, "/user/hand/right/input/select/click"},
         {kMenu, "/user/hand/left/input/menu/click"},
@@ -261,6 +292,7 @@ void sync(XrTime time, bool focused) {
                 hand[h].primary = get_bool(kPrimary, h);
                 hand[h].secondary = get_bool(kSecondary, h);
                 hand[h].menu = get_bool(kMenu, h);
+                hand_pose::set_controls(h, hand[h].trigger, get_bool(kTriggerTouch, h), hand[h].grip, get_bool(kThumbTouch, h));
             }
             if (active) {
                 pad_map::Pad pad = pad_map::map(hand[0], hand[1], g_left_handed.load(), g_stick_pitch.load());

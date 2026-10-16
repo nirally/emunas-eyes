@@ -202,6 +202,7 @@ DWORD WINAPI main_thread(LPVOID) {
                 camera_override::set_roomscale(g_config.get_bool("comfort.roomscale"));
                 hand_render::set_enabled(g_config.get_bool("hands.show"));
                 hand_pose::set_sim(g_config.get_bool("diagnostics.hand_sim"));
+                hand_pose::set_sim_closeup(g_config.get_bool("diagnostics.hand_sim_closeup"));
                 camera_override::set_room_sim(g_config.get_bool("diagnostics.room_sim"));
                 camera_override::set_turning_sim(g_config.get_bool("diagnostics.mod_turning_sim"));
                 camera_override::set_body_follows_head(g_config.get_bool("input.body_follows_head"));
@@ -250,6 +251,8 @@ DWORD WINAPI main_thread(LPVOID) {
             camera_override::set_turning_sim(new_v["diagnostics.mod_turning_sim"].get<bool>());
         if (old_v["hands.show"] != new_v["hands.show"]) hand_render::set_enabled(new_v["hands.show"].get<bool>());
         if (old_v["diagnostics.hand_sim"] != new_v["diagnostics.hand_sim"]) hand_pose::set_sim(new_v["diagnostics.hand_sim"].get<bool>());
+        if (old_v["diagnostics.hand_sim_closeup"] != new_v["diagnostics.hand_sim_closeup"])
+            hand_pose::set_sim_closeup(new_v["diagnostics.hand_sim_closeup"].get<bool>());
         if (old_v["comfort.roomscale"] != new_v["comfort.roomscale"])
             camera_override::set_roomscale(new_v["comfort.roomscale"].get<bool>());
         if (old_v["diagnostics.room_sim"] != new_v["diagnostics.room_sim"])

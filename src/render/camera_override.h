@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 
+#include "core/hand_pose.h"
 #include "core/vmath.h"
 
 namespace mecvr::camera_override {
@@ -77,6 +78,7 @@ vm::Vec3 game_position();                  // game camera position, horizontal (
 struct Hands {
     vm::Quat rot[2];
     vm::Vec3 pos[2];
+    hand_pose::Fingers fingers[2];
     bool valid[2] = {false, false};
 };
 Hands rendered_hands();
