@@ -405,13 +405,25 @@ bool g_touching[2] = {false, false};
 unsigned g_touch_frames[2] = {0, 0}, g_touch_starts[2] = {0, 0}, g_contact_frames = 0;
 float g_touch_max[2] = {0, 0};
 ULONGLONG g_touch_log = 0;
-unsigned g_presses[2] = {0, 0};
-bool g_pressing[2] = {false, false};
+unsigned g_presses[2] = {0, 0}, g_flicks[2] = {0, 0};
+bool g_pressing[2] = {false, false}, g_flicked[2] = {false, false};
 void note_contact(int h, float pushed) {
     // 5d: pressing in (over 1 cm) on something in front of you holds Interact; released when the hand comes away.
+    // Arriving fast (a flick, PLAYTEST-5k) taps an attack instead - the door slam - and holds nothing.
     const bool press = g_touch_interact.load() && g_central[h] && (g_pressing[h] ? pushed > 0.004f : pushed > 0.010f);
-    if (press && !g_pressing[h]) ++g_presses[h];
-    hand_pose::set_touch_press(h, press);
+    if (press && !g_pressing[h]) {
+        const float speed = hand_pose::recent_speed(h), flick = hand_pose::flick_speed();
+        g_flicked[h] = flick > 0 && speed >= flick;
+        if (g_flicked[h]) {
+            hand_pose::flick_pulse();
+            ++g_flicks[h];
+        } else {
+            ++g_presses[h];
+        }
+        LOG_I("hands", "%s hand touched something in front at %.1f m/s -> %s", h ? "right" : "left", speed,
+              g_flicked[h] ? "flick: attack (door slam)" : "Interact held");
+    }
+    hand_pose::set_touch_press(h, press && !g_flicked[h]);
     g_pressing[h] = press;
     if (!g_touching[h] && pushed > 0.008f) {
         g_touching[h] = true;
@@ -425,10 +437,10 @@ void note_contact(int h, float pushed) {
     if (h == 1) ++g_contact_frames;
     if (GetTickCount64() - g_touch_log < 10000) return;
     g_touch_log = GetTickCount64();
-    LOG_I("hands", "walls: left held back in %u of %u frames (max %.0f mm, %u touches, %u interact presses), right %u (max %.0f mm, %u touches, %u presses)",
-          g_touch_frames[0], g_contact_frames, g_touch_max[0] * 1000, g_touch_starts[0], g_presses[0], g_touch_frames[1],
-          g_touch_max[1] * 1000, g_touch_starts[1], g_presses[1]);
-    g_presses[0] = g_presses[1] = 0;
+    LOG_I("hands", "walls: left held back in %u of %u frames (max %.0f mm, %u touches, %u interact presses, %u flicks), right %u (max %.0f mm, %u touches, %u presses, %u flicks)",
+          g_touch_frames[0], g_contact_frames, g_touch_max[0] * 1000, g_touch_starts[0], g_presses[0], g_flicks[0],
+          g_touch_frames[1], g_touch_max[1] * 1000, g_touch_starts[1], g_presses[1], g_flicks[1]);
+    g_presses[0] = g_presses[1] = g_flicks[0] = g_flicks[1] = 0;
     g_touch_frames[0] = g_touch_frames[1] = g_touch_starts[0] = g_touch_starts[1] = g_contact_frames = 0;
     g_touch_max[0] = g_touch_max[1] = 0;
 }

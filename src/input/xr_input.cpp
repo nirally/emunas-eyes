@@ -336,8 +336,9 @@ void sync(XrTime time, bool focused) {
                     LOG_I("input", "recentre (held right stick click)");
                 }
                 g_recentred = (r3 & kRecentre) != 0;
-                // 5d: touching something in front of you = Interact (never while the game is paused or in a menu).
-                if (hand_pose::touch_press() && !time_sync::game_paused()) pad.buttons |= pad_map::kA;
+                // 5d: touching something in front of you = Interact, a flick into it = attack (never while the
+                // game is paused or in a menu).
+                if (!time_sync::game_paused()) pad.buttons |= hand_pose::touch_buttons();
                 xinput_hook::set_pad(pad);
 
                 // The game's rumble: low-frequency motor -> move hand, high-frequency -> turn hand.

@@ -1,5 +1,7 @@
 #pragma once
 // Controller poses for Stage 5 (hands), in the recentred tracking frame like head_pose::Sample::relative.
+#include <cstdint>
+
 #include "core/head_pose.h"
 
 namespace mecvr::hand_pose {
@@ -25,5 +27,14 @@ float contact_buzz(int hand);
 // 5d: a hand pressing into a surface in front of you holds Interact (A) until it comes away.
 void set_touch_press(int hand, bool on);
 bool touch_press();
+// 5d (PLAYTEST-5k): a fast flick into it taps an attack instead (the door slam). Speed = the hand's fastest
+// movement relative to the head in the last 0.2 s (m/s), so walking or Faith running doesn't count.
+float recent_speed(int hand);
+// hands.flick: 0 off, 1 Heavy attack (Y), 2 Light attack (X); hands.flick_speed in m/s.
+void set_flick(int mode, float speed);
+float flick_speed();  // 0 when off
+void flick_pulse();
+// Pad buttons the hands add this frame: Interact while pressing, the attack for 150 ms after a flick.
+uint16_t touch_buttons();
 
 }  // namespace mecvr::hand_pose

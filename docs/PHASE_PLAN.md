@@ -17,15 +17,15 @@ Mode: agentic | Gate: hard | Stage 5 of 10 — hands
 ✅ Recentre = hold right stick click 1 s (PLAYTEST-4g)
 ✅ Stage 4 passed (D-032): a full session "great in every way, nothing unwanted"; comfort 5
 🚧 In progress: Stage 5 — hands
-🚧 5d touch to interact: built, desktop OK, waiting on PLAYTEST-5k
+🚧 5d touch to interact: doors + buttons work by touch, nothing stray, comfort 5 (PLAYTEST-5k); fast flick = door slam built, waiting on PLAYTEST-5l
 ✅ 5c hands stop at walls, buzz on contact, nothing odd; size 0.9 right; comfort 5 (PLAYTEST-5j)
 ✅ 5b gloved hands: on your real hands, fingers follow you, look OK, comfort 5 (PLAYTEST-5i); a bit big → 10% smaller (hands.size)
 ✅ 5a hand markers at the controllers: one steady box per controller, on the handle, pointing right (PLAYTEST-5h, comfort 5) — after BUG-011 (draw hooks) and BUG-013 (each eye used the other eye's camera, D-034)
 ⬜ Not started: punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-5k
-🐞 Open bugs: BUG-014 sev-2 (Alt+F4 switched 3D off; fixed, confirm in 5k); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-5k (touch to interact, ~5 min). Then me: 5e Faith's own arms (Q-501: keep until Stage 7) and the Stage 5 gate (a mission with hands on).
+❓ Need from you: PLAYTEST-5l
+🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: You: PLAYTEST-5l (slow touch vs fast flick on doors, hold-type interaction, ~5 min). Then me: 5e Faith's own arms (Q-501: keep until Stage 7) and the Stage 5 gate (a mission with hands on).
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

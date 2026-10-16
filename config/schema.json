@@ -23,6 +23,8 @@
     "hands.size":                 { "type": "float", "min": 0.7, "max": 1.3, "default": 0.9, "section": "Hands", "label": "Hand size (1 = an average adult hand)" },
     "hands.collide":              { "type": "bool",  "default": true,  "section": "Hands", "label": "Hands stop at walls and objects (with a short buzz)" },
     "hands.touch_interact":       { "type": "bool",  "default": true,  "section": "Hands", "label": "Touch to interact: press a hand against a door, button or panel in front of you" },
+    "hands.flick":                { "type": "enum",  "values": ["off", "heavy", "light"], "default": "heavy", "section": "Hands", "label": "Flick a hand fast into a door: heavy attack (door slam), light attack, or off" },
+    "hands.flick_speed":          { "type": "float", "min": 1.0, "max": 5.0, "default": 2.0, "section": "Hands", "label": "How fast a flick has to be (metres per second)" },
     "diagnostics.hand_sim":       { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Simulated hands in front of you without a headset (developer tests)" },
     "diagnostics.hand_sim_closeup": { "type": "bool", "default": false, "section": "Diagnostics", "label": "Simulated hands close in front of the eyes, turned inwards (developer screenshots)" },
     "diagnostics.room_sim":       { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Room-scale also without a headset (developer tests)" },

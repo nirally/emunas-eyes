@@ -43,6 +43,8 @@ using namespace mecvr;
 
 namespace {
 
+int flick_mode(const std::string& s) { return s == "light" ? 2 : s == "heavy" ? 1 : 0; }
+
 HMODULE g_self = nullptr;
 proxy::Role g_role = proxy::Role::Unknown;
 config::Store g_config;
@@ -204,6 +206,7 @@ DWORD WINAPI main_thread(LPVOID) {
                 hand_render::set_size(static_cast<float>(g_config.get_number("hands.size")));
                 hand_render::set_collide(g_config.get_bool("hands.collide"));
                 hand_render::set_touch_interact(g_config.get_bool("hands.touch_interact"));
+                hand_pose::set_flick(flick_mode(g_config.get_string("hands.flick")), static_cast<float>(g_config.get_number("hands.flick_speed")));
                 hand_pose::set_sim(g_config.get_bool("diagnostics.hand_sim"));
                 hand_pose::set_sim_closeup(g_config.get_bool("diagnostics.hand_sim_closeup"));
                 camera_override::set_room_sim(g_config.get_bool("diagnostics.room_sim"));
@@ -257,6 +260,8 @@ DWORD WINAPI main_thread(LPVOID) {
         if (old_v["hands.collide"] != new_v["hands.collide"]) hand_render::set_collide(new_v["hands.collide"].get<bool>());
         if (old_v["hands.touch_interact"] != new_v["hands.touch_interact"])
             hand_render::set_touch_interact(new_v["hands.touch_interact"].get<bool>());
+        if (old_v["hands.flick"] != new_v["hands.flick"] || old_v["hands.flick_speed"] != new_v["hands.flick_speed"])
+            hand_pose::set_flick(flick_mode(new_v["hands.flick"].get<std::string>()), new_v["hands.flick_speed"].get<float>());
         if (old_v["diagnostics.hand_sim"] != new_v["diagnostics.hand_sim"]) hand_pose::set_sim(new_v["diagnostics.hand_sim"].get<bool>());
         if (old_v["diagnostics.hand_sim_closeup"] != new_v["diagnostics.hand_sim_closeup"])
             hand_pose::set_sim_closeup(new_v["diagnostics.hand_sim_closeup"].get<bool>());

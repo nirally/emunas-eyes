@@ -3,18 +3,43 @@
 #include <windows.h>
 
 #include <atomic>
+#include <chrono>
 #include <mutex>
+
+#include "core/pad_map.h"
 
 namespace mecvr::hand_pose {
 namespace {
 std::mutex g_mutex;
 head_pose::Pose g_hand[2];
 std::atomic<bool> g_sim{false}, g_closeup{false};
+// Hand speed relative to the head (5d flick): last offset, and the fastest sample of the last 0.2 s.
+vm::Vec3 g_last_off[2];
+double g_last_t[2] = {0, 0}, g_peak_t[2] = {0, 0};
+float g_peak[2] = {0, 0};
+double now_s() { return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
 }  // namespace
 
 void set(int hand, const head_pose::Pose& relative) {
+    const int h = hand & 1;
+    const vm::Vec3 off = relative.position - head_pose::current().relative.position;
+    const double t = now_s();
     std::lock_guard lock(g_mutex);
-    g_hand[hand & 1] = relative;
+    if (relative.valid && g_hand[h].valid && t - g_last_t[h] > 0.002 && t - g_last_t[h] < 0.1) {
+        const float v = float((off - g_last_off[h]).length() / (t - g_last_t[h]));
+        if (v >= g_peak[h] || t - g_peak_t[h] > 0.2) {
+            g_peak[h] = v;
+            g_peak_t[h] = t;
+        }
+    }
+    g_last_off[h] = off;
+    g_last_t[h] = t;
+    g_hand[h] = relative;
+}
+
+float recent_speed(int hand) {
+    std::lock_guard lock(g_mutex);
+    return now_s() - g_peak_t[hand & 1] < 0.25 ? g_peak[hand & 1] : 0.f;
 }
 
 head_pose::Pose get(int hand) {
@@ -112,5 +137,24 @@ bool touch_press() {
     for (int h = 0; h < 2; ++h)
         if (g_press[h].load() && now - g_press_tick[h].load() < 250) return true;
     return false;
+}
+}  // namespace mecvr::hand_pose
+
+namespace mecvr::hand_pose {
+namespace {
+std::atomic<ULONGLONG> g_flick_until{0};
+std::atomic<int> g_flick_mode{1};
+std::atomic<float> g_flick_speed{2.0f};
+}  // namespace
+void set_flick(int mode, float speed) {
+    g_flick_mode = mode;
+    g_flick_speed = speed;
+}
+float flick_speed() { return g_flick_mode.load() ? g_flick_speed.load() : 0.f; }
+void flick_pulse() { g_flick_until = GetTickCount64() + 150; }
+uint16_t touch_buttons() {
+    uint16_t b = touch_press() ? pad_map::kA : 0;
+    if (GetTickCount64() < g_flick_until.load()) b |= g_flick_mode.load() == 2 ? pad_map::kX : pad_map::kY;
+    return b;
 }
 }  // namespace mecvr::hand_pose
