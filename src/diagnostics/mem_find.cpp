@@ -18,6 +18,7 @@
 #include "diagnostics/hwbp.h"
 #include "diagnostics/log.h"
 #include "render/cb_capture.h"
+#include "render/hand_render.h"
 #include "render/taa_eyes.h"
 
 namespace mecvr::mem_find {
@@ -99,6 +100,7 @@ void find(const std::filesystem::path& dir) {
 void poll(const std::filesystem::path& dir) {
     std::error_code ec;
     if (std::filesystem::remove(dir / L"VELOCITY", ec)) taa_eyes::probe_velocity_next();
+    if (std::filesystem::remove(dir / L"STENCIL", ec)) hand_render::stencil_probe_next(dir);
     if (std::filesystem::remove(dir / L"MEMFIND", ec)) find(dir);
     if (std::filesystem::remove(dir / L"WATCH", ec)) {
         std::ifstream in(dir / L"watch.txt");

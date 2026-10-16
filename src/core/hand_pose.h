@@ -19,4 +19,8 @@ struct Fingers { float index = 0.15f, others = 0.15f, thumb = 0; };
 void set_controls(int hand, float trigger, bool trigger_touch, float grip, bool thumb_touch);
 Fingers fingers(int hand);
 
+// 5c: a short buzz on this hand when it meets a surface (render thread), and its strength now (input thread).
+void contact_pulse(int hand);
+float contact_buzz(int hand);
+
 }  // namespace mecvr::hand_pose

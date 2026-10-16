@@ -347,9 +347,9 @@ void sync(XrTime time, bool focused) {
                 if (GetTickCount64() < g_hello_until) {  // greeting buzz when the controllers connect
                     haptic(move, 0.8f);
                     haptic(turn, 0.8f);
-                } else {
-                    haptic(move, strength(low));
-                    haptic(turn, strength(high));
+                } else {  // plus a short buzz when a hand meets a wall (5c)
+                    haptic(move, std::fmax(strength(low), hand_pose::contact_buzz(move)));
+                    haptic(turn, std::fmax(strength(high), hand_pose::contact_buzz(turn)));
                 }
             }
         }

@@ -80,3 +80,19 @@ Fingers fingers(int hand) {
 }
 
 }  // namespace mecvr::hand_pose
+
+namespace mecvr::hand_pose {
+namespace {
+std::atomic<ULONGLONG> g_buzz_until[2] = {0, 0}, g_buzz_last[2] = {0, 0};
+}  // namespace
+
+void contact_pulse(int hand) {
+    const ULONGLONG now = GetTickCount64();
+    if (now - g_buzz_last[hand & 1].load() < 250) return;  // sliding along a wall: not a stream of buzzes
+    g_buzz_last[hand & 1] = now;
+    g_buzz_until[hand & 1] = now + 50;
+}
+
+float contact_buzz(int hand) { return GetTickCount64() < g_buzz_until[hand & 1].load() ? 0.6f : 0.f; }
+
+}  // namespace mecvr::hand_pose

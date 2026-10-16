@@ -1,4 +1,5 @@
 #pragma once
+#include <filesystem>
 
 struct ID3D11Device;
 struct ID3D11DeviceContext;
@@ -15,5 +16,8 @@ void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_co
 void set_enabled(bool on);  // hands.show
 bool enabled();
 void set_size(float s);  // hands.size: scales the whole hand about the controller's handle
+void set_collide(bool on);  // hands.collide: hands stop at walls (5c)
+// STENCIL trigger: dump the scene depth-stencil at the next hand pass (5c recon).
+void stencil_probe_next(const std::filesystem::path& dir);
 
 }  // namespace mecvr::hand_render

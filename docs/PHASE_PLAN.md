@@ -19,11 +19,12 @@ Mode: agentic | Gate: hard | Stage 5 of 10 — hands
 🚧 In progress: Stage 5 — hands
 ✅ 5b gloved hands: on your real hands, fingers follow you, look OK, comfort 5 (PLAYTEST-5i); a bit big → 10% smaller (hands.size)
 ✅ 5a hand markers at the controllers: one steady box per controller, on the handle, pointing right (PLAYTEST-5h, comfort 5) — after BUG-011 (draw hooks) and BUG-013 (each eye used the other eye's camera, D-034)
+🔧 Built, not yet tested: 5c hands stop at walls, buzz on contact (D-036); 10% smaller hands
 ⬜ Not started: punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: nothing right now (the smaller size rides along with the next test)
+❓ Need from you: PLAYTEST-5j (~4 min)
 🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: Me: 5c hands stop at walls (no reaching through), with a buzz on contact; tested on the desktop first.
+▶ Next: You: PLAYTEST-5j. Me: then 5d (reach and grab to interact).
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -145,7 +146,7 @@ Known: OpenXR already runs; controller poses are one action away (grip/aim pose 
 Unknowns:
   Q-501 (user) what the hands look like and what happens to Faith's own arms (see QUESTIONS.md).
   Q-502 where to draw our hands so they're lit/exposed like the scene: after TAA on the HDR target, before bloom + tonemap (expected) — check exposure and fog match.
-  Q-503 can Faith's game arms be told apart in the frame (own draws/shaders/vertex buffers) to hide them, or does that wait for Stage 7 IK?
+  Q-503 can Faith's game arms be told apart in the frame (own draws/shaders/vertex buffers) to hide them, or does that wait for Stage 7 IK? — ANSWERED (D-036): yes, stencil 0x20 marks her body.
   Q-504 is the game's interact prompt readable (memory or UI draw), so "touch to interact" only fires when an interaction is actually available?
   Q-505 pose timing: predicted controller pose for the frame's display time vs the frame the game simulated (eye sync D-021 pairs).
 Hypotheses:
@@ -163,7 +164,8 @@ Verify: hands line up with real hands (5a), look and light right (5b), don't pas
 Risk: lighting mismatch (hands look pasted on), hands drawn over the game's own UI, double hands while Faith's arms animate (Q-501/Q-503), cost of an extra pass (small).
 - [x] 5a Hands at the controllers (D-031, D-034): markers line up with the real controllers (PLAYTEST-5h)
 - [x] 5b gloved hands with fingers (D-035): fit, fingers and look OK (PLAYTEST-5i); size 0.9 (hands.size)
-- [ ] 5c collision/break distance, 5d reach to interact
+- [~] 5c hands stop at walls + contact buzz (D-036): desktop-verified → PLAYTEST-5j
+- [ ] 5d reach to interact
 - [ ] ★ Collectibles, doors, buttons, Gridnodes by touch; pointer fallback
 
 ### Stage 6 — Combat and gadgets (L)
