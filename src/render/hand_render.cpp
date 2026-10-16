@@ -112,7 +112,8 @@ struct Constants {
 
 std::atomic<bool> g_enabled{true};
 std::atomic<float> g_size{0.9f};
-std::atomic<bool> g_collide{true};
+std::atomic<bool> g_collide{true}, g_touch_interact{true};
+bool g_central[2] = {false, false};  // hand in front of the view (5d), from the latest draw
 bool g_ready = false, g_failed = false;
 ID3D11VertexShader* g_vs = nullptr;
 ID3D11PixelShader* g_ps = nullptr;
@@ -404,7 +405,14 @@ bool g_touching[2] = {false, false};
 unsigned g_touch_frames[2] = {0, 0}, g_touch_starts[2] = {0, 0}, g_contact_frames = 0;
 float g_touch_max[2] = {0, 0};
 ULONGLONG g_touch_log = 0;
+unsigned g_presses[2] = {0, 0};
+bool g_pressing[2] = {false, false};
 void note_contact(int h, float pushed) {
+    // 5d: pressing in (over 1 cm) on something in front of you holds Interact; released when the hand comes away.
+    const bool press = g_touch_interact.load() && g_central[h] && (g_pressing[h] ? pushed > 0.004f : pushed > 0.010f);
+    if (press && !g_pressing[h]) ++g_presses[h];
+    hand_pose::set_touch_press(h, press);
+    g_pressing[h] = press;
     if (!g_touching[h] && pushed > 0.008f) {
         g_touching[h] = true;
         ++g_touch_starts[h];
@@ -417,9 +425,10 @@ void note_contact(int h, float pushed) {
     if (h == 1) ++g_contact_frames;
     if (GetTickCount64() - g_touch_log < 10000) return;
     g_touch_log = GetTickCount64();
-    LOG_I("hands", "walls: left held back in %u of %u frames (max %.0f mm, %u touches), right %u (max %.0f mm, %u touches)",
-          g_touch_frames[0], g_contact_frames, g_touch_max[0] * 1000, g_touch_starts[0], g_touch_frames[1],
-          g_touch_max[1] * 1000, g_touch_starts[1]);
+    LOG_I("hands", "walls: left held back in %u of %u frames (max %.0f mm, %u touches, %u interact presses), right %u (max %.0f mm, %u touches, %u presses)",
+          g_touch_frames[0], g_contact_frames, g_touch_max[0] * 1000, g_touch_starts[0], g_presses[0], g_touch_frames[1],
+          g_touch_max[1] * 1000, g_touch_starts[1], g_presses[1]);
+    g_presses[0] = g_presses[1] = 0;
     g_touch_frames[0] = g_touch_frames[1] = g_touch_starts[0] = g_touch_starts[1] = g_contact_frames = 0;
     g_touch_max[0] = g_touch_max[1] = 0;
 }
@@ -428,6 +437,7 @@ void note_contact(int h, float pushed) {
 
 void set_enabled(bool on) { g_enabled = on; }
 void set_collide(bool on) { g_collide = on; }
+void set_touch_interact(bool on) { g_touch_interact = on; }
 bool enabled() { return g_enabled.load(); }
 void stencil_probe_next(const std::filesystem::path& dir) {
     g_dir = dir;
@@ -501,6 +511,9 @@ void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_co
             return hands.pos[h] + Hm[h].c[0] * c.x + Hm[h].c[1] * c.y + Hm[h].c[2] * c.z;
         };
         const vm::Vec3 palm = world_of({0.040f, 0.0f, 0.030f}), tips = world_of({0.020f, 0.005f, -0.075f});
+        // In front of the view (within ~40 deg of the view direction; the w row of the view-projection is forward).
+        const vm::Vec3 fwd = vm::Vec3{vp[12], vp[13], vp[14]}.normalized();
+        g_central[h] = (palm - eye).normalized().dot(fwd) > 0.766f;
         const float pr[8] = {palm.x, palm.y, palm.z, 1, tips.x, tips.y, tips.z, 1};
         memcpy(base.probe + h * 8, pr, sizeof(pr));
     }

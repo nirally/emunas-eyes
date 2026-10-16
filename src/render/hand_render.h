@@ -17,6 +17,7 @@ void set_enabled(bool on);  // hands.show
 bool enabled();
 void set_size(float s);  // hands.size: scales the whole hand about the controller's handle
 void set_collide(bool on);  // hands.collide: hands stop at walls (5c)
+void set_touch_interact(bool on);  // hands.touch_interact: pressing a hand into something in front of you = Interact (5d)
 // STENCIL trigger: dump the scene depth-stencil at the next hand pass (5c recon).
 void stencil_probe_next(const std::filesystem::path& dir);
 

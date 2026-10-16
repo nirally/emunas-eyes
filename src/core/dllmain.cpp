@@ -203,6 +203,7 @@ DWORD WINAPI main_thread(LPVOID) {
                 hand_render::set_enabled(g_config.get_bool("hands.show"));
                 hand_render::set_size(static_cast<float>(g_config.get_number("hands.size")));
                 hand_render::set_collide(g_config.get_bool("hands.collide"));
+                hand_render::set_touch_interact(g_config.get_bool("hands.touch_interact"));
                 hand_pose::set_sim(g_config.get_bool("diagnostics.hand_sim"));
                 hand_pose::set_sim_closeup(g_config.get_bool("diagnostics.hand_sim_closeup"));
                 camera_override::set_room_sim(g_config.get_bool("diagnostics.room_sim"));
@@ -254,6 +255,8 @@ DWORD WINAPI main_thread(LPVOID) {
         if (old_v["hands.show"] != new_v["hands.show"]) hand_render::set_enabled(new_v["hands.show"].get<bool>());
         if (old_v["hands.size"] != new_v["hands.size"]) hand_render::set_size(new_v["hands.size"].get<float>());
         if (old_v["hands.collide"] != new_v["hands.collide"]) hand_render::set_collide(new_v["hands.collide"].get<bool>());
+        if (old_v["hands.touch_interact"] != new_v["hands.touch_interact"])
+            hand_render::set_touch_interact(new_v["hands.touch_interact"].get<bool>());
         if (old_v["diagnostics.hand_sim"] != new_v["diagnostics.hand_sim"]) hand_pose::set_sim(new_v["diagnostics.hand_sim"].get<bool>());
         if (old_v["diagnostics.hand_sim_closeup"] != new_v["diagnostics.hand_sim_closeup"])
             hand_pose::set_sim_closeup(new_v["diagnostics.hand_sim_closeup"].get<bool>());

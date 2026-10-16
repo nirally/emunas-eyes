@@ -17,14 +17,15 @@ Mode: agentic | Gate: hard | Stage 5 of 10 — hands
 ✅ Recentre = hold right stick click 1 s (PLAYTEST-4g)
 ✅ Stage 4 passed (D-032): a full session "great in every way, nothing unwanted"; comfort 5
 🚧 In progress: Stage 5 — hands
+🚧 5d touch to interact: built, desktop OK, waiting on PLAYTEST-5k
 ✅ 5c hands stop at walls, buzz on contact, nothing odd; size 0.9 right; comfort 5 (PLAYTEST-5j)
 ✅ 5b gloved hands: on your real hands, fingers follow you, look OK, comfort 5 (PLAYTEST-5i); a bit big → 10% smaller (hands.size)
 ✅ 5a hand markers at the controllers: one steady box per controller, on the handle, pointing right (PLAYTEST-5h, comfort 5) — after BUG-011 (draw hooks) and BUG-013 (each eye used the other eye's camera, D-034)
 ⬜ Not started: punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: nothing right now
+❓ Need from you: PLAYTEST-5k
 🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: Me: 5d reach to interact (doors, buttons, collectibles, Gridnodes by touch while the game shows its prompt; A stays as fallback) - first finding out how to read the prompt (Q-504).
+▶ Next: You: PLAYTEST-5k (touch to interact, ~5 min). Then me: 5e Faith's own arms (Q-501: keep until Stage 7) and the Stage 5 gate (a mission with hands on).
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -147,7 +148,7 @@ Unknowns:
   Q-501 (user) what the hands look like and what happens to Faith's own arms (see QUESTIONS.md).
   Q-502 where to draw our hands so they're lit/exposed like the scene: after TAA on the HDR target, before bloom + tonemap (expected) — check exposure and fog match.
   Q-503 can Faith's game arms be told apart in the frame (own draws/shaders/vertex buffers) to hide them, or does that wait for Stage 7 IK? — ANSWERED (D-036): yes, stencil 0x20 marks her body.
-  Q-504 is the game's interact prompt readable (memory or UI draw), so "touch to interact" only fires when an interaction is actually available?
+  Q-504 is the game's interact prompt readable (memory or UI draw), so "touch to interact" only fires when an interaction is actually available? — CLOSED (D-037): not needed, A without a prompt does nothing.
   Q-505 pose timing: predicted controller pose for the frame's display time vs the frame the game simulated (eye sync D-021 pairs).
 Hypotheses:
   H1 Our own hand meshes drawn into the HDR scene target with the frame's own view-projection, depth-tested against the scene depth (reverse-Z), simple lighting from the sun direction/ambient in the view constants — no engine changes, independent of game animations.
@@ -165,7 +166,7 @@ Risk: lighting mismatch (hands look pasted on), hands drawn over the game's own 
 - [x] 5a Hands at the controllers (D-031, D-034): markers line up with the real controllers (PLAYTEST-5h)
 - [x] 5b gloved hands with fingers (D-035): fit, fingers and look OK (PLAYTEST-5i); size 0.9 (hands.size)
 - [x] 5c hands stop at walls + contact buzz (D-036): PLAYTEST-5j
-- [ ] 5d reach to interact
+- [x] 5d touch to interact built (D-037): desktop presses verified; PLAYTEST-5k pending
 - [ ] ★ Collectibles, doors, buttons, Gridnodes by touch; pointer fallback
 
 ### Stage 6 — Combat and gadgets (L)

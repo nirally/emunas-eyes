@@ -15,6 +15,7 @@
 #include "core/pad_map.h"
 #include "input/xinput_hook.h"
 #include "render/camera_override.h"
+#include "render/time_sync.h"
 
 namespace mecvr::xr_input {
 namespace {
@@ -335,6 +336,8 @@ void sync(XrTime time, bool focused) {
                     LOG_I("input", "recentre (held right stick click)");
                 }
                 g_recentred = (r3 & kRecentre) != 0;
+                // 5d: touching something in front of you = Interact (never while the game is paused or in a menu).
+                if (hand_pose::touch_press() && !time_sync::game_paused()) pad.buttons |= pad_map::kA;
                 xinput_hook::set_pad(pad);
 
                 // The game's rumble: low-frequency motor -> move hand, high-frequency -> turn hand.

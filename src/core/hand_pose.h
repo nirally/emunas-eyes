@@ -22,5 +22,8 @@ Fingers fingers(int hand);
 // 5c: a short buzz on this hand when it meets a surface (render thread), and its strength now (input thread).
 void contact_pulse(int hand);
 float contact_buzz(int hand);
+// 5d: a hand pressing into a surface in front of you holds Interact (A) until it comes away.
+void set_touch_press(int hand, bool on);
+bool touch_press();
 
 }  // namespace mecvr::hand_pose

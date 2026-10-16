@@ -96,3 +96,21 @@ void contact_pulse(int hand) {
 float contact_buzz(int hand) { return GetTickCount64() < g_buzz_until[hand & 1].load() ? 0.6f : 0.f; }
 
 }  // namespace mecvr::hand_pose
+
+namespace mecvr::hand_pose {
+namespace {
+std::atomic<bool> g_press[2] = {false, false};
+std::atomic<ULONGLONG> g_press_tick[2] = {0, 0};
+}  // namespace
+void set_touch_press(int hand, bool on) {
+    g_press[hand & 1] = on;
+    g_press_tick[hand & 1] = GetTickCount64();
+}
+// Refreshed every drawn frame; a press not refreshed for 250 ms (hands not drawn, menu) counts as released.
+bool touch_press() {
+    const ULONGLONG now = GetTickCount64();
+    for (int h = 0; h < 2; ++h)
+        if (g_press[h].load() && now - g_press_tick[h].load() < 250) return true;
+    return false;
+}
+}  // namespace mecvr::hand_pose
