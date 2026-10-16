@@ -22,12 +22,13 @@ Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 ✅ 5b gloved hands: on your real hands, fingers follow you, look OK, comfort 5 (PLAYTEST-5i); a bit big → 10% smaller (hands.size)
 ✅ 5a hand markers at the controllers: one steady box per controller, on the handle, pointing right (PLAYTEST-5h, comfort 5) — after BUG-011 (draw hooks) and BUG-013 (each eye used the other eye's camera, D-034)
 ✅ Physical punching works: reliable, nothing stray, comfort 5 (PLAYTEST-6a)
-🔧 Built, not yet tested: hook = heavy kick, faster slow-reach for doors → PLAYTEST-6b
+✅ Hooks = heavy, doors right, Faith stays with you in fights (PLAYTEST-6b)
+🔧 Built, not yet tested: Shift by a quick lean/step → PLAYTEST-6c
 ⬜ Not started: other attacks by gesture, MAG Rope/Disruptor by hand, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-6b
-🐞 Open bugs: BUG-015 sev-3 (body left the view in fights; fix 2 built, confirm in 6b); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-6b (~10 min). Me: Shift dodge, wall-run/air attacks, then MAG Rope + Disruptor by hand.
+❓ Need from you: PLAYTEST-6c
+🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: You: PLAYTEST-6c (~10 min). Me: MAG Rope + Disruptor by hand.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -188,8 +189,9 @@ Verify: punches land on enemies in a fight, no punches while reaching, climbing 
 Risk: accidental attacks while waving hands in parkour; latency of the 100 ms door check (feel).
 - 6A Holsters: ★ only for gadget equip if needed (no weapons in the game)
 - 6B Guns: ★ not applicable (Faith never uses firearms)
-- [~] ★ 6C **Physical punching**: fast punch in front (either hand, straight or hook) = Light attack, buzz on the punch, game rumble on the hit; works: punches reliable, no stray attacks (PLAYTEST-6a); hook = heavy built, PLAYTEST-6b
-- [ ] ★ 6C Kicks, heavy and momentum attacks (incl. wall-run/air attacks), Shift dodge: gesture or button, selectable
+- [x] ★ 6C **Physical punching**: straight = light, hook = heavy, either hand, buzz on the punch (D-039, PLAYTEST-6a/6b)
+- [x] ★ 6C heavy = hook (PLAYTEST-6b); wall-run/air attacks come from the game when you punch while wall-running/jumping
+- [~] ★ 6C Shift dodge by a quick lean/step sideways or back, trigger kept (D-040) - PLAYTEST-6c
 - [ ] ★ 6D MAG Rope and Disruptor: hand-aimed, trigger-fired
 
 ### Stage 7 — Full-body IK (L)

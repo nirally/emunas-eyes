@@ -217,6 +217,7 @@ DWORD WINAPI main_thread(LPVOID) {
                                                   static_cast<float>(g_config.get_number("input.snap_angle")));
                 xr_input::set_left_handed(g_config.get_bool("input.left_handed"));
                 xr_input::set_stick_pitch(g_config.get_bool("input.stick_pitch"));
+                xr_input::set_dodge(g_config.get_bool("combat.dodge_gesture"), static_cast<float>(g_config.get_number("combat.dodge_speed")));
                 xr_input::set_physical_crouch(g_config.get_bool("comfort.physical_crouch"),
                                               static_cast<float>(g_config.get_number("comfort.crouch_depth")));
                 taa_eyes::set_enabled(g_config.get_bool("rendering.taa_per_eye"));
@@ -280,6 +281,8 @@ DWORD WINAPI main_thread(LPVOID) {
                                               new_v["input.snap_angle"].get<float>());
         if (old_v["input.left_handed"] != new_v["input.left_handed"])
             xr_input::set_left_handed(new_v["input.left_handed"].get<bool>());
+        if (old_v["combat.dodge_gesture"] != new_v["combat.dodge_gesture"] || old_v["combat.dodge_speed"] != new_v["combat.dodge_speed"])
+            xr_input::set_dodge(new_v["combat.dodge_gesture"].get<bool>(), new_v["combat.dodge_speed"].get<float>());
         if (old_v["comfort.physical_crouch"] != new_v["comfort.physical_crouch"] || old_v["comfort.crouch_depth"] != new_v["comfort.crouch_depth"])
             xr_input::set_physical_crouch(new_v["comfort.physical_crouch"].get<bool>(), new_v["comfort.crouch_depth"].get<float>());
         if (old_v["input.stick_pitch"] != new_v["input.stick_pitch"])

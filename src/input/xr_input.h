@@ -26,5 +26,7 @@ void set_stick_pitch(bool on);   // input.stick_pitch
 // comfort.physical_crouch / comfort.crouch_depth: really crouching (head this far below standing height)
 // holds Down actions (crouch, or slide when running).
 void set_physical_crouch(bool on, float depth_m);
+// combat.dodge_gesture / combat.dodge_speed: a quick lean or step sideways/back = Shift that way (D-040).
+void set_dodge(bool on, float speed);
 
 }  // namespace mecvr::xr_input

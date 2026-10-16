@@ -14,6 +14,7 @@
 #include "core/head_pose.h"
 #include "core/pad_map.h"
 #include "core/punch_model.h"
+#include "core/dodge_model.h"
 #include "input/xinput_hook.h"
 #include "render/camera_override.h"
 #include "render/time_sync.h"
@@ -269,6 +270,8 @@ void locate_hands(XrTime time) {
     }
 }
 
+void apply_dodge(pad_map::Pad& pad);  // below (D-040)
+
 // 6C: physical punching. A punch is recognised from the hand's motion relative to the head (punch_model);
 // it is sent 100 ms later - a straight punch as Light attack (X), a hook as Heavy attack (Y, PLAYTEST-6a) -
 // unless the hand hit something in between (then it was a door flick: the slam, D-037). Returns the buttons
@@ -392,6 +395,7 @@ void sync(XrTime time, bool focused) {
                 if (!time_sync::game_paused()) pad.buttons |= hand_pose::touch_buttons();
                 pad.buttons |= punches();  // 6C: physical punching
                 if (pad.buttons & (pad_map::kX | pad_map::kY)) camera_override::note_attack();
+                apply_dodge(pad);  // Shift by a quick lean or step (D-040)
                 xinput_hook::set_pad(pad);
 
                 // The game's rumble: low-frequency motor -> move hand, high-frequency -> turn hand.
@@ -439,4 +443,49 @@ void set_physical_crouch(bool on, float depth_m) {
     g_crouch.depth = depth_m;
 }
 
+}  // namespace mecvr::xr_input
+
+namespace mecvr::xr_input {
+namespace {
+std::atomic<bool> g_dodge_on{true};
+std::atomic<float> g_dodge_speed{1.3f};
+}  // namespace
+void set_dodge(bool on, float speed) {
+    g_dodge_on = on;
+    g_dodge_speed = speed;
+}
+
+// Shift by body movement (D-040): a quick head movement sideways or back holds Shift (RT) for 150 ms and,
+// when the move stick is idle, points the stick that way so Faith shifts where you moved. RT itself is
+// unchanged. Room-scale treats the injected stick as the player's (no walking, no absorbing).
+void apply_dodge(pad_map::Pad& pad) {
+    static dodge_model::Model model;
+    static LARGE_INTEGER freq{}, last{};
+    static ULONGLONG until = 0;
+    static dodge_model::V2 dir;
+    LARGE_INTEGER now_qpc;
+    QueryPerformanceCounter(&now_qpc);
+    if (!freq.QuadPart) QueryPerformanceFrequency(&freq);
+    const float dt = last.QuadPart ? float(double(now_qpc.QuadPart - last.QuadPart) / double(freq.QuadPart)) : 0.f;
+    last = now_qpc;
+    const head_pose::Sample s = head_pose::current();
+    if (!g_dodge_on.load() || !s.relative.valid || time_sync::game_paused()) {
+        model.primed = false;
+        return;
+    }
+    model.speed = g_dodge_speed.load();
+    dodge_model::V2 d;
+    const ULONGLONG now = GetTickCount64();
+    if (model.update({s.relative.position.x, s.relative.position.z}, dt, d)) {
+        dir = d;
+        until = now + 150;
+        LOG_I("input", "dodge: head moved %s -> Shift", std::fabs(d.x) > std::fabs(d.z) ? (d.x < 0 ? "left" : "right") : "back");
+    }
+    if (now >= until) return;
+    pad.right_trigger = 255;
+    if (std::abs(pad.lx) < 6000 && std::abs(pad.ly) < 6000) {
+        pad.lx = pad_map::axis(dir.x);
+        pad.ly = pad_map::axis(-dir.z);  // z back -> stick forward
+    }
+}
 }  // namespace mecvr::xr_input
