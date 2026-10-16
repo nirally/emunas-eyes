@@ -67,6 +67,9 @@ void report_turning();  // every 10 s
 
 // Physical crouch started a slide (xr_input): the view stops adding the real crouch while it lasts.
 void set_crouch_slide(bool on);
+// An attack was sent (X/Y: punch, hook, flick or button): for 1 s room-scale neither walks Faith nor absorbs
+// her movement - attack animations move her and the view goes with her (BUG-015, PLAYTEST-6b report).
+void note_attack();
 
 // Room-scale (D-029, comfort.roomscale): Faith walks to where you stand when your move stick is idle.
 void set_roomscale(bool on);

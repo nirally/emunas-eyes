@@ -322,6 +322,8 @@ void finish(vm::LinearTransform* a, vm::LinearTransform* b, int eye_index, vm::Q
     remember(final_rot, final_pos, abs, eye_index, hands);
 }
 
+std::atomic<ULONGLONG> g_last_attack{0};  // note_attack()
+
 // Once per game frame: Faith's movement in her body frame -> room model -> walking stick + view offset.
 void update_room(const vm::LinearTransform& game_cam) {
     const head_pose::Sample s = head_pose::current();
@@ -355,7 +357,7 @@ void update_room(const vm::LinearTransform& game_cam) {
     const float dt = last.QuadPart ? float(double(now.QuadPart - last.QuadPart) / double(freq.QuadPart)) : 0.f;
     last = now;
     const room_model::Stick cmd = g_room.update({s.relative.position.x, s.relative.position.z}, {moved.x, moved.z},
-                                                xinput_hook::move_stick_in_use(), dt, view);
+                                                xinput_hook::move_stick_in_use() || GetTickCount64() - g_last_attack.load() < 1000, dt, view);
     static unsigned seen_released = 0;
     if (g_room.released != seen_released) {
         seen_released = g_room.released;
@@ -736,8 +738,8 @@ void check_view(const float* v) {
               vm::yaw_of(d) * 57.29578f, vm::pitch_of(d) * 57.29578f, vm::roll_of(d) * 57.29578f,
               g_last_head_roll.load() * 57.29578f, g_enabled.load() ? "on" : "off");
         head_pose::Sample hs = head_pose::current();
-        LOG_D("camera", "head offset from recentre: x %+.2f y %+.2f z %+.2f m (z<0 = forward)", hs.relative.position.x,
-              hs.relative.position.y, hs.relative.position.z);
+        LOG_D("camera", "head offset from recentre: x %+.2f y %+.2f z %+.2f m (z<0 = forward); view from Faith x %+.2f z %+.2f m",
+              hs.relative.position.x, hs.relative.position.y, hs.relative.position.z, g_room_view_x.load(), g_room_view_z.load());
     }
     if (!g_enabled.load() || GetTickCount64() - g_last_override_tick.load() > 100) return;
     vm::LinearTransform m{};
@@ -847,4 +849,8 @@ Hands rendered_hands() {
     std::lock_guard lock(g_used_mutex);
     return g_rendered_hands;
 }
+}  // namespace mecvr::camera_override
+
+namespace mecvr::camera_override {
+void note_attack() { g_last_attack = GetTickCount64(); }
 }  // namespace mecvr::camera_override

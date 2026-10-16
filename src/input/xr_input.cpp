@@ -391,6 +391,7 @@ void sync(XrTime time, bool focused) {
                 // game is paused or in a menu).
                 if (!time_sync::game_paused()) pad.buttons |= hand_pose::touch_buttons();
                 pad.buttons |= punches();  // 6C: physical punching
+                if (pad.buttons & (pad_map::kX | pad_map::kY)) camera_override::note_attack();
                 xinput_hook::set_pad(pad);
 
                 // The game's rumble: low-frequency motor -> move hand, high-frequency -> turn hand.

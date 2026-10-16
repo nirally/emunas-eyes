@@ -54,6 +54,10 @@ struct Model {
     float coast_s = 1.5f;      // s: keep absorbing along the last command after release (she coasts, slow tail)
     float lead_s = 0.25f;      // s: her momentum carries her about this far ahead (speed x lead): aim short
     float absorb_max = 3.2f;   // m/s: faster than our walking ever gets her (attack lunge, zipline): not ours (PLAYTEST-5m)
+    // Her speed our command explains: the commanded speed reached with ~0.25 s lag (measured, D-029); movement
+    // along the command beyond gain x that + slack is the game's own (attack steps, PLAYTEST-6b report).
+    float response_s = 0.25f, explain_gain = 1.5f, explain_slack = 0.2f;
+    float expect_speed = 0, cmd_speed = 0;
 
     V2 anchor;                 // head position Faith is standing under
     V2 last_head, head_vel, faith_vel;
@@ -75,6 +79,7 @@ struct Model {
             faith_vel = {};
             walking = false;
             since_cmd = 1e9f;
+            expect_speed = cmd_speed = 0;
         }
         if (dt > 0) {
             const V2 v = (head - last_head) * (1.f / dt);
@@ -86,6 +91,7 @@ struct Model {
         // Absorb Faith's movement along what we asked for (while walking and while she coasts after), so
         // the view stays exactly on the real head; sideways pushes (hits, animations) still move the view.
         since_cmd += dt;
+        if (dt > 0) expect_speed += (cmd_speed - expect_speed) * (dt / (response_s + dt));
         if (!user_moving && since_cmd < coast_s) {
             // Both ways along the command's axis: her momentum after a reversal is still ours.
             const float along = moved.x * cmd_dir.x + moved.z * cmd_dir.z;
@@ -98,11 +104,18 @@ struct Model {
                 since_cmd = coast_s;
                 ++released;
             }
-            else anchor = anchor + cmd_dir * along;
+            else {
+                // Only as much as our command explains (PLAYTEST-6b report: in fights the game's slower attack
+                // steps along our walking were absorbed too, the view stayed behind her body and room-scale had
+                // to walk her back). The rest is the game's own movement: the view goes with her.
+                const float cap = (expect_speed * explain_gain + explain_slack) * dt;
+                anchor = anchor + cmd_dir * std::fmax(-cap, std::fmin(along, cap));
+            }
         }
         V2 off = head - anchor;
         Stick cmd;
         walking = false;
+        cmd_speed = 0;
         if (!user_moving) {
             // Where she'll stop if the stick let go now: aim at the gap minus that coast.
             const V2 gap = off - faith_vel * lead_s;
@@ -114,6 +127,7 @@ struct Model {
                 cmd_dir = want * (1.f / v);
                 since_cmd = 0;
                 const float s = curve.stick_for(v);
+                cmd_speed = curve.speed_of(s);
                 cmd.x = want.x / v * s;
                 cmd.y = -want.z / v * s;  // z back -> stick forward
             }

@@ -117,12 +117,15 @@ TEST(room_model_game_lunge_moves_the_view) {
     CHECK(near(view.z, before.z, 0.08f));  // view stays on her body (only the first frame, 6 cm, absorbed)
 }
 
-TEST(room_model_walking_still_absorbed) {
+TEST(room_model_attack_steps_never_carry_her_past_the_head) {
+    // PLAYTEST-6b report: slow attack steps (under the lunge speed) along our walking command were absorbed
+    // beyond the gap, so the view ended up behind her body.
     Model m;
     V2 view, head;
     m.update(head, {}, false, 0.01f, view);
-    head.z = -0.3f;
-    m.update(head, {}, false, 0.01f, view);  // gap: walking forward
-    for (int i = 0; i < 20; ++i) m.update(head, {0.f, -0.015f}, false, 0.01f, view);  // she walks 1.5 m/s
-    CHECK(view.len() < 0.02f);  // her 0.3 m absorbed: the view stayed on the head
+    head.z = -0.10f;
+    m.update(head, {}, false, 0.01f, view);  // lean 10 cm: walking forward
+    for (int i = 0; i < 30; ++i) m.update(head, {0.f, -0.02f}, false, 0.01f, view);  // attack step, 2 m/s, 0.6 m
+    if (std::getenv("ROOM_TRACE")) printf("    after attack step: view %.3f\n", view.z);
+    CHECK(view.len() < 0.12f);  // only what our small command explains is absorbed (was 0.5 m: the cap)
 }

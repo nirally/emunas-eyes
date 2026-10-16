@@ -26,7 +26,7 @@ Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 ⬜ Not started: other attacks by gesture, MAG Rope/Disruptor by hand, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
 ❓ Need from you: PLAYTEST-6b
-🐞 Open bugs: BUG-015 sev-3 (body left the view in punches/ziplines; fixed, confirm next session); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+🐞 Open bugs: BUG-015 sev-3 (body left the view in fights; fix 2 built, confirm in 6b); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
 ▶ Next: You: PLAYTEST-6b (~10 min). Me: Shift dodge, wall-run/air attacks, then MAG Rope + Disruptor by hand.
 
 ## Prerequisites
