@@ -97,7 +97,7 @@ Cause (partial): the correction assumes the engine's motion pass measures agains
 Cause (found with BUG-013): floats 72..87 of the view constants are not "this frame without jitter" but the PREVIOUS frame's camera (= the other eye). The correction mixed up cameras one frame apart; standing still they coincide. Fix (D-034): this frame's unjittered camera is rebuilt from 40..55, the engine's previous camera is taken from 72..87 of the same frame. Desktop while turning: game vectors -40.9 px, corrected -30.0 (eye separation removed, the turn kept; before -35 -> -1), no ghost copies; sharpness 5.27 on vs 5.43 off.
 
 ### BUG-013 — Hand markers seen twice in the headset
-Status: fixed on the desktop (D-034), PLAYTEST-5h | Severity: 2 | Stage: 5 | Reported: PLAYTEST-5f
+Status: closed 2026-10-16 (PLAYTEST-5h: one box per controller, on the handle, pointing right) | Severity: 2 | Stage: 5 | Reported: PLAYTEST-5f
 Repro: headset, look at a controller.
 Expected: one box per controller. Actual: "I see them twice, both follow the controllers but only one is in the correct location and the other near it".
 Evidence: desktop (simulated hands, real eye separation): one box per eye frame, both eyes drawn, the shift between the eyes goes the same way as nearby geometry. 5f also had per-eye TAA active (BUG-012).

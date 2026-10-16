@@ -17,12 +17,12 @@ Mode: agentic | Gate: hard | Stage 5 of 10 — hands
 ✅ Recentre = hold right stick click 1 s (PLAYTEST-4g)
 ✅ Stage 4 passed (D-032): a full session "great in every way, nothing unwanted"; comfort 5
 🚧 In progress: Stage 5 — hands
-🔧 Built, not yet tested: hand markers at the controllers (D-031); 5a: markers only flashed (BUG-011), 5b/5c: still; 5d: the mod's draw hooks are bypassed in the headset (thread-safe mode); both versions hooked (5e: still a flash); every copy of the runtime's method tables hooked, desktop now catches the pass every frame → 5f: steady, but seen twice + ghosting (per-eye TAA, now off); 5g: picture sharp, boxes still twice → each eye drew them from the other eye's camera, fixed (D-034) → PLAYTEST-5h
+✅ 5a hand markers at the controllers: one steady box per controller, on the handle, pointing right (PLAYTEST-5h, comfort 5) — after BUG-011 (draw hooks) and BUG-013 (each eye used the other eye's camera, D-034)
 ⬜ Not started: punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-5h (~3 min)
-🐞 Open bugs: BUG-013 sev-2 (boxes seen twice; fix built), BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-5h (~3 min). Me: read its log; then hand models (and a per-eye TAA on/off A/B later).
+❓ Need from you: nothing right now
+🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: Me: 5b glove hand meshes (fingers from how you hold the controller), tested on the desktop first; later a per-eye TAA on/off A/B.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -160,7 +160,8 @@ Plan (each step tested in game with the drive tools, then a short playtest):
   5e Faith's own arms per Q-501 (hide, or keep until Stage 7 IK replaces them).
 Verify: hands line up with real hands (5a), look and light right (5b), don't pass through walls (5c), interacting by reach works on doors/buttons/Gridnodes/collectibles (5d); comfort; Stage 5 gate = a mission played with hands on.
 Risk: lighting mismatch (hands look pasted on), hands drawn over the game's own UI, double hands while Faith's arms animate (Q-501/Q-503), cost of an extra pass (small).
-- [~] Hands at the controllers (D-031): 5a markers built (sim-verified) → PLAYTEST-5a; collision/break distance 5c
+- [x] 5a Hands at the controllers (D-031, D-034): markers line up with the real controllers (PLAYTEST-5h)
+- [ ] 5b hand meshes, 5c collision/break distance, 5d reach to interact
 - [ ] ★ Collectibles, doors, buttons, Gridnodes by touch; pointer fallback
 
 ### Stage 6 — Combat and gadgets (L)

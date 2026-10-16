@@ -235,7 +235,7 @@ Asked which comfort options to build (recentre button, seated mode, vignette, tr
 ### D-031 — Hands drawn by the mod into the scene (Stage 5)
 Date: 2026-10-14  Stage: 5  (Q-501: a)
 Chose: controller grip poses from OpenXR (pose action + action spaces, located at the frame's predicted display time, converted to the recentred frame); each hand placed relative to the real head and applied to the frame's composed head-level camera, so hands stay glued to the view (stereo pairs reuse them, D-019; carried in the per-frame camera record matched to each rendered frame). Drawn by our own pass right after the TAA draw into the HDR scene colour (before bloom/tonemap, exposed like the scene), with the eye's unjittered view-projection, depth-tested against the scene depth (reverse-Z, read-only DSV), state saved/restored (render/d3d_state.h, shared with motion_fix). hands.show (default on). Faith's own arms stay (Q-501 a) until Stage 7.
-5a: markers (palm box + pointer, left blue / right orange). Verified in game with simulated hands (diagnostics.hand_sim): drawn, lit, occluded correctly by Faith's own arm. Needs per-eye TAA on (the pass hooks the TAA draw).
+5a: markers (palm box + pointer, left blue / right orange). Verified in game with simulated hands (diagnostics.hand_sim): drawn, lit, occluded correctly by Faith's own arm. Since D-033 the pass runs with or without per-eye TAA; since D-034 each eye uses its own camera. PLAYTEST-5h: one steady box per controller, on the handle, pointer follows the controller, comfort 5.
 
 ### D-032 — Stage 4 gate: pass
 Date: 2026-10-15  Stage: 4
