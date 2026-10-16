@@ -24,7 +24,7 @@ Mode: agentic | Gate: hard | Stage 5 of 10 — hands
 ⬜ Not started: punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
 ❓ Need from you: PLAYTEST-5k
-🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+🐞 Open bugs: BUG-014 sev-2 (Alt+F4 switched 3D off; fixed, confirm in 5k); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
 ▶ Next: You: PLAYTEST-5k (touch to interact, ~5 min). Then me: 5e Faith's own arms (Q-501: keep until Stage 7) and the Stage 5 gate (a mission with hands on).
 
 ## Prerequisites

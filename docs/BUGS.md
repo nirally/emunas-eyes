@@ -103,3 +103,10 @@ Expected: one box per controller. Actual: "I see them twice, both follow the con
 Evidence: desktop (simulated hands, real eye separation): one box per eye frame, both eyes drawn, the shift between the eyes goes the same way as nearby geometry. 5f also had per-eye TAA active (BUG-012).
 Hypotheses: H1 a side effect of BUG-012 (now off); H2 one eye's box is off (depth/scale) - 5g asks which eye's box is right with one eye closed.
 PLAYTEST-5g: still twice with per-eye TAA off (H1 out). Desktop measurement (new [hands] log lines): the box landed at screen x +0.27 in the left eye and +0.37 in the right - the wrong way round for a point 35 cm away; each eye drew it from the other eye's camera (63 mm to the wrong side). Cause: the matrix read as "this frame's camera" (view constants 72..87) is the previous frame's. A near box with swapped eye cameras needs the eyes to diverge - impossible, so it is seen double; the world itself was drawn correctly. Fixed (D-034): left eye +0.37, right +0.27, disparity +145.8 px = one box at 0.35 m; self-check: rebuilt camera = next frame's "previous" to 0.00003.
+
+### BUG-014 — Hands gone (game flat) after quitting with Alt+F4
+Status: fixed 2026-10-16, confirm in PLAYTEST-5k retry | Severity: 2 | Stage: 5 | Reported: PLAYTEST-5k
+Repro: quit the game with Alt+F4, start it again.
+Expected: same 3D view and hands. Actual: "the hands disappeared"; log: no "stereo ON", presented frames all mono, config stereo.mode = "mono".
+Cause: F4 is the mod's stereo toggle and it ignored Alt, so Alt+F4 switched stereo off and saved it to config.json (the agent's desktop test quit with Alt+F4 just before the playtest). Hands only draw in stereo.
+Fixed: F4 / Shift+F4 ignored while Alt is held; the user's config set back to alternate.

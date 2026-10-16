@@ -665,7 +665,8 @@ void on_present(float dt) {
     if (toggle && !toggle_was) set_enabled(!g_enabled.load());
     toggle_was = toggle;
     static bool stereo_was = false;
-    bool stereo_key = key(VK_F4) && !key(VK_SHIFT);  // Shift+F4 is eye sync (time_sync)
+    // Shift+F4 is eye sync (time_sync); Alt+F4 quits the game and must not flip stereo (PLAYTEST-5k).
+    bool stereo_key = key(VK_F4) && !key(VK_SHIFT) && !key(VK_MENU);
     static ULONGLONG last_toggle = 0;  // F4/F9: ignore a second press within 0.7 s (key bounce flipped F9 back, PLAYTEST-2b)
     const bool can_toggle = GetTickCount64() - last_toggle > 700;
     if (stereo_key && !stereo_was && can_toggle) {

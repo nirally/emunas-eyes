@@ -140,7 +140,7 @@ void on_present() {
     if (!g_installed) return;
     static bool was = false;
     static ULONGLONG last_toggle = 0;
-    const bool now = key(VK_F4) && key(VK_SHIFT);
+    const bool now = key(VK_F4) && key(VK_SHIFT) && !key(VK_MENU);  // not Alt+Shift+F4
     if (now && !was && GetTickCount64() - last_toggle > 700) {
         last_toggle = GetTickCount64();
         set_enabled(!g_enabled.load());
