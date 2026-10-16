@@ -112,7 +112,7 @@ Cause: F4 is the mod's stereo toggle and it ignored Alt, so Alt+F4 switched ster
 Fixed: F4 / Shift+F4 ignored while Alt is held; the user's config set back to alternate.
 
 ### BUG-015 — Faith's body leaves the view while punching or ziplining
-Status: fixed 2026-10-16, confirm in the next headset session | Severity: 3 | Stage: 4/5 | Reported: PLAYTEST-5m
+Status: reopened 2026-10-16 (still in fights before PLAYTEST-6b); fix 2 built | Severity: 3 | Stage: 4/5 | Reported: PLAYTEST-5m
 Repro: lean or step (room-scale walks Faith), then within 1.5 s punch (attack lunge) or launch onto a zipline.
 Expected: the view stays on Faith. Actual: "faith body disconnects from the headset head and I have to wait until it comes back or press R3" (recentre).
 Cause: room_model absorbed all of Faith's movement along the last walking command for 1.5 s (D-029 update) with no speed limit, so a game-driven lunge/zipline along that axis was taken as our walking: the view stayed put while her body moved on (up to the 0.5 m cap), then room-scale walked her back.
