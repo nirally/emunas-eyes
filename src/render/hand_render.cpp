@@ -420,7 +420,10 @@ void note_contact(int h, float pushed) {
     if (press && !g_pressing[h]) {
         const float speed = hand_pose::recent_speed(h), flick = hand_pose::flick_speed();
         g_flicked[h] = flick > 0 && speed >= flick;
-        if (g_flicked[h]) {
+        // A punch that already went out in this swing (6C) isn't followed by a slam as well.
+        if (g_flicked[h] && hand_pose::punch_recent(400)) {
+            LOG_I("hands", "%s hand touched something at %.1f m/s right after a punch -> nothing more", h ? "right" : "left", speed);
+        } else if (g_flicked[h]) {
             hand_pose::flick_pulse();
             ++g_flicks[h];
         } else {

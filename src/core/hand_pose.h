@@ -38,3 +38,14 @@ void flick_pulse();
 uint16_t touch_buttons();
 
 }  // namespace mecvr::hand_pose
+
+namespace mecvr::hand_pose {
+// 6C physical punching (combat.punch, combat.punch_speed) and when the last flick / punch fired, so a door
+// flick and a punch in the same swing don't both fire.
+void set_punch(bool on, float speed);
+bool punch_on();
+float punch_speed();
+unsigned long long last_flick_ms();  // GetTickCount64 of the last flick, 0 = never
+void note_punch();
+bool punch_recent(unsigned ms);
+}  // namespace mecvr::hand_pose

@@ -151,10 +151,31 @@ void set_flick(int mode, float speed) {
     g_flick_speed = speed;
 }
 float flick_speed() { return g_flick_mode.load() ? g_flick_speed.load() : 0.f; }
-void flick_pulse() { g_flick_until = GetTickCount64() + 150; }
+void flick_pulse();
 uint16_t touch_buttons() {
     uint16_t b = touch_press() ? pad_map::kA : 0;
     if (GetTickCount64() < g_flick_until.load()) b |= g_flick_mode.load() == 2 ? pad_map::kX : pad_map::kY;
     return b;
 }
 }  // namespace mecvr::hand_pose
+
+namespace mecvr::hand_pose {
+namespace {
+std::atomic<bool> g_punch_on{true};
+std::atomic<float> g_punch_speed{2.5f};
+std::atomic<ULONGLONG> g_last_flick{0}, g_last_punch{0};
+}  // namespace
+void set_punch(bool on, float speed) {
+    g_punch_on = on;
+    g_punch_speed = speed;
+}
+bool punch_on() { return g_punch_on.load(); }
+float punch_speed() { return g_punch_speed.load(); }
+unsigned long long last_flick_ms() { return g_last_flick.load(); }
+void note_punch() { g_last_punch = GetTickCount64(); }
+bool punch_recent(unsigned ms) { return GetTickCount64() - g_last_punch.load() < ms; }
+}  // namespace mecvr::hand_pose
+void mecvr::hand_pose::flick_pulse() {
+    g_last_flick = GetTickCount64();
+    g_flick_until = g_last_flick.load() + 150;
+}

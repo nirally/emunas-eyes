@@ -13,6 +13,7 @@
 #include "core/hand_pose.h"
 #include "core/head_pose.h"
 #include "core/pad_map.h"
+#include "core/punch_model.h"
 #include "input/xinput_hook.h"
 #include "render/camera_override.h"
 #include "render/time_sync.h"
@@ -268,6 +269,49 @@ void locate_hands(XrTime time) {
     }
 }
 
+// 6C: physical punching. A punch is recognised from the hand's motion relative to the head (punch_model);
+// it is sent as Light attack (X) 100 ms later unless the hand hit something in between (then it was a
+// door flick: the slam, D-037). Returns the buttons to add this frame.
+punch_model::Hand g_punch[2];
+ULONGLONG g_punch_pending[2] = {0, 0}, g_punch_until = 0;
+float g_punch_peak[2] = {0, 0};
+uint16_t punches() {
+    static LARGE_INTEGER freq{}, last{};
+    LARGE_INTEGER now_qpc;
+    QueryPerformanceCounter(&now_qpc);
+    if (!freq.QuadPart) QueryPerformanceFrequency(&freq);
+    const float dt = last.QuadPart ? float(double(now_qpc.QuadPart - last.QuadPart) / double(freq.QuadPart)) : 0.f;
+    last = now_qpc;
+    const ULONGLONG now = GetTickCount64();
+    const head_pose::Pose head = head_pose::current().relative;
+    const bool on = hand_pose::punch_on() && head.valid && !time_sync::game_paused();
+    for (int h = 0; h < 2; ++h) {
+        const head_pose::Pose p = hand_pose::get(h);
+        if (!on || !p.valid) {
+            g_punch[h].primed = false;
+            g_punch_pending[h] = 0;
+            continue;
+        }
+        g_punch[h].speed = hand_pose::punch_speed();
+        if (g_punch[h].update(p.position - head.position, head.rotation.rotate({0, 0, -1}), dt)) {
+            g_punch_pending[h] = now;
+            g_punch_peak[h] = g_punch[h].vel.length();
+        }
+        if (g_punch_pending[h] && g_punch[h].vel.length() > g_punch_peak[h]) g_punch_peak[h] = g_punch[h].vel.length();
+        if (g_punch_pending[h] && hand_pose::last_flick_ms() >= g_punch_pending[h]) {
+            LOG_I("input", "%s punch hit something (door slam instead)", h ? "right" : "left");
+            g_punch_pending[h] = 0;
+        } else if (g_punch_pending[h] && now - g_punch_pending[h] >= 100) {
+            g_punch_pending[h] = 0;
+            g_punch_until = now + 120;
+            hand_pose::note_punch();
+            hand_pose::contact_pulse(h);
+            LOG_I("input", "%s punch %.1f m/s -> Light attack", h ? "right" : "left", g_punch_peak[h]);
+        }
+    }
+    return now < g_punch_until ? pad_map::kX : 0;
+}
+
 void sync(XrTime time, bool focused) {
     if (!g_ready) return;
     bool active = false;
@@ -339,6 +383,7 @@ void sync(XrTime time, bool focused) {
                 // 5d: touching something in front of you = Interact, a flick into it = attack (never while the
                 // game is paused or in a menu).
                 if (!time_sync::game_paused()) pad.buttons |= hand_pose::touch_buttons();
+                pad.buttons |= punches();  // 6C: physical punching
                 xinput_hook::set_pad(pad);
 
                 // The game's rumble: low-frequency motor -> move hand, high-frequency -> turn hand.

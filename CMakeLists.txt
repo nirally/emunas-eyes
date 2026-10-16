@@ -63,7 +63,7 @@ set_target_properties(mecvr PROPERTIES OUTPUT_NAME "mecvr")
 
 # --- unit checks ---------------------------------------------------------------
 enable_testing()
-add_executable(mecvr_tests tests/test_main.cpp tests/test_config.cpp tests/test_sigscan.cpp tests/test_vmath.cpp tests/test_pad_map.cpp tests/test_yaw_model.cpp tests/test_room_model.cpp)
+add_executable(mecvr_tests tests/test_main.cpp tests/test_config.cpp tests/test_sigscan.cpp tests/test_vmath.cpp tests/test_pad_map.cpp tests/test_yaw_model.cpp tests/test_room_model.cpp tests/test_punch_model.cpp)
 target_link_libraries(mecvr_tests PRIVATE mecvr_core)
 target_include_directories(mecvr_tests PRIVATE ${CMAKE_SOURCE_DIR})
 add_test(NAME unit COMMAND mecvr_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})

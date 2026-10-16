@@ -21,11 +21,12 @@ Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 ✅ 5c hands stop at walls, buzz on contact, nothing odd; size 0.9 right; comfort 5 (PLAYTEST-5j)
 ✅ 5b gloved hands: on your real hands, fingers follow you, look OK, comfort 5 (PLAYTEST-5i); a bit big → 10% smaller (hands.size)
 ✅ 5a hand markers at the controllers: one steady box per controller, on the handle, pointing right (PLAYTEST-5h, comfort 5) — after BUG-011 (draw hooks) and BUG-013 (each eye used the other eye's camera, D-034)
-⬜ Not started: punching, body, HUD, settings menu, packaging
+🔧 Built, not yet tested: physical punching (6C) → PLAYTEST-6a waiting on you
+⬜ Not started: other attacks by gesture, MAG Rope/Disruptor by hand, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: nothing right now
+❓ Need from you: PLAYTEST-6a (includes Q-601, Q-602)
 🐞 Open bugs: BUG-015 sev-3 (body left the view in punches/ziplines; fixed, confirm next session); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: Me: Stage 6 brief and recon (physical punching first). You: nothing until the first combat playtest.
+▶ Next: You: PLAYTEST-6a (punching, ~10 min). Me: the next combat moves per your answers.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -170,9 +171,23 @@ Risk: lighting mismatch (hands look pasted on), hands drawn over the game's own 
 - [x] ★ Doors, buttons, Gridnodes by touch; A stays as fallback; collectibles: check in the gate session
 
 ### Stage 6 — Combat and gadgets (L)
+
+#### Stage 6 brief
+Goal: fight with your body: punches thrown with your fists become Faith's attacks; the other combat moves and the gadgets (MAG Rope, Disruptor) work by hand where it makes sense, with the buttons always kept as a fallback.
+Known: the game's pad layout (D-027): X Light attack, Y Heavy attack (with the move stick = directional heavy), RT Shift, B Disruptor, LB/LT up/down actions. Catalyst picks the attack target itself (the enemy ahead), so the mod only has to decide *when* and *which* attack. Hand speed relative to the head is already tracked (5d); touching something fast already = Heavy (door slam, D-037).
+Unknowns:
+  Q-601 (user) which swing should be which attack: straight punch = light (default); hook or strong swing = heavy? (heavy is Faith's kick)
+  Q-602 does a Light attack also slam doors open (then punch vs flick needn't be told apart at doors)?
+  Q-603 can enemies be found (position) for "punch only near an enemy"? Only if accidental punches are a problem.
+Hypotheses:
+  H1 punch_model: hand velocity relative to the head > 2.5 m/s, forward within ~50 deg of the view (or across the front = hook), hand in front of the body, one punch per swing (re-arm below 1 m/s, 0.25 s apart) -> Light attack. Reaching (< 1 m/s) never fires.
+  H2 a punch that hits a surface within 100 ms was a door flick: the slam goes out instead, never both.
+Plan: 6C-1 punching (PLAYTEST-6a) -> 6C-2 heavy/kick, Shift, wall-run/air attacks per Q-601/Q-602 answers -> 6D MAG Rope + Disruptor aimed by hand.
+Verify: punches land on enemies in a fight, no punches while reaching, climbing or gesturing; comfort.
+Risk: accidental attacks while waving hands in parkour; latency of the 100 ms door check (feel).
 - 6A Holsters: ★ only for gadget equip if needed (no weapons in the game)
 - 6B Guns: ★ not applicable (Faith never uses firearms)
-- [ ] ★ 6C **Physical punching**: fist velocity + proximity to enemy → light attack aimed at that enemy; min-velocity threshold; haptics on hit; either hand
+- [~] ★ 6C **Physical punching**: fast punch in front (either hand, straight or hook) = Light attack, buzz on the punch, game rumble on the hit; built (D-039), PLAYTEST-6a
 - [ ] ★ 6C Kicks, heavy and momentum attacks (incl. wall-run/air attacks), Shift dodge: gesture or button, selectable
 - [ ] ★ 6D MAG Rope and Disruptor: hand-aimed, trigger-fired
 
