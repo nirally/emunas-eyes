@@ -1,0 +1,443 @@
+17:56:38.460 [INFO ] [core    ] MEC VR 0.0.1 starting, loaded as NvCameraSDK64.dll, pid 10740
+17:56:38.469 [INFO ] [core    ] parent pid 29796, command line: "E:\SteamLibrary\steamapps\common\Mirrors Edge Catalyst\MirrorsEdgeCatalyst.exe"   
+17:56:38.472 [INFO ] [core    ] game exe version 1.0.3.47248 (target 1.0.3.47248)
+17:56:38.581 [INFO ] [config  ] loaded 50 settings (0 warnings)
+17:56:39.237 [INFO ] [render  ] Present hook installed at 00007FFCCF0C9000 (waiting for first frame)
+17:56:39.874 [INFO ] [capture ] constant-buffer capture ready: press F10 in game or create mecvr\CAPTURE
+17:56:40.063 [INFO ] [stereo  ] FillRenderView hooked at exe+3277100
+17:56:40.063 [INFO ] [stereo  ] view builder hooked at exe+31a40e0 (experiment off)
+17:56:40.205 [INFO ] [camera  ] render-view build site found, returns to exe+31a43be
+17:56:40.253 [INFO ] [camera  ] SetCameraData hooked at exe+3536f10; gameplay call returns to exe+327bc8b
+17:56:40.442 [INFO ] [camera  ] FOV setter exe+3536a90, aspect setter exe+35369e0 hooked
+17:56:40.442 [INFO ] [camera  ] game camera motion ON - rolls, tilts and dips are felt (F5)
+17:56:40.442 [INFO ] [camera  ] stereo ON (alternate eyes)
+17:56:40.442 [INFO ] [sync    ] eye sync ON (world held still for the right eye)
+17:56:40.442 [INFO ] [sync    ] held frames report dt 0.000100 s
+17:56:40.522 [INFO ] [sync    ] game timer exe+32f5aa0 hooked; frame call returns to exe+2a2d700 (eye sync on)
+17:56:40.522 [INFO ] [taa     ] per-eye TAA history OFF
+17:56:40.522 [INFO ] [taa     ] motion-vector fix ON
+17:56:40.522 [INFO ] [taa     ] motion fix jitter mode 0
+17:56:41.242 [INFO ] [input   ] XInput hooks installed in xinput1_4.dll
+17:56:41.422 [INFO ] [input   ] XInput hooks installed in xinput9_1_0.dll
+17:56:41.524 [INFO ] [core    ] window title tagged
+17:56:42.771 [INFO ] [camera  ] render camera: game FOV 1.222, aspect 1.3333
+17:56:42.779 [INFO ] [render  ] ResizeBuffers 1920x1080
+17:56:45.746 [INFO ] [xr      ] OpenXR runtime: SteamVR/OpenXR 2.17.10
+17:56:45.746 [INFO ] [xr      ] headset: SteamVR/OpenXR : oculus
+17:56:46.259 [INFO ] [xr      ] per-eye swapchains 1920x1080, 3 images each
+17:56:46.334 [INFO ] [input   ] controller actions ready (right-handed, stick pitch off)
+17:56:46.334 [INFO ] [xr      ] session state 1
+17:56:46.334 [INFO ] [xr      ] session state 2
+17:56:46.334 [INFO ] [xr      ] session running - headset drives the camera
+17:56:46.334 [INFO ] [xr      ] your eye height above the floor: 1.93 m
+17:56:46.334 [INFO ] [xr      ] eyes: IPD 63.2 mm; left FOV L-49.0 R45.0 U48.0 D-50.0 deg
+17:56:46.334 [INFO ] [xr      ] stereo pairs shown: 0 (right eye without a left: 0); game renders 85.6 x 55.0 deg
+17:56:51.041 [INFO ] [proxy   ] export getVersion called 3 times (+3)
+17:56:51.041 [INFO ] [proxy   ] export setConfiguration called 1 times (+1)
+17:56:51.041 [INFO ] [input   ] xinput1_4.dll XInputGetState: pad0 20 pad1 20 pad2 20 pad3 20 calls /10 s (from exe+410291c); last result pad0 0
+17:56:53.548 [INFO ] [smoke   ] SMOKE OK mod=0.0.1 exe=1.0.3.47248 proxy=NvCameraSDK64.dll present_hook=live frames=1 flags=50 assertions=0
+17:56:59.827 [INFO ] [d3d     ] device-context hooks installed: 5 interfaces, 14 method tables (12 from the runtime's data; thread-safe mode off), 295 methods hooked; Draw at 00007FFCCDEC3610 00007FFCCDEC2990 00007FFCCDEDAF70 00007FFCCDEC3540 00007FFCCDEC33E0 00007FFCCDEC5BE0 00007FFCCDEC5840 00007FFCCDEC5B00 00007FFCCDE7FC00 00007FFCCDF0B7C0 00007FFCCDE60900 00007FFCCDEBEDC0 00007FFCCDE7FCA0 00007FFCCDE60E50
+17:56:59.827 [INFO ] [hands   ] view uploads per frame, eye matched in order (frames): "" 1
+17:56:59.827 [INFO ] [camera  ] SetCameraData caller exe+327bc8b: 2 calls (+2)  [gameplay camera - overridden]
+17:56:59.827 [INFO ] [camera  ] presented frames: mono 0, left 0, right 0, unmatched 0
+17:56:59.828 [INFO ] [capture ] view-constant uploads per frame: 0:1 1:0 2:0 3:0 4+:0
+17:56:59.828 [INFO ] [render  ] Present hook live: swapchain 0000000011FAA940 1920x1080 fmt=28 buffers=3 windowed=0 device=D3D11
+17:56:59.843 [INFO ] [camera  ] full field of view: target 100.0 deg vertical
+17:56:59.844 [INFO ] [render  ] ResizeBuffers 1920x1080
+17:56:59.849 [INFO ] [xr      ] session state 3
+17:56:59.849 [INFO ] [xr      ] session state 4
+17:56:59.849 [INFO ] [xr      ] session state 5
+17:56:59.851 [INFO ] [input   ] virtual pad ON (controller 0)
+17:56:59.851 [INFO ] [xr      ] stereo pairs shown: 0 (right eye without a left: 0); game renders 85.6 x 55.0 deg
+17:56:59.853 [INFO ] [d3d     ] context calls seen per method version /10 s: v0 draw 0 om 5; command lists run 0; thread-safe 0; not hooked: none
+17:56:59.953 [INFO ] [camera  ] FOV settled: camera FOV 1.745 renders 0.0 deg
+17:57:01.066 [INFO ] [input   ] xinput1_4.dll XInputGetState: pad0 26 pad1 26 pad2 26 pad3 26 calls /10 s (from exe+410291c); last result pad0 0
+17:57:01.066 [INFO ] [input   ] xinput1_4.dll XInputSetState: pad0 6 pad1 6 pad2 6 pad3 6 calls /10 s (from exe+37bbc96); last result pad0 0
+17:57:01.066 [INFO ] [input   ] xinput1_4.dll XInputGetCapabilities: pad0 6 pad1 6 pad2 6 pad3 6 calls /10 s (from exe+37b8772); last result pad0 0
+17:57:03.328 [INFO ] [render  ] ResizeBuffers 2880x1620
+17:57:03.340 [INFO ] [xr      ] game resolution changed 1920x1080 -> 2880x1620
+17:57:03.342 [INFO ] [xr      ] per-eye swapchains 2880x1620, 3 images each
+17:57:04.507 [INFO ] [render  ] ResizeBuffers 1920x1080
+17:57:04.530 [INFO ] [xr      ] game resolution changed 2880x1620 -> 1920x1080
+17:57:04.532 [INFO ] [xr      ] per-eye swapchains 1920x1080, 3 images each
+17:57:06.212 [INFO ] [render  ] ResizeBuffers 2880x1620
+17:57:06.252 [INFO ] [xr      ] game resolution changed 1920x1080 -> 2880x1620
+17:57:06.254 [INFO ] [xr      ] per-eye swapchains 2880x1620, 3 images each
+17:57:09.832 [INFO ] [hands   ] view uploads per frame, eye matched in order (frames): "" 246
+17:57:09.832 [INFO ] [sync    ] eye sync: 123 of 248 game frames held still (96 held back a tick); simulation +67 ticks
+17:57:09.832 [INFO ] [render  ] fps 24.7 (frame 247)
+17:57:09.843 [INFO ] [input   ] vibration requested by the game: max low 0 high 0; haptic calls ok 26 failed 0; lowest head -0.03 m
+17:57:09.844 [INFO ] [d3d     ] context calls seen per method version /10 s: v0 draw 19 om 25737; v3 draw 8944 om 0; command lists run 0; thread-safe 0; not hooked: none
+17:57:09.844 [INFO ] [camera  ] SetCameraData caller exe+327bc8b: 249 calls (+247)  [gameplay camera - overridden]
+17:57:09.844 [INFO ] [camera  ] SetCameraData caller exe+372604d: 895 calls (+895)
+17:57:09.844 [INFO ] [camera  ] SetCameraData caller exe+37262c2: 895 calls (+895)
+17:57:09.844 [INFO ] [camera  ] SetCameraData caller exe+374a414: 179 calls (+179)
+17:57:09.844 [INFO ] [camera  ] SetCameraData caller exe+374a450: 179 calls (+179)
+17:57:09.844 [INFO ] [camera  ] SetCameraData caller exe+36f9083: 716 calls (+716)
+17:57:09.844 [INFO ] [camera  ] SetCameraData caller exe+36f9330: 716 calls (+716)
+17:57:09.844 [INFO ] [camera  ] SetCameraData caller exe+36f9562: 537 calls (+537)
+17:57:09.844 [INFO ] [camera  ] SetCameraData caller exe+36f4791: 179 calls (+179)
+17:57:09.844 [INFO ] [camera  ] SetCameraData caller exe+36f35aa: 179 calls (+179)
+17:57:09.844 [INFO ] [camera  ] SetCameraData caller exe+36eb275: 12 calls (+12)
+17:57:09.844 [INFO ] [camera  ] SetCameraData caller exe+373a74f: 172 calls (+172)
+17:57:09.844 [INFO ] [camera  ] presented frames: mono 0, left 0, right 0, unmatched 0
+17:57:09.844 [INFO ] [capture ] view-constant uploads per frame: 0:247 1:0 2:0 3:0 4+:0
+17:57:09.865 [INFO ] [xr      ] stereo pairs shown: 0 (right eye without a left: 0); game renders 85.6 x 55.0 deg
+17:57:13.893 [INFO ] [input   ] xinput1_4.dll XInputGetState: pad0 679 pad1 679 pad2 679 pad3 679 calls /10 s (from exe+410291c); last result pad0 0
+17:57:13.893 [INFO ] [input   ] xinput1_4.dll XInputSetState: pad0 653 pad1 653 pad2 653 pad3 653 calls /10 s (from exe+37bbc96); last result pad0 0
+17:57:13.893 [INFO ] [input   ] xinput1_4.dll XInputGetCapabilities: pad0 653 pad1 653 pad2 653 pad3 653 calls /10 s (from exe+37b8772); last result pad0 0
+17:57:16.349 [INFO ] [xr      ] your eye height above the floor: 1.92 m
+17:57:19.835 [INFO ] [hands   ] view uploads per frame, eye matched in order (frames): "" 782
+17:57:19.835 [INFO ] [sync    ] eye sync: 391 of 782 game frames held still (267 held back a tick); simulation +301 ticks
+17:57:19.835 [INFO ] [render  ] fps 78.2 (frame 1029)
+17:57:19.846 [INFO ] [input   ] vibration requested by the game: max low 0 high 0; haptic calls ok 0 failed 0; lowest head -0.02 m
+17:57:19.847 [INFO ] [d3d     ] context calls seen per method version /10 s: v0 draw 30 om 46048; v3 draw 14438 om 0; command lists run 0; thread-safe 0; not hooked: none
+17:57:19.858 [INFO ] [camera  ] SetCameraData caller exe+327bc8b: 1032 calls (+783)  [gameplay camera - overridden]
+17:57:19.858 [INFO ] [camera  ] SetCameraData caller exe+372604d: 2370 calls (+1475)
+17:57:19.858 [INFO ] [camera  ] SetCameraData caller exe+37262c2: 2370 calls (+1475)
+17:57:19.858 [INFO ] [camera  ] SetCameraData caller exe+374a414: 474 calls (+295)
+17:57:19.858 [INFO ] [camera  ] SetCameraData caller exe+374a450: 474 calls (+295)
+17:57:19.858 [INFO ] [camera  ] SetCameraData caller exe+36f9083: 1896 calls (+1180)
+17:57:19.858 [INFO ] [camera  ] SetCameraData caller exe+36f9330: 1896 calls (+1180)
+17:57:19.858 [INFO ] [camera  ] SetCameraData caller exe+36f9562: 1422 calls (+885)
+17:57:19.858 [INFO ] [camera  ] SetCameraData caller exe+36f4791: 474 calls (+295)
+17:57:19.858 [INFO ] [camera  ] SetCameraData caller exe+36f35aa: 474 calls (+295)
+17:57:19.858 [INFO ] [camera  ] SetCameraData caller exe+373a74f: 467 calls (+295)
+17:57:19.858 [INFO ] [camera  ] presented frames: mono 0, left 0, right 0, unmatched 0
+17:57:19.858 [INFO ] [capture ] view-constant uploads per frame: 0:783 1:0 2:0 3:0 4+:0
+17:57:19.879 [INFO ] [xr      ] stereo pairs shown: 0 (right eye without a left: 0); game renders 85.6 x 55.0 deg
+17:57:23.914 [INFO ] [input   ] xinput1_4.dll XInputGetState: pad0 303 pad1 303 pad2 303 pad3 303 calls /10 s (from exe+37bbe77); last result pad0 0
+17:57:23.914 [INFO ] [input   ] xinput1_4.dll XInputSetState: pad0 283 pad1 283 pad2 283 pad3 283 calls /10 s (from exe+37bbc96); last result pad0 0
+17:57:23.914 [INFO ] [input   ] xinput1_4.dll XInputGetCapabilities: pad0 283 pad1 283 pad2 283 pad3 283 calls /10 s (from exe+37b8772); last result pad0 0
+17:57:28.622 [DEBUG] [camera  ] rendered view: y 0.99 yaw -18.8 pitch -18.5 roll 1.7 deg (head roll 1.6, override on)
+17:57:28.622 [DEBUG] [camera  ] head offset from recentre: x +0.03 y -0.04 z -0.03 m (z<0 = forward)
+17:57:28.806 [INFO ] [hands   ] hand drawing ready
+17:57:28.807 [INFO ] [hands   ] depth copy 2880x1620 format 19
+17:57:28.847 [INFO ] [taa     ] previous-camera check: largest difference 0.000000 from the previous frame's rebuilt camera, 0.0294 from this frame's own (1 checks)
+17:57:28.918 [INFO ] [hands   ] walls: left held back in 0 of 0 frames (max 0 mm, 0 touches), right 0 (max 0 mm, 0 touches)
+17:57:28.918 [INFO ] [hands   ] drawn with projection x-scale 0.472 (headset gets 0.472); box at screen x +0.66 (left eye) +0.00 (right eye), -1 = left edge; jittered camera 0.0 mm from the unjittered one (to the right: left eye -0.0, right eye +0.0 mm); 1 draws, 1 unpaired
+17:57:29.835 [INFO ] [hands   ] view uploads per frame, eye matched in order (frames): "" 777 "R" 1 "RRRRRRRRRRRRRRR" 12 "LLLLLLLLLLLLLLL" 12 "RRR" 15 "LLLL" 4 "LLL" 17 "RRRR" 7
+17:57:29.835 [INFO ] [sync    ] eye sync: 425 of 849 game frames held still (277 held back a tick); simulation +-338 ticks
+17:57:29.835 [INFO ] [render  ] fps 84.9 (frame 1878)
+17:57:29.844 [INFO ] [input   ] vibration requested by the game: max low 0 high 0; haptic calls ok 0 failed 0; lowest head -0.05 m
+17:57:29.846 [INFO ] [d3d     ] context calls seen per method version /10 s: v0 draw 9 om 23882; v3 draw 6733 om 0; command lists run 0; thread-safe 0; not hooked: none
+17:57:29.878 [INFO ] [camera  ] SetCameraData caller exe+327bc8b: 1883 calls (+851)  [gameplay camera - overridden]
+17:57:29.878 [INFO ] [camera  ] SetCameraData caller exe+372604d: 2470 calls (+100)
+17:57:29.878 [INFO ] [camera  ] SetCameraData caller exe+37262c2: 2470 calls (+100)
+17:57:29.878 [INFO ] [camera  ] SetCameraData caller exe+374a414: 570 calls (+96)
+17:57:29.878 [INFO ] [camera  ] SetCameraData caller exe+374a450: 570 calls (+96)
+17:57:29.878 [INFO ] [camera  ] SetCameraData caller exe+36f9083: 1976 calls (+80)
+17:57:29.878 [INFO ] [camera  ] SetCameraData caller exe+36f9330: 1976 calls (+80)
+17:57:29.878 [INFO ] [camera  ] SetCameraData caller exe+36f9562: 1482 calls (+60)
+17:57:29.878 [INFO ] [camera  ] SetCameraData caller exe+36f4791: 593 calls (+119)
+17:57:29.878 [INFO ] [camera  ] SetCameraData caller exe+36f35aa: 593 calls (+119)
+17:57:29.878 [INFO ] [camera  ] SetCameraData caller exe+36eb275: 120 calls (+108)
+17:57:29.878 [INFO ] [camera  ] SetCameraData caller exe+373a74f: 657 calls (+190)
+17:57:29.878 [INFO ] [camera  ] presented frames: mono 0, left 345, right 341, unmatched 0
+17:57:29.878 [INFO ] [capture ] view-constant uploads per frame: 0:775 1:3 2:3 3:32 4+:38
+17:57:29.878 [INFO ] [capture ] game projection: 129.5 x 100.0 deg (aspect 1.778)
+17:57:29.889 [INFO ] [xr      ] stereo pairs shown: 37 (right eye without a left: 3); game renders 129.5 x 100.0 deg
+17:57:30.646 [DEBUG] [camera  ] rendered view: y 65.35 yaw 155.8 pitch 6.3 roll 0.7 deg (head roll 0.7, override on)
+17:57:30.646 [DEBUG] [camera  ] head offset from recentre: x +0.01 y +0.00 z +0.01 m (z<0 = forward)
+17:57:32.661 [DEBUG] [camera  ] rendered view: y 65.34 yaw 153.7 pitch -1.9 roll 2.0 deg (head roll 2.0, override on)
+17:57:32.661 [DEBUG] [camera  ] head offset from recentre: x +0.01 y -0.01 z +0.04 m (z<0 = forward)
+17:57:33.937 [INFO ] [input   ] xinput1_4.dll XInputGetState: pad0 782 pad1 782 pad2 782 pad3 782 calls /10 s (from exe+37bbe77); last result pad0 0
+17:57:33.937 [INFO ] [input   ] xinput1_4.dll XInputSetState: pad0 762 pad1 762 pad2 762 pad3 762 calls /10 s (from exe+37bbc96); last result pad0 0
+17:57:33.937 [INFO ] [input   ] xinput1_4.dll XInputGetCapabilities: pad0 762 pad1 762 pad2 762 pad3 762 calls /10 s (from exe+37b8772); last result pad0 0
+17:57:34.670 [DEBUG] [camera  ] rendered view: y 65.34 yaw 154.2 pitch -4.3 roll 0.4 deg (head roll 0.4, override on)
+17:57:34.670 [DEBUG] [camera  ] head offset from recentre: x +0.02 y -0.01 z +0.01 m (z<0 = forward)
+17:57:36.686 [DEBUG] [camera  ] rendered view: y -4733.11 yaw -51.0 pitch -62.6 roll -36.4 deg (head roll -36.4, override on)
+17:57:36.686 [DEBUG] [camera  ] head offset from recentre: x +0.02 y -0.02 z +0.00 m (z<0 = forward)
+17:57:38.706 [DEBUG] [camera  ] rendered view: y 66.78 yaw -32.0 pitch -16.5 roll 2.7 deg (head roll 2.7, override on)
+17:57:38.706 [DEBUG] [camera  ] head offset from recentre: x +0.02 y -0.04 z +0.03 m (z<0 = forward)
+17:57:38.841 [INFO ] [taa     ] previous-camera check: largest difference 0.000002 from the previous frame's rebuilt camera, 4171.8208 from this frame's own (872 checks)
+17:57:38.920 [INFO ] [hands   ] walls: left held back in 0 of 877 frames (max 0 mm, 0 touches), right 0 (max 0 mm, 0 touches)
+17:57:38.920 [INFO ] [hands   ] left first, right box, left minus right image: measured +1627.8 px (vertical -1.9), one box there would be +1626.8 px; hand moved 0.0 mm between the frames; eye cameras 63.2 mm apart, left camera +63.2 mm to the left; depth 0.09; 312 pairs
+17:57:38.920 [INFO ] [hands   ] right first, right box, left minus right image: measured +1369.0 px (vertical +1318.1), one box there would be +1326.5 px; hand moved 16842.4 mm between the frames; eye cameras 16894.6 mm apart, left camera -223.9 mm to the left; depth 0.08; 311 pairs
+17:57:38.920 [INFO ] [hands   ] drawn with projection x-scale 0.472 (headset gets 0.472); box at screen x +4.16 (left eye) +3.17 (right eye), -1 = left edge; jittered camera 0.1 mm from the unjittered one (to the right: left eye -0.0, right eye +0.0 mm); 638 draws, 15 unpaired
+17:57:39.832 [INFO ] [hands   ] view uploads per frame, eye matched in order (frames): "RRRRRRRRRRRRRRR" 290 "L" 1 "LLLLLLLLLLLLLLL" 316 "LLLLLLLLLLLLLL" 44 "RRRRRRRRRRRR" 13 "RRRRRRRRRRRRRR" 45 "RRRRRRRRRRRRR" 26 "RRRRRRRRRRR" 2
+17:57:39.832 [INFO ] [sync    ] eye sync: 443 of 886 game frames held still (259 held back a tick); simulation +259 ticks
+17:57:39.832 [INFO ] [render  ] fps 88.6 (frame 2764)
+17:57:39.842 [INFO ] [input   ] vibration requested by the game: max low 32767 high 32767; haptic calls ok 12 failed 0; lowest head -0.07 m
+17:57:39.844 [INFO ] [d3d     ] context calls seen per method version /10 s: v0 draw 131 om 175568; v3 draw 72511 om 0; command lists run 0; thread-safe 0; not hooked: none
+17:57:39.894 [INFO ] [camera  ] SetCameraData caller exe+327bc8b: 2770 calls (+887)  [gameplay camera - overridden]
+17:57:39.894 [INFO ] [camera  ] SetCameraData caller exe+374a414: 1457 calls (+887)
+17:57:39.894 [INFO ] [camera  ] SetCameraData caller exe+374a450: 1457 calls (+887)
+17:57:39.894 [INFO ] [camera  ] SetCameraData caller exe+36f4791: 1867 calls (+1274)
+17:57:39.894 [INFO ] [camera  ] SetCameraData caller exe+36f35aa: 1867 calls (+1274)
+17:57:39.894 [INFO ] [camera  ] SetCameraData caller exe+36eb275: 1254 calls (+1134)
+17:57:39.894 [INFO ] [camera  ] SetCameraData caller exe+373a74f: 2625 calls (+1968)
+17:57:39.894 [INFO ] [camera  ] SetCameraData caller exe+31a43be: 417 calls (+417)
+17:57:39.894 [INFO ] [camera  ] SetCameraData caller exe+327724b: 178 calls (+178)
+17:57:39.894 [INFO ] [camera  ] render-view build: composed 417 frames (417 equal to the raw camera, 0 blended by the game; max blend 0.0 deg)
+17:57:39.894 [INFO ] [camera  ] presented frames: mono 0, left 7224, right 7217, unmatched 0
+17:57:39.894 [INFO ] [capture ] view-constant uploads per frame: 0:0 1:0 2:2 3:0 4+:885
+17:57:39.894 [INFO ] [capture ] game projection: 129.5 x 100.0 deg (aspect 1.778)
+17:57:39.903 [INFO ] [xr      ] stereo pairs shown: 480 (right eye without a left: 3); game renders 129.5 x 100.0 deg
+17:57:40.722 [DEBUG] [camera  ] rendered view: y 66.79 yaw 42.5 pitch -11.7 roll 3.4 deg (head roll 3.4, override on)
+17:57:40.722 [DEBUG] [camera  ] head offset from recentre: x -0.00 y -0.03 z +0.04 m (z<0 = forward)
+17:57:42.730 [DEBUG] [camera  ] rendered view: y 66.81 yaw 46.9 pitch -11.2 roll 3.4 deg (head roll 3.4, override on)
+17:57:42.730 [DEBUG] [camera  ] head offset from recentre: x +0.00 y -0.03 z +0.05 m (z<0 = forward)
+17:57:43.962 [INFO ] [input   ] rumble requested per slot (max /10 s): pad0 32767 pad1 0 pad2 0 pad3 0
+17:57:43.962 [INFO ] [input   ] xinput1_4.dll XInputGetState: pad0 1231 pad1 1231 pad2 1231 pad3 1231 calls /10 s (from exe+37bbe77); last result pad0 0
+17:57:43.962 [INFO ] [input   ] xinput1_4.dll XInputSetState: pad0 1211 pad1 1211 pad2 1211 pad3 1211 calls /10 s (from exe+37bbc96); last result pad0 0
+17:57:43.962 [INFO ] [input   ] xinput1_4.dll XInputGetCapabilities: pad0 1211 pad1 1211 pad2 1211 pad3 1211 calls /10 s (from exe+37b8772); last result pad0 0
+17:57:44.752 [DEBUG] [camera  ] rendered view: y 66.84 yaw 42.9 pitch -11.3 roll 5.3 deg (head roll 5.3, override on)
+17:57:44.752 [DEBUG] [camera  ] head offset from recentre: x +0.01 y -0.03 z +0.04 m (z<0 = forward)
+17:57:46.366 [INFO ] [xr      ] your eye height above the floor: 1.91 m
+17:57:46.763 [DEBUG] [camera  ] rendered view: y 66.83 yaw 54.7 pitch -8.9 roll 2.7 deg (head roll 2.7, override on)
+17:57:46.763 [DEBUG] [camera  ] head offset from recentre: x -0.01 y -0.03 z +0.03 m (z<0 = forward)
+17:57:48.781 [DEBUG] [camera  ] rendered view: y 66.86 yaw 54.0 pitch -7.2 roll 2.7 deg (head roll 2.7, override on)
+17:57:48.781 [DEBUG] [camera  ] head offset from recentre: x -0.01 y -0.02 z +0.04 m (z<0 = forward)
+17:57:48.848 [INFO ] [taa     ] previous-camera check: largest difference 0.000031 from the previous frame's rebuilt camera, 88.7324 from this frame's own (867 checks)
+17:57:48.929 [INFO ] [hands   ] walls: left held back in 180 of 867 frames (max 111 mm, 1 touches), right 252 (max 129 mm, 3 touches)
+17:57:48.929 [INFO ] [hands   ] left first, right box, left minus right image: measured +106.7 px (vertical +0.0), one box there would be +106.7 px; hand moved 0.1 mm between the frames; eye cameras 63.2 mm apart, left camera +63.2 mm to the left; depth 0.41; 433 pairs
+17:57:48.929 [INFO ] [hands   ] right first, right box, left minus right image: measured +106.8 px (vertical +0.7), one box there would be +120.4 px; hand moved 49.0 mm between the frames; eye cameras 86.6 mm apart, left camera +62.7 mm to the left; depth 0.41; 434 pairs
+17:57:48.929 [INFO ] [hands   ] drawn with projection x-scale 0.472 (headset gets 0.472); box at screen x +0.19 (left eye) +0.12 (right eye), -1 = left edge; jittered camera 0.1 mm from the unjittered one (to the right: left eye +0.0, right eye +0.0 mm); 867 draws, 0 unpaired
+17:57:49.827 [INFO ] [hands   ] view uploads per frame, eye matched in order (frames): "RRRRRRRRRRRRRRR" 429 "LLLLLLLLLLLLLLL" 428 "LLLLLLLLLLLLL" 1 "RRRRRRRRRRRRRR" 1 "LLLLLLLLLLLL" 1 "RRRRRRRRRRRRR" 1 "LLLLLLLLLLL" 3 "RRRRRRRRRRRR" 1
+17:57:49.827 [INFO ] [sync    ] eye sync: 435 of 870 game frames held still (300 held back a tick); simulation +300 ticks
+17:57:49.827 [INFO ] [render  ] fps 87.0 (frame 3634)
+17:57:49.848 [INFO ] [input   ] vibration requested by the game: max low 32767 high 32767; haptic calls ok 40 failed 0; lowest head -0.04 m
+17:57:49.849 [INFO ] [d3d     ] context calls seen per method version /10 s: v0 draw 130 om 183645; v3 draw 79997 om 0; command lists run 0; thread-safe 0; not hooked: none
+17:57:49.904 [INFO ] [camera  ] SetCameraData caller exe+327bc8b: 3642 calls (+872)  [gameplay camera - overridden]
+17:57:49.904 [INFO ] [camera  ] SetCameraData caller exe+374a414: 2329 calls (+872)
+17:57:49.904 [INFO ] [camera  ] SetCameraData caller exe+374a450: 2329 calls (+872)
+17:57:49.904 [INFO ] [camera  ] SetCameraData caller exe+36f4791: 3036 calls (+1169)
+17:57:49.904 [INFO ] [camera  ] SetCameraData caller exe+36f35aa: 3036 calls (+1169)
+17:57:49.904 [INFO ] [camera  ] SetCameraData caller exe+36eb275: 2130 calls (+876)
+17:57:49.904 [INFO ] [camera  ] SetCameraData caller exe+373a74f: 4407 calls (+1782)
+17:57:49.904 [INFO ] [camera  ] SetCameraData caller exe+31a43be: 1281 calls (+864)
+17:57:49.904 [INFO ] [camera  ] render-view build: composed 864 frames (864 equal to the raw camera, 0 blended by the game; max blend 0.0 deg)
+17:57:49.904 [INFO ] [camera  ] presented frames: mono 0, left 9483, right 9272, unmatched 0
+17:57:49.904 [INFO ] [capture ] view-constant uploads per frame: 0:0 1:0 2:0 3:0 4+:872
+17:57:49.904 [INFO ] [capture ] game projection: 129.5 x 100.0 deg (aspect 1.778)
+17:57:49.926 [INFO ] [xr      ] stereo pairs shown: 917 (right eye without a left: 3); game renders 129.5 x 100.0 deg
+17:57:50.800 [DEBUG] [camera  ] rendered view: y 66.82 yaw -53.2 pitch -13.1 roll 5.5 deg (head roll 5.5, override on)
+17:57:50.800 [DEBUG] [camera  ] head offset from recentre: x +0.05 y -0.04 z +0.07 m (z<0 = forward)
+17:57:52.816 [DEBUG] [camera  ] rendered view: y 66.80 yaw -65.1 pitch -15.5 roll 6.0 deg (head roll 6.0, override on)
+17:57:52.816 [DEBUG] [camera  ] head offset from recentre: x -0.02 y -0.05 z +0.06 m (z<0 = forward)
+17:57:53.987 [INFO ] [input   ] rumble requested per slot (max /10 s): pad0 32767 pad1 0 pad2 0 pad3 0
+17:57:53.987 [INFO ] [input   ] xinput1_4.dll XInputGetState: pad0 1206 pad1 1206 pad2 1206 pad3 1206 calls /10 s (from exe+37bbe77); last result pad0 0
+17:57:53.987 [INFO ] [input   ] xinput1_4.dll XInputSetState: pad0 1186 pad1 1186 pad2 1186 pad3 1186 calls /10 s (from exe+37bbc96); last result pad0 0
+17:57:53.987 [INFO ] [input   ] xinput1_4.dll XInputGetCapabilities: pad0 1186 pad1 1186 pad2 1186 pad3 1186 calls /10 s (from exe+37b8772); last result pad0 0
+17:57:54.827 [DEBUG] [camera  ] rendered view: y 66.76 yaw -85.2 pitch -13.3 roll 5.8 deg (head roll 5.8, override on)
+17:57:54.827 [DEBUG] [camera  ] head offset from recentre: x -0.02 y -0.04 z +0.03 m (z<0 = forward)
+17:57:56.848 [DEBUG] [camera  ] rendered view: y 66.83 yaw -86.5 pitch -13.7 roll 4.8 deg (head roll 4.8, override on)
+17:57:56.848 [DEBUG] [camera  ] head offset from recentre: x -0.02 y -0.04 z +0.04 m (z<0 = forward)
+17:57:58.846 [INFO ] [taa     ] previous-camera check: largest difference 0.000015 from the previous frame's rebuilt camera, 48.2588 from this frame's own (888 checks)
+17:57:58.856 [DEBUG] [camera  ] rendered view: y 67.67 yaw -166.4 pitch -34.4 roll 4.8 deg (head roll 4.8, override on)
+17:57:58.856 [DEBUG] [camera  ] head offset from recentre: x +0.07 y -0.09 z +0.02 m (z<0 = forward)
+17:57:58.925 [INFO ] [hands   ] walls: left held back in 196 of 888 frames (max 280 mm, 2 touches), right 60 (max 215 mm, 7 touches)
+17:57:58.925 [INFO ] [hands   ] left first, right box, left minus right image: measured +152.7 px (vertical +0.0), one box there would be +152.6 px; hand moved 0.0 mm between the frames; eye cameras 63.2 mm apart, left camera +63.2 mm to the left; depth 0.33; 444 pairs
+17:57:58.925 [INFO ] [hands   ] right first, right box, left minus right image: measured +152.6 px (vertical -0.6), one box there would be +131.2 px; hand moved 74.5 mm between the frames; eye cameras 71.7 mm apart, left camera +25.2 mm to the left; depth 0.33; 444 pairs
+17:57:58.925 [INFO ] [hands   ] drawn with projection x-scale 0.472 (headset gets 0.472); box at screen x +0.68 (left eye) +0.57 (right eye), -1 = left edge; jittered camera 0.1 mm from the unjittered one (to the right: left eye +0.0, right eye -0.0 mm); 888 draws, 0 unpaired
+17:57:59.826 [INFO ] [hands   ] view uploads per frame, eye matched in order (frames): "RRRRRRRRRRR" 106 "LLLLLLLLL" 29 "RRRRRRRRR" 29 "LLLLLLLL" 19 "RRRRRRRR" 31 "RRRRRRRRRR" 67 "LLLLLLLLLL" 51 "RRRRRRR" 1
+17:57:59.826 [INFO ] [sync    ] eye sync: 444 of 888 game frames held still (300 held back a tick); simulation +300 ticks
+17:57:59.826 [INFO ] [render  ] fps 88.8 (frame 4522)
+17:57:59.847 [INFO ] [input   ] vibration requested by the game: max low 0 high 0; haptic calls ok 17 failed 0; lowest head -0.10 m
+17:57:59.848 [INFO ] [d3d     ] context calls seen per method version /10 s: v0 draw 108 om 177041; v3 draw 73453 om 0; command lists run 0; thread-safe 0; not hooked: none
+17:57:59.926 [INFO ] [camera  ] SetCameraData caller exe+327bc8b: 4532 calls (+890)  [gameplay camera - overridden]
+17:57:59.926 [INFO ] [camera  ] SetCameraData caller exe+374a414: 3219 calls (+890)
+17:57:59.926 [INFO ] [camera  ] SetCameraData caller exe+374a450: 3219 calls (+890)
+17:57:59.926 [INFO ] [camera  ] SetCameraData caller exe+36f4791: 4145 calls (+1109)
+17:57:59.926 [INFO ] [camera  ] SetCameraData caller exe+36f35aa: 4145 calls (+1109)
+17:57:59.926 [INFO ] [camera  ] SetCameraData caller exe+36eb275: 3576 calls (+1446)
+17:57:59.926 [INFO ] [camera  ] SetCameraData caller exe+373a74f: 6859 calls (+2452)
+17:57:59.926 [INFO ] [camera  ] SetCameraData caller exe+31a43be: 2167 calls (+886)
+17:57:59.926 [INFO ] [camera  ] render-view build: composed 886 frames (886 equal to the raw camera, 0 blended by the game; max blend 0.0 deg)
+17:57:59.926 [INFO ] [camera  ] presented frames: mono 0, left 5380, right 5208, unmatched 0
+17:57:59.926 [INFO ] [capture ] view-constant uploads per frame: 0:0 1:0 2:0 3:0 4+:890
+17:57:59.926 [INFO ] [capture ] game projection: 129.5 x 100.0 deg (aspect 1.778)
+17:57:59.936 [INFO ] [xr      ] stereo pairs shown: 1361 (right eye without a left: 3); game renders 129.5 x 100.0 deg
+17:58:00.877 [DEBUG] [camera  ] rendered view: y 67.69 yaw -138.3 pitch -26.5 roll 4.2 deg (head roll 4.2, override on)
+17:58:00.877 [DEBUG] [camera  ] head offset from recentre: x +0.01 y -0.06 z +0.00 m (z<0 = forward)
+17:58:02.893 [DEBUG] [camera  ] rendered view: y 66.78 yaw -146.6 pitch -29.0 roll 4.6 deg (head roll 4.6, override on)
+17:58:02.893 [DEBUG] [camera  ] head offset from recentre: x +0.02 y -0.07 z -0.01 m (z<0 = forward)
+17:58:04.010 [INFO ] [input   ] xinput1_4.dll XInputGetState: pad0 1218 pad1 1218 pad2 1218 pad3 1218 calls /10 s (from exe+37bbe77); last result pad0 0
+17:58:04.010 [INFO ] [input   ] xinput1_4.dll XInputSetState: pad0 1198 pad1 1198 pad2 1198 pad3 1198 calls /10 s (from exe+37bbc96); last result pad0 0
+17:58:04.010 [INFO ] [input   ] xinput1_4.dll XInputGetCapabilities: pad0 1198 pad1 1198 pad2 1198 pad3 1198 calls /10 s (from exe+37b8772); last result pad0 0
+17:58:04.903 [DEBUG] [camera  ] rendered view: y 67.70 yaw 174.0 pitch -33.0 roll -7.2 deg (head roll -7.2, override on)
+17:58:04.903 [DEBUG] [camera  ] head offset from recentre: x +0.08 y -0.08 z +0.05 m (z<0 = forward)
+17:58:06.922 [DEBUG] [camera  ] rendered view: y 66.68 yaw -136.4 pitch -7.4 roll 2.0 deg (head roll 2.0, override on)
+17:58:06.922 [DEBUG] [camera  ] head offset from recentre: x -0.02 y -0.03 z +0.06 m (z<0 = forward)
+17:58:08.850 [INFO ] [taa     ] previous-camera check: largest difference 0.000015 from the previous frame's rebuilt camera, 43.0723 from this frame's own (895 checks)
+17:58:08.929 [INFO ] [hands   ] walls: left held back in 183 of 895 frames (max 167 mm, 3 touches), right 112 (max 70 mm, 1 touches)
+17:58:08.929 [INFO ] [hands   ] left first, right box, left minus right image: measured +112.1 px (vertical +0.0), one box there would be +112.1 px; hand moved 0.0 mm between the frames; eye cameras 63.2 mm apart, left camera +63.2 mm to the left; depth 0.39; 448 pairs
+17:58:08.929 [INFO ] [hands   ] right first, right box, left minus right image: measured +112.2 px (vertical +0.6), one box there would be +112.7 px; hand moved 41.8 mm between the frames; eye cameras 78.5 mm apart, left camera +64.0 mm to the left; depth 0.39; 447 pairs
+17:58:08.929 [INFO ] [hands   ] drawn with projection x-scale 0.472 (headset gets 0.472); box at screen x +0.25 (left eye) +0.17 (right eye), -1 = left edge; jittered camera 0.1 mm from the unjittered one (to the right: left eye -0.0, right eye -0.0 mm); 895 draws, 0 unpaired
+17:58:08.940 [DEBUG] [camera  ] rendered view: y 66.85 yaw -137.5 pitch -5.2 roll 2.2 deg (head roll 2.2, override on)
+17:58:08.940 [DEBUG] [camera  ] head offset from recentre: x -0.02 y -0.02 z +0.07 m (z<0 = forward)
+17:58:09.831 [INFO ] [hands   ] view uploads per frame, eye matched in order (frames): "RRRRRRRRRR" 41 "LLLLLLLLLLL" 112 "RRRRRRRRR" 63 "RRRRRRRRRRR" 76 "RRRRRRRRRRRR" 27 "RRRRRRRRRRRRR" 29 "LLLLLLLLLLLLL" 24 "LLLLLLLLLLLL" 41
+17:58:09.831 [INFO ] [sync    ] eye sync: 447 of 895 game frames held still (299 held back a tick); simulation +300 ticks
+17:58:09.831 [INFO ] [render  ] fps 89.5 (frame 5417)
+17:58:09.841 [INFO ] [input   ] vibration requested by the game: max low 32767 high 32767; haptic calls ok 81 failed 0; lowest head -0.09 m
+17:58:09.842 [INFO ] [d3d     ] context calls seen per method version /10 s: v0 draw 155 om 179539; v3 draw 73195 om 0; command lists run 0; thread-safe 0; not hooked: none
+17:58:09.942 [INFO ] [camera  ] SetCameraData caller exe+327bc8b: 5428 calls (+896)  [gameplay camera - overridden]
+17:58:09.942 [INFO ] [camera  ] SetCameraData caller exe+374a414: 4115 calls (+896)
+17:58:09.942 [INFO ] [camera  ] SetCameraData caller exe+374a450: 4115 calls (+896)
+17:58:09.942 [INFO ] [camera  ] SetCameraData caller exe+36f4791: 5419 calls (+1274)
+17:58:09.942 [INFO ] [camera  ] SetCameraData caller exe+36f35aa: 5419 calls (+1274)
+17:58:09.942 [INFO ] [camera  ] SetCameraData caller exe+36eb275: 4020 calls (+444)
+17:58:09.942 [INFO ] [camera  ] SetCameraData caller exe+373a74f: 8335 calls (+1476)
+17:58:09.942 [INFO ] [camera  ] SetCameraData caller exe+31a43be: 3063 calls (+896)
+17:58:09.942 [INFO ] [camera  ] render-view build: composed 896 frames (896 equal to the raw camera, 0 blended by the game; max blend 0.0 deg)
+17:58:09.942 [INFO ] [camera  ] presented frames: mono 0, left 4122, right 3972, unmatched 0
+17:58:09.942 [INFO ] [capture ] view-constant uploads per frame: 0:0 1:0 2:0 3:0 4+:896
+17:58:09.942 [INFO ] [capture ] game projection: 129.5 x 100.0 deg (aspect 1.778)
+17:58:09.953 [INFO ] [xr      ] stereo pairs shown: 1809 (right eye without a left: 3); game renders 129.5 x 100.0 deg
+17:58:10.960 [DEBUG] [camera  ] rendered view: y 66.83 yaw -148.3 pitch -15.3 roll 1.9 deg (head roll 1.9, override on)
+17:58:10.960 [DEBUG] [camera  ] head offset from recentre: x -0.00 y -0.04 z +0.05 m (z<0 = forward)
+17:58:12.968 [DEBUG] [camera  ] rendered view: y 66.83 yaw -137.8 pitch -16.4 roll 4.3 deg (head roll 4.3, override on)
+17:58:12.968 [DEBUG] [camera  ] head offset from recentre: x -0.01 y -0.04 z +0.02 m (z<0 = forward)
+17:58:14.032 [INFO ] [input   ] rumble requested per slot (max /10 s): pad0 32767 pad1 0 pad2 0 pad3 0
+17:58:14.032 [INFO ] [input   ] xinput1_4.dll XInputGetState: pad0 1217 pad1 1217 pad2 1217 pad3 1217 calls /10 s (from exe+37bbe77); last result pad0 0
+17:58:14.032 [INFO ] [input   ] xinput1_4.dll XInputSetState: pad0 1197 pad1 1197 pad2 1197 pad3 1197 calls /10 s (from exe+37bbc96); last result pad0 0
+17:58:14.032 [INFO ] [input   ] xinput1_4.dll XInputGetCapabilities: pad0 1197 pad1 1197 pad2 1197 pad3 1197 calls /10 s (from exe+37b8772); last result pad0 0
+17:58:14.986 [DEBUG] [camera  ] rendered view: y 66.75 yaw 176.7 pitch -9.9 roll 4.5 deg (head roll 4.5, override on)
+17:58:14.986 [DEBUG] [camera  ] head offset from recentre: x +0.03 y -0.03 z +0.07 m (z<0 = forward)
+17:58:16.377 [INFO ] [xr      ] your eye height above the floor: 1.91 m
+17:58:16.996 [DEBUG] [camera  ] rendered view: y 66.80 yaw -177.0 pitch -10.3 roll 3.7 deg (head roll 3.7, override on)
+17:58:16.996 [DEBUG] [camera  ] head offset from recentre: x +0.02 y -0.03 z +0.07 m (z<0 = forward)
+17:58:18.847 [INFO ] [taa     ] previous-camera check: largest difference 0.000008 from the previous frame's rebuilt camera, 25.5937 from this frame's own (887 checks)
+17:58:18.927 [INFO ] [hands   ] walls: left held back in 202 of 887 frames (max 148 mm, 1 touches), right 159 (max 245 mm, 38 touches)
+17:58:18.927 [INFO ] [hands   ] left first, right box, left minus right image: measured +113.3 px (vertical -0.1), one box there would be +113.3 px; hand moved 0.0 mm between the frames; eye cameras 63.2 mm apart, left camera +63.2 mm to the left; depth 0.40; 443 pairs
+17:58:18.927 [INFO ] [hands   ] right first, right box, left minus right image: measured +114.2 px (vertical -1.6), one box there would be +119.8 px; hand moved 68.4 mm between the frames; eye cameras 93.5 mm apart, left camera +49.6 mm to the left; depth 0.40; 444 pairs
+17:58:18.927 [INFO ] [hands   ] drawn with projection x-scale 0.472 (headset gets 0.472); box at screen x +0.16 (left eye) +0.08 (right eye), -1 = left edge; jittered camera 0.1 mm from the unjittered one (to the right: left eye -0.0, right eye +0.0 mm); 887 draws, 0 unpaired
+17:58:19.017 [DEBUG] [camera  ] rendered view: y 68.37 yaw -137.5 pitch 3.3 roll 3.0 deg (head roll 3.0, override on)
+17:58:19.017 [DEBUG] [camera  ] head offset from recentre: x -0.03 y -0.00 z +0.05 m (z<0 = forward)
+17:58:19.831 [INFO ] [hands   ] view uploads per frame, eye matched in order (frames): "LLLLLL" 59 "RRRRRR" 26 "RRRRR" 145 "LLLLL" 111 "LLLLLLL" 1 "LLLLLLLL" 11 "RRRRRRRR" 9 "RRRRRRRRR" 6
+17:58:19.831 [INFO ] [sync    ] eye sync: 442 of 884 game frames held still (300 held back a tick); simulation +300 ticks
+17:58:19.831 [INFO ] [render  ] fps 88.4 (frame 6301)
+17:58:19.843 [INFO ] [d3d     ] context calls seen per method version /10 s: v0 draw 133 om 170553; v3 draw 71681 om 0; command lists run 0; thread-safe 0; not hooked: none
+17:58:19.848 [INFO ] [input   ] vibration requested by the game: max low 0 high 0; haptic calls ok 25 failed 0; lowest head -0.05 m
+17:58:19.950 [INFO ] [camera  ] SetCameraData caller exe+327bc8b: 6312 calls (+884)  [gameplay camera - overridden]
+17:58:19.950 [INFO ] [camera  ] SetCameraData caller exe+374a414: 4999 calls (+884)
+17:58:19.950 [INFO ] [camera  ] SetCameraData caller exe+374a450: 4999 calls (+884)
+17:58:19.950 [INFO ] [camera  ] SetCameraData caller exe+36f4791: 6459 calls (+1040)
+17:58:19.950 [INFO ] [camera  ] SetCameraData caller exe+36f35aa: 6459 calls (+1040)
+17:58:19.950 [INFO ] [camera  ] SetCameraData caller exe+36eb275: 5244 calls (+1224)
+17:58:19.950 [INFO ] [camera  ] SetCameraData caller exe+373a74f: 10491 calls (+2156)
+17:58:19.950 [INFO ] [camera  ] SetCameraData caller exe+31a43be: 3947 calls (+884)
+17:58:19.950 [INFO ] [camera  ] render-view build: composed 884 frames (884 equal to the raw camera, 0 blended by the game; max blend 0.0 deg)
+17:58:19.950 [INFO ] [camera  ] presented frames: mono 0, left 5025, right 4894, unmatched 0
+17:58:19.950 [INFO ] [camera  ] game wanted -14.4 deg of roll this frame; removed
+17:58:19.950 [INFO ] [capture ] view-constant uploads per frame: 0:0 1:0 2:0 3:0 4+:884
+17:58:19.950 [INFO ] [capture ] game projection: 129.5 x 100.0 deg (aspect 1.778)
+17:58:19.968 [INFO ] [xr      ] stereo pairs shown: 2252 (right eye without a left: 3); game renders 129.5 x 100.0 deg
+17:58:21.029 [DEBUG] [camera  ] rendered view: y 66.88 yaw -150.5 pitch -0.4 roll 3.9 deg (head roll 3.9, override on)
+17:58:21.029 [DEBUG] [camera  ] head offset from recentre: x -0.01 y -0.01 z +0.06 m (z<0 = forward)
+17:58:23.047 [DEBUG] [camera  ] rendered view: y 66.69 yaw -136.0 pitch -3.1 roll 2.5 deg (head roll 2.5, override on)
+17:58:23.047 [DEBUG] [camera  ] head offset from recentre: x -0.03 y -0.01 z +0.05 m (z<0 = forward)
+17:58:24.057 [INFO ] [input   ] xinput1_4.dll XInputGetState: pad0 1204 pad1 1204 pad2 1204 pad3 1204 calls /10 s (from exe+37bbe77); last result pad0 0
+17:58:24.057 [INFO ] [input   ] xinput1_4.dll XInputSetState: pad0 1184 pad1 1184 pad2 1184 pad3 1184 calls /10 s (from exe+37bbc96); last result pad0 0
+17:58:24.057 [INFO ] [input   ] xinput1_4.dll XInputGetCapabilities: pad0 1184 pad1 1184 pad2 1184 pad3 1184 calls /10 s (from exe+37b8772); last result pad0 0
+17:58:25.065 [DEBUG] [camera  ] rendered view: y 66.81 yaw -149.3 pitch -29.7 roll 0.4 deg (head roll 0.4, override on)
+17:58:25.065 [DEBUG] [camera  ] head offset from recentre: x -0.00 y -0.07 z +0.01 m (z<0 = forward)
+17:58:27.075 [DEBUG] [camera  ] rendered view: y 66.80 yaw -124.6 pitch -35.6 roll 8.3 deg (head roll 8.3, override on)
+17:58:27.075 [DEBUG] [camera  ] head offset from recentre: x -0.07 y -0.09 z -0.02 m (z<0 = forward)
+17:58:28.849 [INFO ] [taa     ] previous-camera check: largest difference 0.000004 from the previous frame's rebuilt camera, 87.1729 from this frame's own (891 checks)
+17:58:28.928 [INFO ] [hands   ] walls: left held back in 0 of 891 frames (max 0 mm, 0 touches), right 2 (max 267 mm, 1 touches)
+17:58:28.928 [INFO ] [hands   ] left first, right box, left minus right image: measured +103.4 px (vertical +0.1), one box there would be +103.5 px; hand moved 0.1 mm between the frames; eye cameras 63.2 mm apart, left camera +63.2 mm to the left; depth 0.44; 446 pairs
+17:58:28.928 [INFO ] [hands   ] right first, right box, left minus right image: measured +103.0 px (vertical +0.5), one box there would be +122.4 px; hand moved 36.8 mm between the frames; eye cameras 84.1 mm apart, left camera +67.0 mm to the left; depth 0.44; 445 pairs
+17:58:28.928 [INFO ] [hands   ] drawn with projection x-scale 0.472 (headset gets 0.472); box at screen x +0.20 (left eye) +0.13 (right eye), -1 = left edge; jittered camera 0.1 mm from the unjittered one (to the right: left eye -0.0, right eye +0.0 mm); 891 draws, 0 unpaired
+17:58:29.095 [DEBUG] [camera  ] rendered view: y 66.78 yaw -131.8 pitch -41.6 roll 4.1 deg (head roll 4.1, override on)
+17:58:29.095 [DEBUG] [camera  ] head offset from recentre: x -0.09 y -0.11 z -0.07 m (z<0 = forward)
+17:58:29.830 [INFO ] [hands   ] view uploads per frame, eye matched in order (frames): "LLLLLLLLLLLLLLL" 121 "RRRRRRRRRRRRRRR" 104 "RRRRRRRRRRRRRR" 51 "RRRRRRRRRRRRR" 32 "RRRRRRRRRRRR" 11 "LLLLLLLLLLLLLL" 49 "LLLLLLLLLLLLL" 22 "LLLLLLLLLLLL" 6
+17:58:29.830 [INFO ] [sync    ] eye sync: 447 of 894 game frames held still (300 held back a tick); simulation +300 ticks
+17:58:29.830 [INFO ] [render  ] fps 89.4 (frame 7195)
+17:58:29.840 [INFO ] [input   ] vibration requested by the game: max low 0 high 0; haptic calls ok 0 failed 0; lowest head -0.12 m
+17:58:29.841 [INFO ] [d3d     ] context calls seen per method version /10 s: v0 draw 137 om 178542; v3 draw 68656 om 0; command lists run 0; thread-safe 0; not hooked: none
+17:58:29.975 [INFO ] [camera  ] SetCameraData caller exe+327bc8b: 7209 calls (+897)  [gameplay camera - overridden]
+17:58:29.975 [INFO ] [camera  ] SetCameraData caller exe+374a414: 5896 calls (+897)
+17:58:29.975 [INFO ] [camera  ] SetCameraData caller exe+374a450: 5896 calls (+897)
+17:58:29.975 [INFO ] [camera  ] SetCameraData caller exe+36f4791: 7678 calls (+1219)
+17:58:29.975 [INFO ] [camera  ] SetCameraData caller exe+36f35aa: 7678 calls (+1219)
+17:58:29.975 [INFO ] [camera  ] SetCameraData caller exe+36eb275: 5646 calls (+402)
+17:58:29.975 [INFO ] [camera  ] SetCameraData caller exe+373a74f: 11922 calls (+1431)
+17:58:29.975 [INFO ] [camera  ] SetCameraData caller exe+31a43be: 4843 calls (+896)
+17:58:29.975 [INFO ] [camera  ] render-view build: composed 896 frames (896 equal to the raw camera, 0 blended by the game; max blend 0.0 deg)
+17:58:29.975 [INFO ] [camera  ] presented frames: mono 0, left 5252, right 5108, unmatched 0
+17:58:29.975 [INFO ] [capture ] view-constant uploads per frame: 0:0 1:0 2:0 3:0 4+:897
+17:58:29.975 [INFO ] [capture ] game projection: 129.5 x 100.0 deg (aspect 1.778)
+17:58:29.985 [INFO ] [xr      ] stereo pairs shown: 2700 (right eye without a left: 3); game renders 129.5 x 100.0 deg
+17:58:31.115 [DEBUG] [camera  ] rendered view: y 66.78 yaw -134.5 pitch -39.9 roll 1.2 deg (head roll 1.2, override on)
+17:58:31.115 [DEBUG] [camera  ] head offset from recentre: x -0.10 y -0.11 z -0.08 m (z<0 = forward)
+17:58:33.127 [DEBUG] [camera  ] rendered view: y 66.69 yaw 135.5 pitch -8.5 roll 0.8 deg (head roll 0.8, override on)
+17:58:33.127 [DEBUG] [camera  ] head offset from recentre: x +0.03 y -0.03 z +0.04 m (z<0 = forward)
+17:58:34.077 [INFO ] [input   ] xinput1_4.dll XInputGetState: pad0 1205 pad1 1205 pad2 1205 pad3 1205 calls /10 s (from exe+37bbe77); last result pad0 0
+17:58:34.077 [INFO ] [input   ] xinput1_4.dll XInputSetState: pad0 1185 pad1 1185 pad2 1185 pad3 1185 calls /10 s (from exe+37bbc96); last result pad0 0
+17:58:34.077 [INFO ] [input   ] xinput1_4.dll XInputGetCapabilities: pad0 1185 pad1 1185 pad2 1185 pad3 1185 calls /10 s (from exe+37b8772); last result pad0 0
+17:58:35.142 [DEBUG] [camera  ] rendered view: y 67.10 yaw 161.2 pitch -10.7 roll 4.1 deg (head roll 4.1, override on)
+17:58:35.142 [DEBUG] [camera  ] head offset from recentre: x -0.04 y -0.03 z +0.02 m (z<0 = forward)
+17:58:37.162 [DEBUG] [camera  ] rendered view: y 67.04 yaw 144.1 pitch -15.1 roll 2.6 deg (head roll 2.6, override on)
+17:58:37.162 [DEBUG] [camera  ] head offset from recentre: x -0.02 y -0.04 z +0.03 m (z<0 = forward)
+17:58:38.842 [INFO ] [taa     ] previous-camera check: largest difference 0.000002 from the previous frame's rebuilt camera, 102.4206 from this frame's own (869 checks)
+17:58:38.923 [INFO ] [hands   ] walls: left held back in 63 of 869 frames (max 104 mm, 6 touches), right 0 (max 0 mm, 0 touches)
+17:58:38.923 [INFO ] [hands   ] left first, right box, left minus right image: measured +157.4 px (vertical +0.1), one box there would be +157.4 px; hand moved 0.0 mm between the frames; eye cameras 63.2 mm apart, left camera +63.2 mm to the left; depth 0.30; 434 pairs
+17:58:38.923 [INFO ] [hands   ] right first, right box, left minus right image: measured +159.2 px (vertical -2.1), one box there would be +168.4 px; hand moved 37.5 mm between the frames; eye cameras 76.2 mm apart, left camera +57.3 mm to the left; depth 0.29; 435 pairs
+17:58:38.923 [INFO ] [hands   ] drawn with projection x-scale 0.472 (headset gets 0.472); box at screen x +0.54 (left eye) +0.43 (right eye), -1 = left edge; jittered camera 0.1 mm from the unjittered one (to the right: left eye +0.0, right eye -0.0 mm); 869 draws, 0 unpaired
+17:58:39.171 [DEBUG] [camera  ] rendered view: y 67.03 yaw 145.7 pitch -14.8 roll 3.5 deg (head roll 3.5, override on)
+17:58:39.171 [DEBUG] [camera  ] head offset from recentre: x -0.01 y -0.03 z +0.01 m (z<0 = forward)
+17:58:39.827 [INFO ] [hands   ] view uploads per frame, eye matched in order (frames): "LLLLLLLLL" 48 "RRRRRRRRR" 45 "LLLLLLLLLL" 18 "RRRRRRRRRR" 16 "LLLLLLLL" 48 "RRRRRRRR" 51 "RRRRRRRRRRR" 7 "RRRRRRR" 2
+17:58:39.827 [INFO ] [sync    ] eye sync: 434 of 868 game frames held still (300 held back a tick); simulation +300 ticks
+17:58:39.827 [INFO ] [render  ] fps 86.8 (frame 8063)
+17:58:39.844 [INFO ] [input   ] vibration requested by the game: max low 0 high 0; haptic calls ok 26 failed 0; lowest head -0.12 m
+17:58:39.849 [INFO ] [d3d     ] context calls seen per method version /10 s: v0 draw 115 om 172473; v3 draw 67143 om 0; command lists run 0; thread-safe 0; not hooked: none
+17:58:39.984 [INFO ] [camera  ] SetCameraData caller exe+327bc8b: 8078 calls (+869)  [gameplay camera - overridden]
+17:58:39.984 [INFO ] [camera  ] SetCameraData caller exe+374a414: 6765 calls (+869)
+17:58:39.984 [INFO ] [camera  ] SetCameraData caller exe+374a450: 6765 calls (+869)
+17:58:39.984 [INFO ] [camera  ] SetCameraData caller exe+36f4791: 8795 calls (+1117)
+17:58:39.984 [INFO ] [camera  ] SetCameraData caller exe+36f35aa: 8795 calls (+1117)
+17:58:39.984 [INFO ] [camera  ] SetCameraData caller exe+36eb275: 6264 calls (+618)
+17:58:39.984 [INFO ] [camera  ] SetCameraData caller exe+373a74f: 13475 calls (+1553)
+17:58:39.984 [INFO ] [camera  ] SetCameraData caller exe+31a43be: 5710 calls (+867)
+17:58:39.984 [INFO ] [camera  ] render-view build: composed 867 frames (867 equal to the raw camera, 0 blended by the game; max blend 0.0 deg)
+17:58:39.984 [INFO ] [camera  ] presented frames: mono 0, left 5849, right 5773, unmatched 0
+17:58:39.984 [INFO ] [capture ] view-constant uploads per frame: 0:0 1:0 2:0 3:0 4+:869
+17:58:39.984 [INFO ] [capture ] game projection: 129.5 x 100.0 deg (aspect 1.778)
+17:58:40.002 [INFO ] [xr      ] stereo pairs shown: 3135 (right eye without a left: 3); game renders 129.5 x 100.0 deg
+17:58:41.184 [DEBUG] [camera  ] rendered view: y 67.02 yaw 145.3 pitch -16.6 roll 4.8 deg (head roll 4.8, override on)
+17:58:41.184 [DEBUG] [camera  ] head offset from recentre: x +0.01 y -0.04 z -0.00 m (z<0 = forward)
+17:58:43.204 [DEBUG] [camera  ] rendered view: y 66.73 yaw -173.2 pitch -26.0 roll 4.8 deg (head roll 4.8, override on)
+17:58:43.204 [DEBUG] [camera  ] head offset from recentre: x -0.05 y -0.07 z -0.01 m (z<0 = forward)
+17:58:44.098 [INFO ] [input   ] xinput1_4.dll XInputGetState: pad0 1201 pad1 1201 pad2 1201 pad3 1201 calls /10 s (from exe+37bbe77); last result pad0 0
+17:58:44.098 [INFO ] [input   ] xinput1_4.dll XInputSetState: pad0 1181 pad1 1181 pad2 1181 pad3 1181 calls /10 s (from exe+37bbc96); last result pad0 0
+17:58:44.098 [INFO ] [input   ] xinput1_4.dll XInputGetCapabilities: pad0 1181 pad1 1181 pad2 1181 pad3 1181 calls /10 s (from exe+37b8772); last result pad0 0
+17:58:45.219 [DEBUG] [camera  ] rendered view: y 66.80 yaw -178.6 pitch -32.9 roll 6.0 deg (head roll 6.0, override on)
+17:58:45.219 [DEBUG] [camera  ] head offset from recentre: x -0.07 y -0.08 z -0.01 m (z<0 = forward)
+17:58:46.387 [INFO ] [xr      ] your eye height above the floor: 1.89 m
+17:58:47.231 [DEBUG] [camera  ] rendered view: y 66.71 yaw 49.9 pitch -4.3 roll 1.6 deg (head roll 1.6, override on)
+17:58:47.231 [DEBUG] [camera  ] head offset from recentre: x +0.01 y -0.02 z +0.03 m (z<0 = forward)
+17:58:48.846 [INFO ] [taa     ] previous-camera check: largest difference 0.000008 from the previous frame's rebuilt camera, 82.6802 from this frame's own (866 checks)
+17:58:48.921 [INFO ] [hands   ] walls: left held back in 124 of 865 frames (max 76 mm, 10 touches), right 0 (max 0 mm, 0 touches)
+17:58:48.921 [INFO ] [hands   ] left first, right box, left minus right image: measured +169.6 px (vertical -0.0), one box there would be +169.6 px; hand moved 0.1 mm between the frames; eye cameras 63.2 mm apart, left camera +63.2 mm to the left; depth 0.27; 433 pairs
+17:58:48.921 [INFO ] [hands   ] right first, right box, left minus right image: measured +167.6 px (vertical +3.4), one box there would be +189.7 px; hand moved 28.4 mm between the frames; eye cameras 77.9 mm apart, left camera +68.9 mm to the left; depth 0.27; 432 pairs
+17:58:48.921 [INFO ] [hands   ] drawn with projection x-scale 0.472 (headset gets 0.472); box at screen x +0.61 (left eye) +0.49 (right eye), -1 = left edge; jittered camera 0.1 mm from the unjittered one (to the right: left eye +0.0, right eye +0.0 mm); 865 draws, 0 unpaired
+17:58:49.251 [DEBUG] [camera  ] rendered view: y 66.63 yaw 4.0 pitch -10.0 roll 2.9 deg (head roll 2.9, override on)
+17:58:49.251 [DEBUG] [camera  ] head offset from recentre: x +0.04 y -0.03 z +0.07 m (z<0 = forward)
+17:58:49.830 [INFO ] [hands   ] view uploads per frame, eye matched in order (frames): "LLLLLLLLLLLLLL" 32 "RRRRRRRRRRRRRR" 44 "LLLLLLLLLLLLLLL" 168 "RRRRRRRRRRRRRRR" 174 "RRRRRRRRRRRRR" 28 "LLLLLLLLLLLLL" 43 "RRRRRRRRRRRR" 23 "LLLLLLLLLLLL" 33
+17:58:49.830 [INFO ] [sync    ] eye sync: 430 of 859 game frames held still (301 held back a tick); simulation +300 ticks
+17:58:49.830 [INFO ] [render  ] fps 85.9 (frame 8922)
+17:58:49.841 [INFO ] [d3d     ] context calls seen per method version /10 s: v0 draw 123 om 171180; v3 draw 69238 om 0; command lists run 0; thread-safe 0; not hooked: none
+17:58:49.847 [INFO ] [input   ] vibration requested by the game: max low 0 high 0; haptic calls ok 5 failed 0; lowest head -0.09 m
+17:58:49.999 [INFO ] [camera  ] SetCameraData caller exe+327bc8b: 8936 calls (+858)  [gameplay camera - overridden]
+17:58:49.999 [INFO ] [camera  ] SetCameraData caller exe+374a414: 7623 calls (+858)
+17:58:49.999 [INFO ] [camera  ] SetCameraData caller exe+374a450: 7623 calls (+858)
+17:58:49.999 [INFO ] [camera  ] SetCameraData caller exe+36f4791: 9893 calls (+1098)
+17:58:49.999 [INFO ] [camera  ] SetCameraData caller exe+36f35aa: 9893 calls (+1098)
+17:58:49.999 [INFO ] [camera  ] SetCameraData caller exe+36eb275: 6936 calls (+672)
+17:58:49.999 [INFO ] [camera  ] SetCameraData caller exe+373a74f: 15077 calls (+1602)
+17:58:49.999 [INFO ] [camera  ] SetCameraData caller exe+31a43be: 6566 calls (+856)
+17:58:49.999 [INFO ] [camera  ] render-view build: composed 856 frames (856 equal to the raw camera, 0 blended by the game; max blend 0.0 deg)
+17:58:49.999 [INFO ] [camera  ] presented frames: mono 0, left 6311, right 6225, unmatched 0
+17:58:49.999 [INFO ] [capture ] view-constant uploads per frame: 0:0 1:0 2:0 3:0 4+:858
+17:58:49.999 [INFO ] [capture ] game projection: 129.5 x 100.0 deg (aspect 1.778)
+17:58:50.017 [INFO ] [xr      ] stereo pairs shown: 3564 (right eye without a left: 3); game renders 129.5 x 100.0 deg
+17:58:51.264 [DEBUG] [camera  ] rendered view: y 66.74 yaw -10.0 pitch -16.9 roll 3.7 deg (head roll 3.7, override on)
+17:58:51.264 [DEBUG] [camera  ] head offset from recentre: x +0.19 y -0.04 z +0.12 m (z<0 = forward)
+17:58:53.284 [DEBUG] [camera  ] rendered view: y 66.82 yaw 27.5 pitch -17.1 roll 4.3 deg (head roll 4.3, override on)
+17:58:53.284 [DEBUG] [camera  ] head offset from recentre: x +0.20 y -0.05 z +0.03 m (z<0 = forward)
+17:58:54.123 [INFO ] [input   ] xinput1_4.dll XInputGetState: pad0 1172 pad1 1172 pad2 1172 pad3 1172 calls /10 s (from exe+37bbe77); last result pad0 0
+17:58:54.123 [INFO ] [input   ] xinput1_4.dll XInputSetState: pad0 1152 pad1 1152 pad2 1152 pad3 1152 calls /10 s (from exe+37bbc96); last result pad0 0
+17:58:54.123 [INFO ] [input   ] xinput1_4.dll XInputGetCapabilities: pad0 1152 pad1 1152 pad2 1152 pad3 1152 calls /10 s (from exe+37b8772); last result pad0 0
+17:58:56.648 [INFO ] [input   ] physical crouch DOWN (head -0.26 m from standing)
