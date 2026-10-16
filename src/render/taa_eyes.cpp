@@ -16,6 +16,7 @@
 #include <windows.h>
 
 #include <atomic>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -24,6 +25,7 @@
 #include "render/ctx_hooks.h"
 #include "render/hand_render.h"
 #include "render/motion_fix.h"
+#include "render/xr_session.h"
 
 namespace mecvr::taa_eyes {
 namespace {
@@ -83,10 +85,13 @@ bool g_draw_ok = false;
 uint64_t g_passes = 0, g_swapped = 0, g_skipped = 0, g_fixed = 0;
 
 // Per-view constant buffer (284 floats; docs/recon/taa/viewcb_1.txt): 40..55 the frame's jittered
-// view-projection, 72..87 the same without jitter (rows; clip = M * world). Recorded per eye and frame.
-constexpr unsigned kViewCbFloats = 284, kJitteredVp = 40, kVp = 72;
+// view-projection (rows; clip = M * world), 24..39 its projection with the jitter at [26], [30]; 72..87 is
+// the PREVIOUS frame's unjittered view-projection - in alternate-eye rendering the other eye's camera
+// (BUG-013: hands drawn from the wrong eye; BUG-012). This frame's unjittered one is rebuilt from 40..55.
+constexpr unsigned kViewCbFloats = 284, kJitteredVp = 40, kPrevVp = 72;
 struct Cam {
-    float vp[16], vp_jittered[16];
+    float vp[16], vp_jittered[16];  // this frame's camera, without and with the TAA jitter
+    float engine_prev[16];          // the engine's previous camera (unjittered), as given to this frame
     bool valid = false;
 };
 struct EyeCams {
@@ -211,8 +216,41 @@ void set_motion_fix(bool on) {
 }
 void probe_velocity_next() { g_velocity_probe = true; }
 
+// BUG-013: which eye each view-constant upload of a frame was matched to, in order (L, R, ? = none),
+// e.g. "LLR" = the frame's last upload was labelled with the other eye. Most common patterns every 10 s.
+char g_upl[16];
+unsigned g_upl_n = 0;
+struct UplCount { char pat[16]; unsigned n; };
+UplCount g_upl_counts[8];
+ULONGLONG g_upl_log = 0;
+
+void note_upload(int eye) {
+    if (g_upl_n < sizeof(g_upl) - 1) g_upl[g_upl_n++] = eye == 0 ? 'L' : eye == 1 ? 'R' : '?';
+}
+
+void end_upload_frame() {
+    g_upl[g_upl_n] = 0;
+    g_upl_n = 0;
+    int slot = -1, empty = -1;
+    for (int i = 0; i < 8; ++i) {
+        if (g_upl_counts[i].n && strcmp(g_upl_counts[i].pat, g_upl) == 0) slot = i;
+        if (!g_upl_counts[i].n && empty < 0) empty = i;
+    }
+    if (slot < 0 && empty >= 0) { slot = empty; snprintf(g_upl_counts[slot].pat, sizeof(g_upl_counts[slot].pat), "%s", g_upl); }
+    if (slot >= 0) ++g_upl_counts[slot].n;
+    if (GetTickCount64() - g_upl_log < 10000) return;
+    g_upl_log = GetTickCount64();
+    char line[400] = "";
+    size_t len = 0;
+    for (const UplCount& c : g_upl_counts)
+        if (c.n) len += snprintf(line + len, sizeof(line) - len, " \"%s\" %u", c.pat, c.n);
+    LOG_I("hands", "view uploads per frame, eye matched in order (frames):%s", line);
+    for (UplCount& c : g_upl_counts) c.n = 0;
+}
+
 void on_present(IDXGISwapChain* chain) {
     ++g_frame;
+    end_upload_frame();
     static bool was = false;
     static ULONGLONG last_toggle = 0;
     const bool now = (GetAsyncKeyState(VK_F9) & 0x8000) && (GetAsyncKeyState(VK_SHIFT) & 0x8000);
@@ -252,9 +290,54 @@ void on_present(IDXGISwapChain* chain) {
     }
 }
 
+// The jittered view-projection without its jitter: projection row r = (.., .., j, ..) adds j * view z to
+// clip x / y, and the w row is p32 * view z, so row r -= j / p32 * (w row).
+void unjitter(const float* f, float* out) {
+    const float* m = f + kJitteredVp;
+    memcpy(out, m, 16 * sizeof(float));
+    const float p32 = f[24 + 14];
+    if (std::fabs(p32) < 1e-6f) return;
+    for (int r = 0; r < 2; ++r) {
+        const float j = f[24 + r * 4 + 2] / p32;
+        for (int k = 0; k < 4; ++k) out[r * 4 + k] -= j * m[12 + k];
+    }
+}
+
+// Self-check, logged every 10 s: a frame's "previous camera" (72..87) should equal the previous frame's
+// rebuilt unjittered camera (the other eye), and differ from its own.
+float g_last_unjittered[16];
+uint64_t g_last_unjittered_frame = ~0ull;
+float g_unjitter_err = 0, g_unjitter_own = 0;
+unsigned g_unjitter_checks = 0;
+ULONGLONG g_unjitter_log = 0;
+void check_unjitter(const float* f, int eye) {
+    if (g_last_unjittered_frame + 1 == g_frame) {
+        float e = 0, s = 0;
+        for (int k = 0; k < 16; ++k) {
+            e = std::fmax(e, std::fabs(f[kPrevVp + k] - g_last_unjittered[k]));
+            s = std::fmax(s, std::fabs(f[kPrevVp + k] - g_cams[eye].latest.vp[k]));
+        }
+        g_unjitter_err = std::fmax(g_unjitter_err, e);
+        g_unjitter_own = std::fmax(g_unjitter_own, s);
+        ++g_unjitter_checks;
+    }
+    if (g_last_unjittered_frame != g_frame) {
+        memcpy(g_last_unjittered, g_cams[eye].latest.vp, sizeof(g_last_unjittered));
+        g_last_unjittered_frame = g_frame;
+    }
+    if (GetTickCount64() - g_unjitter_log >= 10000 && g_unjitter_checks) {
+        g_unjitter_log = GetTickCount64();
+        LOG_I("taa", "previous-camera check: largest difference %.6f from the previous frame's rebuilt camera, %.4f from "
+              "this frame's own (%u checks)", g_unjitter_err, g_unjitter_own, g_unjitter_checks);
+        g_unjitter_err = g_unjitter_own = 0;
+        g_unjitter_checks = 0;
+    }
+}
+
 void record_view_cb(const float* f, unsigned count) {
     if (count != kViewCbFloats) return;
     const int eye = camera_override::rendering_eye();
+    note_upload(eye);
     if (eye < 0) return;
     EyeCams& c = g_cams[eye];
     if (c.frame != g_frame) {  // first upload of this eye's frame: its last frame becomes "previous"
@@ -264,9 +347,11 @@ void record_view_cb(const float* f, unsigned count) {
         g_jitter[g_jitter_n % kJitterLog] = {f[26], f[30], eye};
         ++g_jitter_n;
     }
-    memcpy(c.latest.vp, f + kVp, sizeof(c.latest.vp));
     memcpy(c.latest.vp_jittered, f + kJitteredVp, sizeof(c.latest.vp_jittered));
+    memcpy(c.latest.engine_prev, f + kPrevVp, sizeof(c.latest.engine_prev));
+    unjitter(f, c.latest.vp);
     c.latest.valid = true;
+    check_unjitter(f, eye);
 }
 
 void on_set_ps(ID3D11DeviceContext* ctx, ID3D11PixelShader* ps) {
@@ -387,7 +472,8 @@ bool before_draw(ID3D11DeviceContext* ctx) {
         const int eye = camera_override::rendering_eye();
         const EyeCams& own = g_cams[eye < 0 ? 0 : eye];
         const EyeCams& other = g_cams[eye < 0 ? 0 : 1 - eye];
-        // The engine's "previous" camera is the other eye's last frame; this eye's is its own last frame.
+        // The engine measures motion against the camera it was given as "previous" (engine_prev); per-eye
+        // history needs this eye's own last frame instead.
         const bool cams_ok = eye >= 0 && own.frame == g_frame && own.latest.valid && own.prev.valid &&
                              other.frame + 1 == g_frame && other.latest.valid;
         if (!cams_ok) {
@@ -396,8 +482,8 @@ bool before_draw(ID3D11DeviceContext* ctx) {
         } else {
             for (int i = 0; i < kHist && ok; ++i) ok = ensure(eye, i, in[i]);
             if (ok && g_motion_fix.load() &&
-                motion_fix::apply(g_dev, ctx, depth, motion, own.latest.vp_jittered, other.latest.vp, own.prev.vp,
-                                  other.latest.vp_jittered, own.prev.vp_jittered)) {
+                motion_fix::apply(g_dev, ctx, depth, motion, own.latest.vp_jittered, own.latest.engine_prev, own.prev.vp,
+                                  own.latest.engine_prev, own.prev.vp_jittered)) {
                 ++g_fixed;
                 if (probe) probe_velocity(ctx, motion, "after the fix");
             }
@@ -428,6 +514,115 @@ bool before_draw(ID3D11DeviceContext* ctx) {
     return acted;
 }
 
+// BUG-013 (boxes seen twice in the headset): per pair of neighbouring eye frames, how far apart the box
+// lands in the left and right images (measured) vs where one box at that spot should land (the same point
+// under both eyes' cameras), how far the hand moved between the two frames, the distance between the two
+// eye cameras and the drawn projection vs the one sent to the headset. Split by which eye came first
+// (the headset shows a left frame with the right frame after it). Pixels at 2880 wide.
+struct HandDiag {
+    float x[2] = {}, y[2] = {};
+    vm::Vec3 pos[2], cam[2];
+    uint64_t frame[2] = {~0ull, ~0ull};
+    struct Sum { double meas = 0, meas_y = 0, expect = 0, moved = 0, depth = 0, sep = 0, side = 0; unsigned n = 0; } s[2];  // [0] left first
+    double sx = 0, bx[2] = {}, jit_gap = 0, jit_side[2] = {};
+    unsigned draws = 0, unpaired = 0, bn[2] = {};
+    ULONGLONG last_log = 0;
+} g_hd;
+
+bool ndc_of(const float* vp, vm::Vec3 p, float* x, float* y, float* w) {
+    const float c[4] = {vp[0] * p.x + vp[1] * p.y + vp[2] * p.z + vp[3], vp[4] * p.x + vp[5] * p.y + vp[6] * p.z + vp[7],
+                        0, vp[12] * p.x + vp[13] * p.y + vp[14] * p.z + vp[15]};
+    if (c[3] <= 1e-4f) return false;
+    *x = c[0] / c[3];
+    *y = c[1] / c[3];
+    *w = c[3];
+    return true;
+}
+
+// The camera position of a view-projection: where its x, y and w rows are all zero (rows; clip = M * p).
+vm::Vec3 cam_of(const float* m) {
+    const float a[3][4] = {{m[0], m[1], m[2], m[3]}, {m[4], m[5], m[6], m[7]}, {m[12], m[13], m[14], m[15]}};
+    auto det = [](const float (*c)[3]) {
+        return c[0][0] * (c[1][1] * c[2][2] - c[1][2] * c[2][1]) - c[0][1] * (c[1][0] * c[2][2] - c[1][2] * c[2][0]) +
+               c[0][2] * (c[1][0] * c[2][1] - c[1][1] * c[2][0]);
+    };
+    float base[3][3];
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j) base[i][j] = a[i][j];
+    const float d = det(base);
+    if (std::fabs(d) < 1e-12f) return {};
+    float r[3];
+    for (int k = 0; k < 3; ++k) {
+        float c[3][3];
+        for (int i = 0; i < 3; ++i)
+            for (int j = 0; j < 3; ++j) c[i][j] = j == k ? -a[i][3] : a[i][j];
+        r[k] = det(c) / d;
+    }
+    return {r[0], r[1], r[2]};
+}
+
+void hand_diag(int eye) {
+    const camera_override::Hands h = camera_override::rendered_hands();
+    const int k = h.valid[1] ? 1 : h.valid[0] ? 0 : -1;
+    if (eye < 0 || k < 0) return;
+    float x, y, w, xo, yo, wo;
+    if (!ndc_of(g_draw_vp, h.pos[k], &x, &y, &w) || !ndc_of(g_cams[1 - eye].latest.vp, h.pos[k], &xo, &yo, &wo)) return;
+    g_hd.sx += std::sqrt(g_draw_vp[0] * g_draw_vp[0] + g_draw_vp[1] * g_draw_vp[1] + g_draw_vp[2] * g_draw_vp[2]);
+    ++g_hd.draws;
+    g_hd.bx[eye] += x;
+    ++g_hd.bn[eye];
+    g_hd.x[eye] = x;
+    g_hd.y[eye] = y;
+    g_hd.pos[eye] = h.pos[k];
+    g_hd.cam[eye] = cam_of(g_draw_vp);
+    {  // the jittered matrix of the same upload should be the same camera
+        const vm::Vec3 cj = cam_of(g_cams[eye].latest.vp_jittered);
+        g_hd.jit_gap += (cj - g_hd.cam[eye]).length();
+        const vm::Vec3 right = vm::Vec3{g_draw_vp[0], g_draw_vp[1], g_draw_vp[2]}.normalized();
+        g_hd.jit_side[eye] += (cj - g_hd.cam[eye]).dot(right);
+    }
+    g_hd.frame[eye] = g_frame;
+    const int o = 1 - eye;
+    if (g_hd.frame[o] + 1 == g_frame) {
+        HandDiag::Sum& s = g_hd.s[eye == 1 ? 0 : 1];  // right eye now = the left came first
+        s.meas += (g_hd.x[0] - g_hd.x[1]) * 1440;
+        s.meas_y += (g_hd.y[0] - g_hd.y[1]) * 810;
+        s.expect += (eye == 0 ? x - xo : xo - x) * 1440;
+        s.moved += (h.pos[k] - g_hd.pos[o]).length();
+        s.depth += w;
+        s.sep += (g_hd.cam[0] - g_hd.cam[1]).length();
+        {  // + = the left eye's camera is on the picture's left (as it should be)
+            const vm::Vec3 right = vm::Vec3{g_draw_vp[0], g_draw_vp[1], g_draw_vp[2]}.normalized();
+            s.side += (g_hd.cam[1] - g_hd.cam[0]).dot(right);
+        }
+        ++s.n;
+    } else {
+        ++g_hd.unpaired;
+    }
+    if (GetTickCount64() - g_hd.last_log >= 10000) {
+        g_hd.last_log = GetTickCount64();
+        for (int i = 0; i < 2; ++i) {
+            const HandDiag::Sum& s = g_hd.s[i];
+            if (!s.n) continue;
+            LOG_I("hands", "%s first, %s box, left minus right image: measured %+.1f px (vertical %+.1f), one box there would be "
+                  "%+.1f px; hand moved %.1f mm between the frames; eye cameras %.1f mm apart, left camera %+.1f mm to the left; depth %.2f; %u pairs",
+                  i ? "right" : "left", k ? "right" : "left", s.meas / s.n, s.meas_y / s.n, s.expect / s.n,
+                  s.moved / s.n * 1000, s.sep / s.n * 1000, s.side / s.n * 1000, s.depth / s.n, s.n);
+        }
+        if (g_hd.draws)
+            LOG_I("hands", "drawn with projection x-scale %.3f (headset gets %.3f); box at screen x %+.2f (left eye) %+.2f (right eye), -1 = left edge; jittered camera %.1f mm from the unjittered one (to the right: left eye %+.1f, right eye %+.1f mm); %u draws, %u unpaired",
+                  g_hd.sx / g_hd.draws, xr_session::game_projection_x(), g_hd.bn[0] ? g_hd.bx[0] / g_hd.bn[0] : 0.0,
+                  g_hd.bn[1] ? g_hd.bx[1] / g_hd.bn[1] : 0.0, g_hd.jit_gap / g_hd.draws * 1000,
+                  g_hd.bn[0] ? g_hd.jit_side[0] / g_hd.bn[0] * 1000 : 0.0, g_hd.bn[1] ? g_hd.jit_side[1] / g_hd.bn[1] * 1000 : 0.0, g_hd.draws, g_hd.unpaired);
+        g_hd.s[0] = g_hd.s[1] = {};
+        g_hd.sx = 0;
+        g_hd.bx[0] = g_hd.bx[1] = 0;
+        g_hd.jit_gap = g_hd.jit_side[0] = g_hd.jit_side[1] = 0;
+        g_hd.bn[0] = g_hd.bn[1] = 0;
+        g_hd.draws = g_hd.unpaired = 0;
+    }
+}
+
 void after_draw(ID3D11DeviceContext* ctx) {
     const int eye = g_pending_eye;
     g_pending_eye = -1;
@@ -439,6 +634,7 @@ void after_draw(ID3D11DeviceContext* ctx) {
     if (g_draw_ok) {
         D3D11_TEXTURE2D_DESC sd{};
         hand_render::draw(g_dev, ctx, tex2d(g_targets[1], &sd), g_draw_depth, g_draw_vp);
+        hand_diag(camera_override::rendering_eye());
         g_draw_ok = false;
     }
 }

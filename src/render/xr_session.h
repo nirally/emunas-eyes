@@ -20,6 +20,7 @@ void on_present(IDXGISwapChain* chain);
 
 // Game projection scale terms from the view constants (1/tan of half-FOV).
 void set_game_projection(float sx, float sy);
+float game_projection_x();  // the x-scale the headset is told the frames were drawn with
 
 bool running();
 

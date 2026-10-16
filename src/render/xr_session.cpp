@@ -488,3 +488,7 @@ void on_present(IDXGISwapChain* chain) {
 }
 
 }  // namespace mecvr::xr_session
+
+namespace mecvr::xr_session {
+float game_projection_x() { return g_sx.load(); }
+}  // namespace mecvr::xr_session

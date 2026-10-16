@@ -247,3 +247,9 @@ Found (BUG-012): before PLAYTEST-5f the mod's per-eye TAA never actually ran in 
 Chose: rendering.taa_per_eye default off (user config set off too; Shift+F9 still toggles). The hand pass runs after the TAA draw whether per-eye history is on or not, and the draw hooks install when either is on.
 Verified on the desktop (thread-safe mode on, as in the headset): boxes in both eye frames, clean while turning, sharpness 5.1-5.7.
 Revisit: fix the correction (BUG-012) and offer per-eye TAA again.
+
+### D-034 — The view constants' 72..87 is the previous frame's camera
+Date: 2026-10-16  Stage: 5
+Found (BUG-013, BUG-012): per upload, the jittered view-projection (40..55) and 72..87 sit 63 mm apart - 72..87 is the previous frame's unjittered camera, i.e. the other eye in alternate-eye rendering (recon README corrected). The mod used it as this frame's camera since Stage 2: hands were drawn from the other eye (seen double), and the per-eye TAA correction mixed up cameras one frame apart (fine standing still, ghosting while turning).
+Chose: this frame's unjittered camera = 40..55 with the projection jitter ([26], [30]) removed; the engine's previous camera = 72..87 of the same frame. The hands, the TAA correction and the probes use these. A self-check logs every 10 s that the rebuilt camera equals what the next frame calls "previous".
+Verified on the desktop (thread-safe mode on): self-check difference 0.00003; boxes land where one box at 0.35 m should in each eye (+145.8 px apart, left camera on the left); per-eye TAA while turning: no ghost copies, the turn stays in the motion vectors. Per-eye TAA remains off (D-033) until a headset A/B; it is a bit softer than off (5.27 vs 5.43 while turning).
