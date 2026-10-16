@@ -270,10 +270,13 @@ void locate_hands(XrTime time) {
 }
 
 // 6C: physical punching. A punch is recognised from the hand's motion relative to the head (punch_model);
-// it is sent as Light attack (X) 100 ms later unless the hand hit something in between (then it was a
-// door flick: the slam, D-037). Returns the buttons to add this frame.
+// it is sent 100 ms later - a straight punch as Light attack (X), a hook as Heavy attack (Y, PLAYTEST-6a) -
+// unless the hand hit something in between (then it was a door flick: the slam, D-037). Returns the buttons
+// to add this frame.
 punch_model::Hand g_punch[2];
 ULONGLONG g_punch_pending[2] = {0, 0}, g_punch_until = 0;
+int g_punch_kind[2] = {0, 0};
+uint16_t g_punch_button = 0;
 float g_punch_peak[2] = {0, 0};
 uint16_t punches() {
     static LARGE_INTEGER freq{}, last{};
@@ -293,8 +296,9 @@ uint16_t punches() {
             continue;
         }
         g_punch[h].speed = hand_pose::punch_speed();
-        if (g_punch[h].update(p.position - head.position, head.rotation.rotate({0, 0, -1}), dt)) {
+        if (const int kind = g_punch[h].update(p.position - head.position, head.rotation.rotate({0, 0, -1}), dt)) {
             g_punch_pending[h] = now;
+            g_punch_kind[h] = kind;
             g_punch_peak[h] = g_punch[h].vel.length();
         }
         if (g_punch_pending[h] && g_punch[h].vel.length() > g_punch_peak[h]) g_punch_peak[h] = g_punch[h].vel.length();
@@ -303,13 +307,16 @@ uint16_t punches() {
             g_punch_pending[h] = 0;
         } else if (g_punch_pending[h] && now - g_punch_pending[h] >= 100) {
             g_punch_pending[h] = 0;
+            const bool hook = g_punch_kind[h] == punch_model::Hand::kHook;
             g_punch_until = now + 120;
+            g_punch_button = hook ? pad_map::kY : pad_map::kX;
             hand_pose::note_punch();
             hand_pose::contact_pulse(h);
-            LOG_I("input", "%s punch %.1f m/s -> Light attack", h ? "right" : "left", g_punch_peak[h]);
+            LOG_I("input", "%s %s %.1f m/s -> %s", h ? "right" : "left", hook ? "hook" : "punch", g_punch_peak[h],
+                  hook ? "Heavy attack" : "Light attack");
         }
     }
-    return now < g_punch_until ? pad_map::kX : 0;
+    return now < g_punch_until ? g_punch_button : 0;
 }
 
 void sync(XrTime time, bool focused) {

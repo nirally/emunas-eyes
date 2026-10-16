@@ -1,0 +1,4 @@
+# PLAYTEST-6a results — 2026-10-16
+1 punches -> attacks reliably: yes. "Is there a way Faith punches only with her right arm when the right controller punches and vice-versa?" -> the game picks the arm (its combo animation); matched arms come with Stage 7 (Faith's arms follow yours). 2 no stray attacks. 3 speed fine. 4 "slow reach is a bit too slow, make it a bit faster" -> slow reach may now be faster before it counts as a slam. 5 hook = heavy. 6 comfort 5.
+Log (PLAYTEST-6a.log): 39 punches recognised at 2.9-6.3 m/s; slow touches 0.0-1.9 m/s, slams at 2.0 and 2.2 m/s (probably meant as reaches), real flicks 3.1-7.4 m/s. After most punches the fist "touched" the enemy at 0.3-1.1 m/s and pressed Interact (harmless, removed).
+Changes: hook = Heavy attack (Y); flick threshold 2.0 -> 2.8 m/s; no slam/Interact from a contact within 0.4 s after a punch.

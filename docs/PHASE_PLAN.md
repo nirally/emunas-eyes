@@ -21,12 +21,13 @@ Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 ✅ 5c hands stop at walls, buzz on contact, nothing odd; size 0.9 right; comfort 5 (PLAYTEST-5j)
 ✅ 5b gloved hands: on your real hands, fingers follow you, look OK, comfort 5 (PLAYTEST-5i); a bit big → 10% smaller (hands.size)
 ✅ 5a hand markers at the controllers: one steady box per controller, on the handle, pointing right (PLAYTEST-5h, comfort 5) — after BUG-011 (draw hooks) and BUG-013 (each eye used the other eye's camera, D-034)
-🔧 Built, not yet tested: physical punching (6C) → PLAYTEST-6a waiting on you
+✅ Physical punching works: reliable, nothing stray, comfort 5 (PLAYTEST-6a)
+🔧 Built, not yet tested: hook = heavy kick, faster slow-reach for doors → PLAYTEST-6b
 ⬜ Not started: other attacks by gesture, MAG Rope/Disruptor by hand, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-6a (includes Q-601, Q-602)
+❓ Need from you: PLAYTEST-6b
 🐞 Open bugs: BUG-015 sev-3 (body left the view in punches/ziplines; fixed, confirm next session); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-6a (punching, ~10 min). Me: the next combat moves per your answers.
+▶ Next: You: PLAYTEST-6b (~10 min). Me: Shift dodge, wall-run/air attacks, then MAG Rope + Disruptor by hand.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -176,7 +177,7 @@ Risk: lighting mismatch (hands look pasted on), hands drawn over the game's own 
 Goal: fight with your body: punches thrown with your fists become Faith's attacks; the other combat moves and the gadgets (MAG Rope, Disruptor) work by hand where it makes sense, with the buttons always kept as a fallback.
 Known: the game's pad layout (D-027): X Light attack, Y Heavy attack (with the move stick = directional heavy), RT Shift, B Disruptor, LB/LT up/down actions. Catalyst picks the attack target itself (the enemy ahead), so the mod only has to decide *when* and *which* attack. Hand speed relative to the head is already tracked (5d); touching something fast already = Heavy (door slam, D-037).
 Unknowns:
-  Q-601 (user) which swing should be which attack: straight punch = light (default); hook or strong swing = heavy? (heavy is Faith's kick)
+  Q-601 (user) which swing should be which attack — ANSWERED (PLAYTEST-6a): straight = light, hook = heavy
   Q-602 does a Light attack also slam doors open (then punch vs flick needn't be told apart at doors)?
   Q-603 can enemies be found (position) for "punch only near an enemy"? Only if accidental punches are a problem.
 Hypotheses:
@@ -187,12 +188,13 @@ Verify: punches land on enemies in a fight, no punches while reaching, climbing 
 Risk: accidental attacks while waving hands in parkour; latency of the 100 ms door check (feel).
 - 6A Holsters: ★ only for gadget equip if needed (no weapons in the game)
 - 6B Guns: ★ not applicable (Faith never uses firearms)
-- [~] ★ 6C **Physical punching**: fast punch in front (either hand, straight or hook) = Light attack, buzz on the punch, game rumble on the hit; built (D-039), PLAYTEST-6a
+- [~] ★ 6C **Physical punching**: fast punch in front (either hand, straight or hook) = Light attack, buzz on the punch, game rumble on the hit; works: punches reliable, no stray attacks (PLAYTEST-6a); hook = heavy built, PLAYTEST-6b
 - [ ] ★ 6C Kicks, heavy and momentum attacks (incl. wall-run/air attacks), Shift dodge: gesture or button, selectable
 - [ ] ★ 6D MAG Rope and Disruptor: hand-aimed, trigger-fired
 
 ### Stage 7 — Full-body IK (L)
 - [ ] Retarget Faith's skeleton; head and hands from tracking; legs from game animation
+- [ ] ★ Faith punches with the arm you punch with (PLAYTEST-6a request): IK arms carry the attack instead of the game's combo choice
 - [ ] ★ Blend IK arms with parkour animations (climbs, grabs) without breaking them
 - [ ] Calibration flow + mirror view; persists
 

@@ -144,7 +144,7 @@ namespace mecvr::hand_pose {
 namespace {
 std::atomic<ULONGLONG> g_flick_until{0};
 std::atomic<int> g_flick_mode{1};
-std::atomic<float> g_flick_speed{2.0f};
+std::atomic<float> g_flick_speed{2.8f};
 }  // namespace
 void set_flick(int mode, float speed) {
     g_flick_mode = mode;

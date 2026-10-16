@@ -419,18 +419,22 @@ void note_contact(int h, float pushed) {
     const bool press = contact || (g_pressing[h] && now - last_contact[h] < 150);
     if (press && !g_pressing[h]) {
         const float speed = hand_pose::recent_speed(h), flick = hand_pose::flick_speed();
-        g_flicked[h] = flick > 0 && speed >= flick;
-        // A punch that already went out in this swing (6C) isn't followed by a slam as well.
-        if (g_flicked[h] && hand_pose::punch_recent(400)) {
-            LOG_I("hands", "%s hand touched something at %.1f m/s right after a punch -> nothing more", h ? "right" : "left", speed);
-        } else if (g_flicked[h]) {
+        const char* what;
+        // The fist landing just after a punch (6C) is the punch itself (PLAYTEST-6a: the enemy's body was
+        // "touched" and Interact pressed after most punches): no slam, no Interact. g_flicked = hold nothing.
+        g_flicked[h] = true;
+        if (hand_pose::punch_recent(400)) {
+            what = "right after a punch: nothing more";
+        } else if (flick > 0 && speed >= flick) {
             hand_pose::flick_pulse();
             ++g_flicks[h];
+            what = "flick: attack (door slam)";
         } else {
+            g_flicked[h] = false;
             ++g_presses[h];
+            what = "Interact held";
         }
-        LOG_I("hands", "%s hand touched something in front at %.1f m/s -> %s", h ? "right" : "left", speed,
-              g_flicked[h] ? "flick: attack (door slam)" : "Interact held");
+        LOG_I("hands", "%s hand touched something in front at %.1f m/s -> %s", h ? "right" : "left", speed, what);
     }
     hand_pose::set_touch_press(h, press && !g_flicked[h]);
     g_pressing[h] = press;

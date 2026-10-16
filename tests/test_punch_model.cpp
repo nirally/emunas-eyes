@@ -11,7 +11,7 @@ int swing(Hand& h, vm::Vec3& pos, vm::Vec3 vel, float secs) {
     int n = 0;
     for (float t = 0; t < secs; t += 1.f / 90) {
         pos = pos + vel * (1.f / 90);
-        n += h.update(pos, kFwd, 1.f / 90);
+        n += h.update(pos, kFwd, 1.f / 90) != Hand::kNone;
     }
     return n;
 }
@@ -62,4 +62,19 @@ TEST(punch_hand_at_the_side_does_not_count) {
     vm::Vec3 p{0.5f, -0.4f, 0.1f};  // hand down by the hip, slightly behind
     swing(h, p, {}, 0.2f);
     CHECK(swing(h, p, {0, 0, -3.f}, 0.05f) == 0);  // arm swing while gesturing
+}
+
+TEST(punch_kinds_straight_vs_hook) {
+    Hand h;
+    vm::Vec3 p{0.2f, -0.3f, -0.15f};
+    int kind = 0;
+    for (int i = 0; i < 20; ++i) h.update(p, kFwd, 1.f / 90);
+    for (int i = 0; i < 10 && !kind; ++i) kind = h.update(p = p + vm::Vec3{0, 0, -4.f / 90}, kFwd, 1.f / 90);
+    CHECK(kind == Hand::kStraight);
+    Hand k;
+    vm::Vec3 q{0.35f, -0.2f, -0.3f};
+    kind = 0;
+    for (int i = 0; i < 20; ++i) k.update(q, kFwd, 1.f / 90);
+    for (int i = 0; i < 10 && !kind; ++i) kind = k.update(q = q + vm::Vec3{-4.f / 90, 0, -1.f / 90}, kFwd, 1.f / 90);
+    CHECK(kind == Hand::kHook);
 }
