@@ -5,7 +5,7 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-16
-Mode: agentic | Gate: hard | Stage 5 of 10 — hands
+Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
 ✅ Stage 2 passed (D-025): true 3D, full headset view, sharp at 2880x1620 (DSR), eyes in sync, anti-aliasing per eye, effects correct in both eyes; size/depth 5/5, comfort 5
@@ -16,16 +16,16 @@ Mode: agentic | Gate: hard | Stage 5 of 10 — hands
 ✅ Room-scale: Faith moves with your steps (4f: much better), walls stop the view, fights better (4e); comfort 5
 ✅ Recentre = hold right stick click 1 s (PLAYTEST-4g)
 ✅ Stage 4 passed (D-032): a full session "great in every way, nothing unwanted"; comfort 5
-🚧 In progress: Stage 5 — hands
+✅ Stage 5 passed (D-038): a mission with hands on, all good, comfort 5
 ✅ 5d touch to interact: slow reach = open/use, fast flick = door slam, hold-type works, nothing stray, comfort 5 (PLAYTEST-5k/5l)
 ✅ 5c hands stop at walls, buzz on contact, nothing odd; size 0.9 right; comfort 5 (PLAYTEST-5j)
 ✅ 5b gloved hands: on your real hands, fingers follow you, look OK, comfort 5 (PLAYTEST-5i); a bit big → 10% smaller (hands.size)
 ✅ 5a hand markers at the controllers: one steady box per controller, on the handle, pointing right (PLAYTEST-5h, comfort 5) — after BUG-011 (draw hooks) and BUG-013 (each eye used the other eye's camera, D-034)
 ⬜ Not started: punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-5m (Stage 5 gate)
-🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: STAGE-5 GATE — play one mission with hands on (PLAYTEST-5m, ~20-30 min). Then me: Stage 6 (combat: physical punching).
+❓ Need from you: nothing right now
+🐞 Open bugs: BUG-015 sev-3 (body left the view in punches/ziplines; fixed, confirm next session); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: Me: Stage 6 brief and recon (physical punching first). You: nothing until the first combat playtest.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

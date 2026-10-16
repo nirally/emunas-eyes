@@ -110,3 +110,10 @@ Repro: quit the game with Alt+F4, start it again.
 Expected: same 3D view and hands. Actual: "the hands disappeared"; log: no "stereo ON", presented frames all mono, config stereo.mode = "mono".
 Cause: F4 is the mod's stereo toggle and it ignored Alt, so Alt+F4 switched stereo off and saved it to config.json (the agent's desktop test quit with Alt+F4 just before the playtest). Hands only draw in stereo.
 Fixed: F4 / Shift+F4 ignored while Alt is held; the user's config set back to alternate.
+
+### BUG-015 — Faith's body leaves the view while punching or ziplining
+Status: fixed 2026-10-16, confirm in the next headset session | Severity: 3 | Stage: 4/5 | Reported: PLAYTEST-5m
+Repro: lean or step (room-scale walks Faith), then within 1.5 s punch (attack lunge) or launch onto a zipline.
+Expected: the view stays on Faith. Actual: "faith body disconnects from the headset head and I have to wait until it comes back or press R3" (recentre).
+Cause: room_model absorbed all of Faith's movement along the last walking command for 1.5 s (D-029 update) with no speed limit, so a game-driven lunge/zipline along that axis was taken as our walking: the view stayed put while her body moved on (up to the 0.5 m cap), then room-scale walked her back.
+Fixed: movement along the command faster than 3.2 m/s (our walking is at most 2.5) is never absorbed and ends the command; averaged over a few frames, room-scale frame time now from the precise timer. Unit tests: a 6 m/s lunge after a lean moves the view with her (only the first frame, 6 cm, absorbed); walking at 1.5 m/s still absorbed. Log: "[room] Faith moved faster than walking ... view goes with her". Not reproduced on the desktop (needs real head movement).

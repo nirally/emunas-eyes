@@ -53,11 +53,14 @@ struct Model {
 
     float coast_s = 1.5f;      // s: keep absorbing along the last command after release (she coasts, slow tail)
     float lead_s = 0.25f;      // s: her momentum carries her about this far ahead (speed x lead): aim short
+    float absorb_max = 3.2f;   // m/s: faster than our walking ever gets her (attack lunge, zipline): not ours (PLAYTEST-5m)
 
     V2 anchor;                 // head position Faith is standing under
     V2 last_head, head_vel, faith_vel;
     V2 cmd_dir;                // body-frame direction of the last walking command
     float since_cmd = 1e9f;    // s since we last commanded walking
+    float along_avg = 0, dt_avg = 0;  // short average of her movement along the command (speed check)
+    unsigned released = 0;     // how often a fast game move ended the absorbing (log)
     bool walking = false, primed = false;
 
     // head: real head offset; moved: Faith's displacement since last frame (body frame); user_moving: the
@@ -86,7 +89,16 @@ struct Model {
         if (!user_moving && since_cmd < coast_s) {
             // Both ways along the command's axis: her momentum after a reversal is still ours.
             const float along = moved.x * cmd_dir.x + moved.z * cmd_dir.z;
-            anchor = anchor + cmd_dir * along;
+            // Averaged over a few frames (frame times are coarse, eye sync holds every other frame still).
+            along_avg = along_avg * 0.7f + std::fabs(along) * 0.3f;
+            dt_avg = dt_avg * 0.7f + dt * 0.3f;
+            // Faster than our walking ever gets her: the game moves her itself (attack lunge, zipline) - the
+            // view goes with her, and this command is over.
+            if (dt_avg > 0 && along_avg > absorb_max * dt_avg) {
+                since_cmd = coast_s;
+                ++released;
+            }
+            else anchor = anchor + cmd_dir * along;
         }
         V2 off = head - anchor;
         Stick cmd;

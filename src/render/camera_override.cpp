@@ -348,12 +348,19 @@ void update_room(const vm::LinearTransform& game_cam) {
     if (moved_world.length() > 2.f) moved_world = {0, 0, 0};  // respawn / teleport: not a step
     const vm::Vec3 moved = vm::yaw_quat(-heading).rotate(moved_world);
     room_model::V2 view;
-    static ULONGLONG last_tick = 0;
-    const ULONGLONG tick = GetTickCount64();
-    const float dt = last_tick ? (tick - last_tick) / 1000.f : 0.f;
-    last_tick = tick;
+    static LARGE_INTEGER freq{}, last{};
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    if (!freq.QuadPart) QueryPerformanceFrequency(&freq);
+    const float dt = last.QuadPart ? float(double(now.QuadPart - last.QuadPart) / double(freq.QuadPart)) : 0.f;
+    last = now;
     const room_model::Stick cmd = g_room.update({s.relative.position.x, s.relative.position.z}, {moved.x, moved.z},
                                                 xinput_hook::move_stick_in_use(), dt, view);
+    static unsigned seen_released = 0;
+    if (g_room.released != seen_released) {
+        seen_released = g_room.released;
+        LOG_I("room", "Faith moved faster than walking (lunge, zipline): view goes with her (%u times)", seen_released);
+    }
     xinput_hook::set_room_stick(cmd.x, cmd.y);
     g_room_view_x = view.x;
     g_room_view_z = view.z;

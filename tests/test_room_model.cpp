@@ -100,3 +100,29 @@ TEST(room_model_recentre_starts_fresh) {
     m.update({2.0f, 0.f}, {}, false, 0.01f, view);  // jump > 1 m
     CHECK(near(view.len(), 0.f, 1e-4f));
 }
+
+TEST(room_model_game_lunge_moves_the_view) {
+    // PLAYTEST-5m: during/after our walking command, an attack lunge or zipline launch along the same axis
+    // was absorbed, so Faith's body left the view behind. Movement faster than walking is the game's own.
+    Model m;
+    FakeFaith f;
+    V2 view, moved, head;
+    m.update(head, {}, false, 0.01f, view);
+    for (int i = 0; i < 40; ++i) {  // lean forward: we start walking her forward
+        if (i < 20) head.z -= 0.01f;
+        moved = f.step(m.update(head, moved, false, 0.01f, view), 0.01f);
+    }
+    const V2 before = view;
+    for (int i = 0; i < 30; ++i) m.update(head, {0.f, -0.06f}, false, 0.01f, view);  // 6 m/s lunge forward, 1.8 m
+    CHECK(near(view.z, before.z, 0.08f));  // view stays on her body (only the first frame, 6 cm, absorbed)
+}
+
+TEST(room_model_walking_still_absorbed) {
+    Model m;
+    V2 view, head;
+    m.update(head, {}, false, 0.01f, view);
+    head.z = -0.3f;
+    m.update(head, {}, false, 0.01f, view);  // gap: walking forward
+    for (int i = 0; i < 20; ++i) m.update(head, {0.f, -0.015f}, false, 0.01f, view);  // she walks 1.5 m/s
+    CHECK(view.len() < 0.02f);  // her 0.3 m absorbed: the view stayed on the head
+}
