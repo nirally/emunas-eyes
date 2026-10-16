@@ -14,5 +14,6 @@ void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_co
           const float* vp);
 void set_enabled(bool on);  // hands.show
 bool enabled();
+void set_size(float s);  // hands.size: scales the whole hand about the controller's handle
 
 }  // namespace mecvr::hand_render

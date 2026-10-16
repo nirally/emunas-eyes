@@ -67,6 +67,7 @@ struct Constants {
 };
 
 std::atomic<bool> g_enabled{true};
+std::atomic<float> g_size{0.9f};
 bool g_ready = false, g_failed = false;
 ID3D11VertexShader* g_vs = nullptr;
 ID3D11PixelShader* g_ps = nullptr;
@@ -231,6 +232,7 @@ constexpr int kMaxParts = 4 + 4 * 3 + 3;
 
 void set_enabled(bool on) { g_enabled = on; }
 bool enabled() { return g_enabled.load(); }
+void set_size(float s) { g_size = s < 0.5f ? 0.5f : s > 1.5f ? 1.5f : s; }
 
 void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_color, ID3D11Texture2D* depth,
           const float* vp) {
@@ -291,11 +293,12 @@ void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_co
             vm::Vec3 col[3];
             const float sc[3] = {p.scale.x, p.scale.y, p.scale.z};
             for (int k = 0; k < 3; ++k) {
-                vm::Vec3 v = R.c[k] * sc[k];
+                vm::Vec3 v = R.c[k] * (sc[k] * g_size.load());
                 v.x *= mirror;
                 col[k] = H.c[0] * v.x + H.c[1] * v.y + H.c[2] * v.z;
             }
-            vm::Vec3 c = p.centre;
+            const float size = g_size.load();
+            vm::Vec3 c = p.centre * size;
             c.x *= mirror;
             const vm::Vec3 pos = hands.pos[h] + H.c[0] * c.x + H.c[1] * c.y + H.c[2] * c.z;
             Constants k{};
@@ -305,7 +308,7 @@ void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_co
             memcpy(k.vp, vp, sizeof(k.vp));
             const float* rgb = p.accent ? kCuff : kGlove;
             memcpy(k.color, rgb, sizeof(float) * 3);
-            k.shape[0] = p.radius;
+            k.shape[0] = p.radius;  // the size is in the world matrix
             k.shape[1] = p.half;
             k.nscale[0] = 1.f / p.scale.x;
             k.nscale[1] = 1.f / p.scale.y;
