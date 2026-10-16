@@ -70,7 +70,7 @@ TEST(room_model_user_stick_takes_priority) {
     m.update({0, 0}, {}, false, 0.01f, view);
     const Stick s = m.update({0.3f, 0.f}, {}, true, 0.01f, view);
     CHECK(s.x == 0 && s.y == 0);
-    CHECK(near(view.x, 0.3f, 1e-4f));
+    CHECK(near(view.x, 0.3f, 0.005f));  // only the gentle slide back (0.25 m/s, PLAYTEST-6e)
 }
 
 TEST(room_model_wall_caps_the_view) {
@@ -141,4 +141,18 @@ TEST(room_model_stalled_walk_pushes_harder) {
     for (int i = 0; i < 300; ++i) moved = f.step(m.update(head, moved, false, 0.01f, view), 0.01f);  // 3 s
     CHECK(view.len() < 0.06f);  // under you again (was stuck at 0.15 m)
     CHECK(m.boost <= m.boost_max);
+}
+
+TEST(room_model_gap_bleeds_while_player_drives) {
+    // PLAYTEST-6e: steps and leans made while running with the stick added up to 0.34 m in a fight.
+    Model m;
+    V2 view;
+    m.update({}, {}, true, 0.01f, view);
+    m.update({0.3f, 0.f}, {}, true, 0.01f, view);  // stepped 30 cm while holding the stick
+    for (int i = 0; i < 150; ++i) m.update({0.3f, 0.f}, {0.f, -0.04f}, true, 0.01f, view);  // running 1.5 s
+    CHECK(view.len() < 0.05f);
+    Model k;  // a small gap is left alone
+    k.update({}, {}, true, 0.01f, view);
+    for (int i = 0; i < 100; ++i) k.update({0.03f, 0.f}, {}, true, 0.01f, view);
+    CHECK(near(view.x, 0.03f, 1e-4f));
 }

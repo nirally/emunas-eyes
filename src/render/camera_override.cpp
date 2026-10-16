@@ -341,6 +341,12 @@ void update_room(const vm::LinearTransform& game_cam) {
         xinput_hook::set_room_stick(0, 0);
         return;
     }
+    // Paused / in a menu: no walking stick (it would move menu cursors; PLAYTEST-6e log showed the full push
+    // going out for 30 s at the start of the session). State is kept and picked up again afterwards.
+    if (time_sync::game_paused()) {
+        xinput_hook::set_room_stick(0, 0);
+        return;
+    }
     const float heading = g_turning_active.load() ? g_world_yaw.load() : vm::heading_of(game_cam);
     const vm::Vec3 pos = game_cam.t();
     vm::Vec3 moved_world = g_room_have_pos ? pos - g_room_last_pos : vm::Vec3{0, 0, 0};

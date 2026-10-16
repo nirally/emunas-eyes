@@ -64,6 +64,7 @@ struct Model {
     // moved made her stop and stall again).
     float stall_s = 0.3f, boost_rate = 0.3f, boost_max = 0.2f, stick_max = 0.92f;
     float stalled = 0, boost = 0;
+    float bleed = 0.25f;       // m/s: view slides back onto her body while the player drives (PLAYTEST-6e)
 
     V2 anchor;                 // head position Faith is standing under
     V2 last_head, head_vel, faith_vel;
@@ -117,6 +118,14 @@ struct Model {
                 const float cap = (expect_speed * explain_gain + explain_slack) * dt;
                 anchor = anchor + cmd_dir * std::fmax(-cap, std::fmin(along, cap));
             }
+        }
+        // While the player drives (stick, or just after an attack) nothing walks her to the head, so steps and
+        // leans made meanwhile added up (PLAYTEST-6e: 0.34 m in a fight). Slide the view back onto her body
+        // gently; she is moving anyway at these times.
+        if (user_moving && dt > 0) {
+            const V2 o = head - anchor;
+            const float l = o.len();
+            if (l > gap_ok) anchor = anchor + o * (std::fmin(bleed * dt, l - gap_ok) / l);
         }
         V2 off = head - anchor;
         Stick cmd;

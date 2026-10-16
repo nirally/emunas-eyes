@@ -24,12 +24,12 @@ Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 ✅ Physical punching works: reliable, nothing stray, comfort 5 (PLAYTEST-6a)
 ✅ Hooks = heavy, doors right, Faith stays with you in fights (PLAYTEST-6b)
 ✅ Shift by a quick lean/step: easy enough, nothing stray (PLAYTEST-6d)
-🔧 Faith not following you in fights (combat stance ignores small steps) → stall push built, PLAYTEST-6e
+🔧 Faith staying under you in fights: stall push (6e) + slide back while you use the stick → PLAYTEST-6f
 ⬜ Not started: other attacks by gesture, MAG Rope/Disruptor by hand, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-6e
-🐞 Open bugs: BUG-016 sev-2 (view off Faith in fights; part 2 built, confirm in 6e); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-6e (one fight, ~5 min). Me: MAG Rope + Disruptor by hand.
+❓ Need from you: PLAYTEST-6f
+🐞 Open bugs: BUG-016 sev-2 (view off Faith in fights; part 3 built, confirm in 6f); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: You: PLAYTEST-6f (one fight, ~5 min). Me: MAG Rope + Disruptor by hand.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
