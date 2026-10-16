@@ -448,7 +448,7 @@ void set_physical_crouch(bool on, float depth_m) {
 namespace mecvr::xr_input {
 namespace {
 std::atomic<bool> g_dodge_on{true};
-std::atomic<float> g_dodge_speed{1.3f};
+std::atomic<float> g_dodge_speed{1.0f};
 }  // namespace
 void set_dodge(bool on, float speed) {
     g_dodge_on = on;

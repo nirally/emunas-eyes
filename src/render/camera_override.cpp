@@ -82,6 +82,7 @@ std::atomic<bool> g_crouch_slide{false};      // physical crouch started a slide
 // Room-scale (D-029): Faith walks to where you stand; the view uses the part she hasn't caught up with.
 std::atomic<bool> g_room_on{true};          // comfort.roomscale
 std::atomic<bool> g_room_sim{false};        // diagnostics.room_sim: also without a headset (tests)
+std::atomic<bool> g_room_explain{false};     // diagnostics.room_explain: absorb only what the command explains (BUG-015 fix 2)
 std::atomic<bool> g_room_active{false};
 std::atomic<float> g_room_view_x{0}, g_room_view_z{0};
 room_model::Model g_room;
@@ -356,8 +357,18 @@ void update_room(const vm::LinearTransform& game_cam) {
     if (!freq.QuadPart) QueryPerformanceFrequency(&freq);
     const float dt = last.QuadPart ? float(double(now.QuadPart - last.QuadPart) / double(freq.QuadPart)) : 0.f;
     last = now;
+    g_room.explain_gain = g_room_explain.load() ? 1.5f : 1e6f;  // diagnostics.room_explain (A/B, BUG-016)
+    const bool held = xinput_hook::move_stick_in_use() || GetTickCount64() - g_last_attack.load() < 1000;
     const room_model::Stick cmd = g_room.update({s.relative.position.x, s.relative.position.z}, {moved.x, moved.z},
-                                                xinput_hook::move_stick_in_use() || GetTickCount64() - g_last_attack.load() < 1000, dt, view);
+                                                held, dt, view);
+    static ULONGLONG room_log = 0;
+    if (GetTickCount64() - room_log > 2000) {
+        room_log = GetTickCount64();
+        LOG_D("room", "gap %+.2f %+.2f m, stick %+.2f %+.2f, %s, expected %.2f m/s, Faith %.2f m/s%s", view.x, view.z,
+              cmd.x, cmd.y, g_room.walking ? "walking" : "idle", g_room.expect_speed,
+              std::sqrt(g_room.faith_vel.x * g_room.faith_vel.x + g_room.faith_vel.z * g_room.faith_vel.z),
+              held ? " (player stick / after attack)" : "");
+    }
     static unsigned seen_released = 0;
     if (g_room.released != seen_released) {
         seen_released = g_room.released;
@@ -834,6 +845,7 @@ void set_crouch_slide(bool on) { g_crouch_slide = on; }
 namespace mecvr::camera_override {
 void set_roomscale(bool on) { g_room_on = on; }
 void set_room_sim(bool on) { g_room_sim = on; }
+void set_room_explain(bool on) { g_room_explain = on; }
 void room_offset(float& x, float& z) {
     x = g_room_view_x.load();
     z = g_room_view_z.load();

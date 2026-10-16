@@ -74,6 +74,7 @@ void note_attack();
 // Room-scale (D-029, comfort.roomscale): Faith walks to where you stand when your move stick is idle.
 void set_roomscale(bool on);
 void set_room_sim(bool on);                // diagnostics.room_sim (developer)
+void set_room_explain(bool on);            // diagnostics.room_explain (developer A/B)
 void room_offset(float& x, float& z);     // view offset Faith hasn't caught up with (m, body frame)
 vm::Vec3 game_position();                  // game camera position, horizontal (tests)
 

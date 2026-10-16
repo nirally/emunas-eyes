@@ -211,6 +211,7 @@ DWORD WINAPI main_thread(LPVOID) {
                 hand_pose::set_sim(g_config.get_bool("diagnostics.hand_sim"));
                 hand_pose::set_sim_closeup(g_config.get_bool("diagnostics.hand_sim_closeup"));
                 camera_override::set_room_sim(g_config.get_bool("diagnostics.room_sim"));
+                camera_override::set_room_explain(g_config.get_bool("diagnostics.room_explain"));
                 camera_override::set_turning_sim(g_config.get_bool("diagnostics.mod_turning_sim"));
                 camera_override::set_body_follows_head(g_config.get_bool("input.body_follows_head"));
                 camera_override::set_turn_options(static_cast<float>(g_config.get_number("input.turn_speed")), g_config.get_bool("input.snap_turn"),
@@ -273,6 +274,8 @@ DWORD WINAPI main_thread(LPVOID) {
             camera_override::set_roomscale(new_v["comfort.roomscale"].get<bool>());
         if (old_v["diagnostics.room_sim"] != new_v["diagnostics.room_sim"])
             camera_override::set_room_sim(new_v["diagnostics.room_sim"].get<bool>());
+        if (old_v["diagnostics.room_explain"] != new_v["diagnostics.room_explain"])
+            camera_override::set_room_explain(new_v["diagnostics.room_explain"].get<bool>());
         if (old_v["input.mod_turning"] != new_v["input.mod_turning"])
             camera_override::set_mod_turning(new_v["input.mod_turning"].get<bool>());
         if (old_v["input.turn_speed"] != new_v["input.turn_speed"] || old_v["input.snap_turn"] != new_v["input.snap_turn"] ||

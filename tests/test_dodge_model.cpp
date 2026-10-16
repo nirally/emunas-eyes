@@ -55,7 +55,7 @@ TEST(dodge_small_twitch_is_not_a_dodge) {
     Model m;
     V2 p, dir;
     move(m, p, 0, 0, 0.2f, dir);
-    CHECK(move(m, p, 1.6f, 0, 0.05f, dir) == 0);  // 8 cm head twitch
+    CHECK(move(m, p, 1.2f, 0, 0.05f, dir) == 0);  // 6 cm head twitch
 }
 
 TEST(dodge_recentre_jump_is_not_a_dodge) {

@@ -14,8 +14,8 @@ struct V2 {
 };
 
 struct Model {
-    float speed = 1.3f;     // m/s: walking around the room is slower
-    float dist = 0.10f;     // m covered in the last 0.2 s
+    float speed = 1.0f;     // m/s: walking around the room is slower (1.3 was "too much", PLAYTEST-6c)
+    float dist = 0.08f;     // m covered in the last 0.2 s
     float rearm = 0.5f;     // m/s
     float min_gap = 0.6f;   // s
     float smooth = 0.04f;   // s: head velocity smoothing

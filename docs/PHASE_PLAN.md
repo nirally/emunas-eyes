@@ -23,12 +23,12 @@ Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 ✅ 5a hand markers at the controllers: one steady box per controller, on the handle, pointing right (PLAYTEST-5h, comfort 5) — after BUG-011 (draw hooks) and BUG-013 (each eye used the other eye's camera, D-034)
 ✅ Physical punching works: reliable, nothing stray, comfort 5 (PLAYTEST-6a)
 ✅ Hooks = heavy, doors right, Faith stays with you in fights (PLAYTEST-6b)
-🔧 Built, not yet tested: Shift by a quick lean/step → PLAYTEST-6c
+🔧 Shift by a quick lean/step works (6c), made easier; view drifting off Faith fixed (BUG-016) → PLAYTEST-6d
 ⬜ Not started: other attacks by gesture, MAG Rope/Disruptor by hand, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-6c
-🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-6c (~10 min). Me: MAG Rope + Disruptor by hand.
+❓ Need from you: PLAYTEST-6d
+🐞 Open bugs: BUG-016 sev-2 (view drifted off Faith; fixed, confirm in 6d); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: You: PLAYTEST-6d (~10 min). Me: MAG Rope + Disruptor by hand.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
