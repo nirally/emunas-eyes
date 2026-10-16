@@ -364,8 +364,8 @@ void update_room(const vm::LinearTransform& game_cam) {
     static ULONGLONG room_log = 0;
     if (GetTickCount64() - room_log > 2000) {
         room_log = GetTickCount64();
-        LOG_D("room", "gap %+.2f %+.2f m, stick %+.2f %+.2f, %s, expected %.2f m/s, Faith %.2f m/s%s", view.x, view.z,
-              cmd.x, cmd.y, g_room.walking ? "walking" : "idle", g_room.expect_speed,
+        LOG_D("room", "gap %+.2f %+.2f m, stick %+.2f %+.2f, %s, push %.2f, Faith %.2f m/s%s", view.x, view.z,
+              cmd.x, cmd.y, g_room.walking ? "walking" : "idle", g_room.boost,
               std::sqrt(g_room.faith_vel.x * g_room.faith_vel.x + g_room.faith_vel.z * g_room.faith_vel.z),
               held ? " (player stick / after attack)" : "");
     }

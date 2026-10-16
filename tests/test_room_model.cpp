@@ -129,3 +129,16 @@ TEST(room_model_attack_steps_never_carry_her_past_the_head) {
     if (std::getenv("ROOM_TRACE")) printf("    after attack step: view %.3f\n", view.z);
     CHECK(view.len() < 0.12f);  // only what our small command explains is absorbed (was 0.5 m: the cap)
 }
+
+TEST(room_model_stalled_walk_pushes_harder) {
+    // PLAYTEST-6d: in fights the game ignored the small walking stick (Faith 0.00 m/s at 0.75 for seconds).
+    // Fake a combat stance whose deadzone ends at 0.79 instead of 0.62: the stall push must still close the gap.
+    Model m;
+    FakeFaith f;
+    for (int i = 0; i < SpeedCurve::kN; ++i) f.curve.stick[i] += 0.17f;  // nothing below 0.79
+    V2 view, moved, head{-0.15f, 0.f};
+    m.update({}, {}, false, 0.01f, view);
+    for (int i = 0; i < 300; ++i) moved = f.step(m.update(head, moved, false, 0.01f, view), 0.01f);  // 3 s
+    CHECK(view.len() < 0.06f);  // under you again (was stuck at 0.15 m)
+    CHECK(m.boost <= m.boost_max);
+}

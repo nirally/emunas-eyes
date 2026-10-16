@@ -23,12 +23,13 @@ Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 ✅ 5a hand markers at the controllers: one steady box per controller, on the handle, pointing right (PLAYTEST-5h, comfort 5) — after BUG-011 (draw hooks) and BUG-013 (each eye used the other eye's camera, D-034)
 ✅ Physical punching works: reliable, nothing stray, comfort 5 (PLAYTEST-6a)
 ✅ Hooks = heavy, doors right, Faith stays with you in fights (PLAYTEST-6b)
-🔧 Shift by a quick lean/step works (6c), made easier; view drifting off Faith fixed (BUG-016) → PLAYTEST-6d
+✅ Shift by a quick lean/step: easy enough, nothing stray (PLAYTEST-6d)
+🔧 Faith not following you in fights (combat stance ignores small steps) → stall push built, PLAYTEST-6e
 ⬜ Not started: other attacks by gesture, MAG Rope/Disruptor by hand, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-6d
-🐞 Open bugs: BUG-016 sev-2 (view drifted off Faith; fixed, confirm in 6d); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-6d (~10 min). Me: MAG Rope + Disruptor by hand.
+❓ Need from you: PLAYTEST-6e
+🐞 Open bugs: BUG-016 sev-2 (view off Faith in fights; part 2 built, confirm in 6e); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: You: PLAYTEST-6e (one fight, ~5 min). Me: MAG Rope + Disruptor by hand.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -191,7 +192,7 @@ Risk: accidental attacks while waving hands in parkour; latency of the 100 ms do
 - 6B Guns: ★ not applicable (Faith never uses firearms)
 - [x] ★ 6C **Physical punching**: straight = light, hook = heavy, either hand, buzz on the punch (D-039, PLAYTEST-6a/6b)
 - [x] ★ 6C heavy = hook (PLAYTEST-6b); wall-run/air attacks come from the game when you punch while wall-running/jumping
-- [~] ★ 6C Shift dodge by a quick lean/step sideways or back, trigger kept (D-040) - PLAYTEST-6c
+- [x] ★ 6C Shift dodge by a quick lean/step sideways or back, trigger kept (D-040, PLAYTEST-6d)
 - [ ] ★ 6D MAG Rope and Disruptor: hand-aimed, trigger-fired
 
 ### Stage 7 — Full-body IK (L)

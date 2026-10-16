@@ -58,6 +58,12 @@ struct Model {
     // along the command beyond gain x that + slack is the game's own (attack steps, PLAYTEST-6b report).
     float response_s = 0.25f, explain_gain = 1.5f, explain_slack = 0.2f;
     float expect_speed = 0, cmd_speed = 0;
+    // Stall push (PLAYTEST-6d): in fights the game ignored the usual small walking stick (0.75: Faith 0.00 m/s
+    // for seconds, the gap stayed open). Asked to walk but not moving for stall_s -> push the stick further
+    // (boost_rate per s, up to boost_max) and keep that push until this walk ends (easing off as soon as she
+    // moved made her stop and stall again).
+    float stall_s = 0.3f, boost_rate = 0.3f, boost_max = 0.2f, stick_max = 0.92f;
+    float stalled = 0, boost = 0;
 
     V2 anchor;                 // head position Faith is standing under
     V2 last_head, head_vel, faith_vel;
@@ -114,8 +120,10 @@ struct Model {
         }
         V2 off = head - anchor;
         Stick cmd;
+        const bool was_walking = walking;
         walking = false;
         cmd_speed = 0;
+        if (user_moving || !was_walking) stalled = 0;
         if (!user_moving) {
             // Where she'll stop if the stick let go now: aim at the gap minus that coast.
             const V2 gap = off - faith_vel * lead_s;
@@ -126,12 +134,16 @@ struct Model {
                 walking = true;
                 cmd_dir = want * (1.f / v);
                 since_cmd = 0;
-                const float s = curve.stick_for(v);
-                cmd_speed = curve.speed_of(s);
+                if (faith_vel.len() < 0.05f) stalled += dt;
+                else stalled = 0;
+                if (stalled > stall_s) boost = std::fmin(boost + boost_rate * dt, boost_max);
+                const float s = std::fmin(curve.stick_for(v) + boost, stick_max);
+                cmd_speed = curve.speed_of(curve.stick_for(v));
                 cmd.x = want.x / v * s;
                 cmd.y = -want.z / v * s;  // z back -> stick forward
             }
         }
+        if (!walking) stalled = boost = 0;
         // Walls: the view can't run away from Faith; the anchor follows the head beyond max_offset.
         const float l = off.len();
         if (l > max_offset) {
