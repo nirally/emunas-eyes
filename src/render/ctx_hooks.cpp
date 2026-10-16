@@ -6,7 +6,7 @@
 // Installed at the first Present when per-eye TAA is on, or at the first TRACE request.
 #include "render/ctx_hooks.h"
 
-#include <d3d11.h>
+#include <d3d11_4.h>
 #include <intrin.h>
 #include <windows.h>
 
@@ -15,7 +15,9 @@
 #include <cstring>
 #include <mutex>
 #include <string>
+#include <algorithm>
 #include <unordered_map>
+#include <vector>
 
 #include <MinHook.h>
 
@@ -112,29 +114,33 @@ using OmSetUavFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, UINT, ID3D11Re
 using CsSetUavFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, UINT, UINT, ID3D11UnorderedAccessView* const*, const UINT*);
 using CopyFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11Resource*, ID3D11Resource*);
 
-SetSrvFn o_ps_srv, o_cs_srv;
-SetPsFn o_ps;
-SetCsFn o_cs;
-DrawFn o_draw;
-DrawIdxFn o_draw_idx;
-DrawIdxInstFn o_draw_idx_inst;
-DrawInstFn o_draw_inst;
-DispatchFn o_dispatch;
-OmSetFn o_om;
-OmSetUavFn o_om_uav;
-CsSetUavFn o_cs_uav;
-CopyFn o_copy;
+constexpr int kVersions = 8;  // distinct implementations hooked per method (BUG-011)
+SetSrvFn o_ps_srv[kVersions], o_cs_srv[kVersions];
+SetPsFn o_ps[kVersions];
+SetCsFn o_cs[kVersions];
+DrawFn o_draw[kVersions];
+DrawIdxFn o_draw_idx[kVersions];
+DrawIdxInstFn o_draw_idx_inst[kVersions];
+DrawInstFn o_draw_inst[kVersions];
+DispatchFn o_dispatch[kVersions];
+OmSetFn o_om[kVersions];
+OmSetUavFn o_om_uav[kVersions];
+CsSetUavFn o_cs_uav[kVersions];
+CopyFn o_copy[kVersions];
 using DrawAutoFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*);
 using DrawIndirectFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11Buffer*, UINT);
 using ClearRtvFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11RenderTargetView*, const FLOAT[4]);
 using CopyRegionFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11Resource*, UINT, UINT, UINT, UINT, ID3D11Resource*,
                                               UINT, const D3D11_BOX*);
 using PredicationFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11Predicate*, BOOL);
-DrawAutoFn o_draw_auto;
-DrawIndirectFn o_draw_idx_indirect, o_draw_indirect;
-ClearRtvFn o_clear_rtv;
-CopyRegionFn o_copy_region;
-PredicationFn o_predication;
+DrawAutoFn o_draw_auto[kVersions];
+DrawIndirectFn o_draw_idx_indirect[kVersions], o_draw_indirect[kVersions];
+ClearRtvFn o_clear_rtv[kVersions];
+CopyRegionFn o_copy_region[kVersions];
+PredicationFn o_predication[kVersions];
+using ExecListFn = void(STDMETHODCALLTYPE*)(ID3D11DeviceContext*, ID3D11CommandList*, BOOL);
+ExecListFn o_exec_list[kVersions];
+std::atomic<uint32_t> g_exec_lists{0};
 
 // Trace lines for calls that aren't draws (BUG-011: what happens between the TAA targets and its draw).
 void note(ID3D11DeviceContext* c, const char* text) {
@@ -155,34 +161,54 @@ std::string caller_of(const void* addr) {
 }
 
 bool on() { return g_tracing.load(std::memory_order_relaxed); }
+// A context method can call another hooked version of itself (the thread-safe version locks, then calls the
+// plain one): only the outermost call is seen by the TAA logic, and our own calls made inside it pass through.
+thread_local int g_inside = 0;
+struct Inside {
+    bool nested;
+    Inside() : nested(g_inside++ > 0) {}
+    ~Inside() { --g_inside; }
+};
+std::atomic<uint32_t> g_hits[kVersions][2];  // Draw, OMSetRenderTargets calls per hooked version (BUG-011)
 
+template <int V>
 void STDMETHODCALLTYPE d_ps_srv(ID3D11DeviceContext* c, UINT start, UINT n, ID3D11ShaderResourceView* const* v) {
+    const Inside in;
     if (on()) {
         std::lock_guard lock(g_mutex);
         Shadow& s = g_shadow[c];
         for (UINT i = 0; i < n && start + i < kSlots; ++i) s.ps_srv[start + i] = v ? resource_of(v[i]) : nullptr;
     }
-    o_ps_srv(c, start, n, v);
+    o_ps_srv[V](c, start, n, v);
 }
+template <int V>
 void STDMETHODCALLTYPE d_cs_srv(ID3D11DeviceContext* c, UINT start, UINT n, ID3D11ShaderResourceView* const* v) {
+    const Inside in;
     if (on()) {
         std::lock_guard lock(g_mutex);
         Shadow& s = g_shadow[c];
         for (UINT i = 0; i < n && start + i < kSlots; ++i) s.cs_srv[start + i] = v ? resource_of(v[i]) : nullptr;
     }
-    o_cs_srv(c, start, n, v);
+    o_cs_srv[V](c, start, n, v);
 }
+template <int V>
 void STDMETHODCALLTYPE d_ps(ID3D11DeviceContext* c, ID3D11PixelShader* sh, ID3D11ClassInstance* const* ci, UINT n) {
-    taa_eyes::on_set_ps(c, sh);
+    const Inside in;
+    if (!in.nested) taa_eyes::on_set_ps(c, sh);
     if (on()) { std::lock_guard lock(g_mutex); g_shadow[c].ps = sh; }
-    o_ps(c, sh, ci, n);
+    o_ps[V](c, sh, ci, n);
 }
+template <int V>
 void STDMETHODCALLTYPE d_cs(ID3D11DeviceContext* c, ID3D11ComputeShader* sh, ID3D11ClassInstance* const* ci, UINT n) {
+    const Inside in;
     if (on()) { std::lock_guard lock(g_mutex); g_shadow[c].cs = sh; }
-    o_cs(c, sh, ci, n);
+    o_cs[V](c, sh, ci, n);
 }
+template <int V>
 void STDMETHODCALLTYPE d_om(ID3D11DeviceContext* c, UINT n, ID3D11RenderTargetView* const* rt, ID3D11DepthStencilView* ds) {
-    taa_eyes::on_set_targets(c, n, rt, _ReturnAddress());
+    const Inside in;
+    if (!in.nested) g_hits[V][1].fetch_add(1, std::memory_order_relaxed);
+    if (!in.nested) taa_eyes::on_set_targets(c, n, rt, _ReturnAddress());
     if (on()) note(c, ("om       n=" + std::to_string(n) + " by " + caller_of(_ReturnAddress())).c_str());
     if (on()) {
         std::lock_guard lock(g_mutex);
@@ -190,11 +216,13 @@ void STDMETHODCALLTYPE d_om(ID3D11DeviceContext* c, UINT n, ID3D11RenderTargetVi
         for (UINT i = 0; i < 8; ++i) s.rtv[i] = (rt && i < n) ? resource_of(rt[i]) : nullptr;
         s.dsv = resource_of(ds);
     }
-    o_om(c, n, rt, ds);
+    o_om[V](c, n, rt, ds);
 }
+template <int V>
 void STDMETHODCALLTYPE d_om_uav(ID3D11DeviceContext* c, UINT n, ID3D11RenderTargetView* const* rt, ID3D11DepthStencilView* ds,
                                 UINT us, UINT un, ID3D11UnorderedAccessView* const* u, const UINT* counts) {
-    if (n != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) taa_eyes::on_set_targets(c, n, rt, _ReturnAddress());
+    const Inside in;
+    if (!in.nested && n != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) taa_eyes::on_set_targets(c, n, rt, _ReturnAddress());
     if (on()) note(c, ("omuav    n=" + std::to_string(n) + " by " + caller_of(_ReturnAddress())).c_str());
     if (on()) {
         std::lock_guard lock(g_mutex);
@@ -204,130 +232,253 @@ void STDMETHODCALLTYPE d_om_uav(ID3D11DeviceContext* c, UINT n, ID3D11RenderTarg
             s.dsv = resource_of(ds);
         }
     }
-    o_om_uav(c, n, rt, ds, us, un, u, counts);
+    o_om_uav[V](c, n, rt, ds, us, un, u, counts);
 }
+template <int V>
 void STDMETHODCALLTYPE d_cs_uav(ID3D11DeviceContext* c, UINT start, UINT n, ID3D11UnorderedAccessView* const* u, const UINT* counts) {
+    const Inside in;
     if (on()) {
         std::lock_guard lock(g_mutex);
         Shadow& s = g_shadow[c];
         for (UINT i = 0; i < n && start + i < 8; ++i) s.uav[start + i] = u ? resource_of(u[i]) : nullptr;
     }
-    o_cs_uav(c, start, n, u, counts);
+    o_cs_uav[V](c, start, n, u, counts);
 }
+template <int V>
 void STDMETHODCALLTYPE d_draw(ID3D11DeviceContext* c, UINT a, UINT b) {
+    const Inside in;
+    if (!in.nested) g_hits[V][0].fetch_add(1, std::memory_order_relaxed);
     if (on()) emit(c, "draw", false);
-    const bool taa = taa_eyes::before_draw(c);
-    o_draw(c, a, b);
+    const bool taa = !in.nested && taa_eyes::before_draw(c);
+    o_draw[V](c, a, b);
     if (taa) taa_eyes::after_draw(c);
 }
+template <int V>
 void STDMETHODCALLTYPE d_draw_idx(ID3D11DeviceContext* c, UINT a, UINT b, INT d) {
-    taa_eyes::on_other_draw(c, "indexed");
+    const Inside in;
+    if (!in.nested) taa_eyes::on_other_draw(c, "indexed");
     if (on()) emit(c, "drawidx", false);
-    o_draw_idx(c, a, b, d);
+    o_draw_idx[V](c, a, b, d);
 }
+template <int V>
 void STDMETHODCALLTYPE d_draw_idx_inst(ID3D11DeviceContext* c, UINT a, UINT b, UINT d, INT e, UINT f) {
-    taa_eyes::on_other_draw(c, "indexed inst");
+    const Inside in;
+    if (!in.nested) taa_eyes::on_other_draw(c, "indexed inst");
     if (on()) emit(c, "drawidxi", false);
-    o_draw_idx_inst(c, a, b, d, e, f);
+    o_draw_idx_inst[V](c, a, b, d, e, f);
 }
+template <int V>
 void STDMETHODCALLTYPE d_draw_inst(ID3D11DeviceContext* c, UINT a, UINT b, UINT d, UINT e) {
-    taa_eyes::on_other_draw(c, "instanced");
+    const Inside in;
+    if (!in.nested) taa_eyes::on_other_draw(c, "instanced");
     if (on()) emit(c, "drawi", false);
-    o_draw_inst(c, a, b, d, e);
+    o_draw_inst[V](c, a, b, d, e);
 }
+template <int V>
 void STDMETHODCALLTYPE d_dispatch(ID3D11DeviceContext* c, UINT x, UINT y, UINT z) {
+    const Inside in;
     if (on()) {
         char what[32];
         snprintf(what, sizeof(what), "cs%ux%u", x, y);
         emit(c, what, true);
     }
-    o_dispatch(c, x, y, z);
+    o_dispatch[V](c, x, y, z);
 }
+template <int V>
 void STDMETHODCALLTYPE d_copy(ID3D11DeviceContext* c, ID3D11Resource* dst, ID3D11Resource* src) {
+    const Inside in;
     if (on()) {
         std::lock_guard lock(g_mutex);
         if (g_out)
             fprintf(g_out, "%6llu ctx %p copy     %s -> %s\n", (unsigned long long)++g_seq, static_cast<void*>(c),
                     describe(src).c_str(), describe(dst).c_str());
     }
-    o_copy(c, dst, src);
+    o_copy[V](c, dst, src);
 }
 
+template <int V>
 void STDMETHODCALLTYPE d_draw_auto(ID3D11DeviceContext* c) {
-    taa_eyes::on_other_draw(c, "auto");
+    const Inside in;
+    if (!in.nested) taa_eyes::on_other_draw(c, "auto");
     if (on()) emit(c, "drawauto", false);
-    o_draw_auto(c);
+    o_draw_auto[V](c);
 }
+template <int V>
 void STDMETHODCALLTYPE d_draw_idx_indirect(ID3D11DeviceContext* c, ID3D11Buffer* b, UINT off) {
-    taa_eyes::on_other_draw(c, "indexed indirect");
+    const Inside in;
+    if (!in.nested) taa_eyes::on_other_draw(c, "indexed indirect");
     if (on()) emit(c, "drawidxind", false);
-    o_draw_idx_indirect(c, b, off);
+    o_draw_idx_indirect[V](c, b, off);
 }
+template <int V>
 void STDMETHODCALLTYPE d_draw_indirect(ID3D11DeviceContext* c, ID3D11Buffer* b, UINT off) {
-    taa_eyes::on_other_draw(c, "indirect");
+    const Inside in;
+    if (!in.nested) taa_eyes::on_other_draw(c, "indirect");
     if (on()) emit(c, "drawind", false);
-    o_draw_indirect(c, b, off);
+    o_draw_indirect[V](c, b, off);
 }
+template <int V>
 void STDMETHODCALLTYPE d_clear_rtv(ID3D11DeviceContext* c, ID3D11RenderTargetView* v, const FLOAT rgba[4]) {
+    const Inside in;
     if (on()) note(c, ("clear    " + describe(resource_of(v))).c_str());
-    o_clear_rtv(c, v, rgba);
+    o_clear_rtv[V](c, v, rgba);
 }
+template <int V>
 void STDMETHODCALLTYPE d_copy_region(ID3D11DeviceContext* c, ID3D11Resource* dst, UINT ds, UINT x, UINT y, UINT z,
                                      ID3D11Resource* src, UINT ss, const D3D11_BOX* box) {
+    const Inside in;
     if (on()) note(c, ("copyreg  " + describe(src) + " -> " + describe(dst)).c_str());
-    o_copy_region(c, dst, ds, x, y, z, src, ss, box);
+    o_copy_region[V](c, dst, ds, x, y, z, src, ss, box);
 }
+template <int V>
 void STDMETHODCALLTYPE d_predication(ID3D11DeviceContext* c, ID3D11Predicate* p, BOOL v) {
+    const Inside in;
     if (on()) {
         char t[64];
         snprintf(t, sizeof(t), "predication %p value %d", static_cast<void*>(p), v);
         note(c, t);
     }
-    o_predication(c, p, v);
+    o_predication[V](c, p, v);
 }
 
+template <int V>
+void STDMETHODCALLTYPE d_exec_list(ID3D11DeviceContext* c, ID3D11CommandList* l, BOOL restore) {
+    const Inside in;
+    g_exec_lists.fetch_add(1, std::memory_order_relaxed);
+    if (on()) note(c, "execlist");
+    o_exec_list[V](c, l, restore);
+}
 template <class T>
-void hook(void** vtbl, int index, void* detour, T* orig) {
-    if (MH_CreateHook(vtbl[index], detour, reinterpret_cast<void**>(orig)) == MH_OK) MH_EnableHook(vtbl[index]);
-    else LOG_W("trace", "hooking context method %d failed", index);
+void hook(void* const* vtbl, int index, void* detour, T* orig) {
+    const MH_STATUS c = MH_CreateHook(vtbl[index], detour, reinterpret_cast<void**>(orig));
+    const MH_STATUS e = c == MH_OK ? MH_EnableHook(vtbl[index]) : c;
+    if (e != MH_OK) LOG_W("d3d", "hooking context method %d at %p failed (%d)", index, vtbl[index], int(e));
 }
 
+// Hooks one version of the context's methods; implementations already hooked are skipped.
+std::vector<void*> g_hooked;
+template <int V>
+void hook_all(void* const* vt) {
+    auto h = [&](int i, void* d, auto* o) {
+        if (std::find(g_hooked.begin(), g_hooked.end(), vt[i]) != g_hooked.end()) return;
+        g_hooked.push_back(vt[i]);
+        hook(vt, i, d, o);
+    };
+    // ID3D11DeviceContext vtable slots.
+    h(8, reinterpret_cast<void*>(&d_ps_srv<V>), &o_ps_srv[V]);
+    h(9, reinterpret_cast<void*>(&d_ps<V>), &o_ps[V]);
+    h(12, reinterpret_cast<void*>(&d_draw_idx<V>), &o_draw_idx[V]);
+    h(13, reinterpret_cast<void*>(&d_draw<V>), &o_draw[V]);
+    h(20, reinterpret_cast<void*>(&d_draw_idx_inst<V>), &o_draw_idx_inst[V]);
+    h(21, reinterpret_cast<void*>(&d_draw_inst<V>), &o_draw_inst[V]);
+    h(30, reinterpret_cast<void*>(&d_predication<V>), &o_predication[V]);
+    h(33, reinterpret_cast<void*>(&d_om<V>), &o_om[V]);
+    h(34, reinterpret_cast<void*>(&d_om_uav<V>), &o_om_uav[V]);
+    h(38, reinterpret_cast<void*>(&d_draw_auto<V>), &o_draw_auto[V]);
+    h(39, reinterpret_cast<void*>(&d_draw_idx_indirect<V>), &o_draw_idx_indirect[V]);
+    h(40, reinterpret_cast<void*>(&d_draw_indirect<V>), &o_draw_indirect[V]);
+    h(41, reinterpret_cast<void*>(&d_dispatch<V>), &o_dispatch[V]);
+    h(46, reinterpret_cast<void*>(&d_copy_region<V>), &o_copy_region[V]);
+    h(47, reinterpret_cast<void*>(&d_copy<V>), &o_copy[V]);
+    h(50, reinterpret_cast<void*>(&d_clear_rtv<V>), &o_clear_rtv[V]);
+    h(67, reinterpret_cast<void*>(&d_cs_srv<V>), &o_cs_srv[V]);
+    h(68, reinterpret_cast<void*>(&d_cs_uav<V>), &o_cs_uav[V]);
+    h(69, reinterpret_cast<void*>(&d_cs<V>), &o_cs[V]);
+    h(58, reinterpret_cast<void*>(&d_exec_list<V>), &o_exec_list[V]);
+}
+using HookAllFn = void (*)(void* const*);
+constexpr HookAllFn kHookAll[kVersions] = {hook_all<0>, hook_all<1>, hook_all<2>, hook_all<3>,
+                                           hook_all<4>, hook_all<5>, hook_all<6>, hook_all<7>};
+
+// The context's methods come in versions: each interface the game may hold (ID3D11DeviceContext..4) has
+// its own method table, and each table changes in place when the device's thread-safe mode is switched
+// on - which an OpenXR runtime (SteamVR) does. The game's draws then bypassed hooks on the plain table
+// (BUG-011). Every table is read in both modes (switching the mode briefly) and every distinct
+// implementation is hooked.
 void install(IDXGISwapChain* chain) {
     ID3D11Device* dev = nullptr;
     if (FAILED(chain->GetDevice(__uuidof(ID3D11Device), reinterpret_cast<void**>(&dev)))) return;
     ID3D11DeviceContext* ctx = nullptr;
     dev->GetImmediateContext(&ctx);
-    void** vt = *reinterpret_cast<void***>(ctx);
-    // ID3D11DeviceContext vtable slots.
-    hook(vt, 8, reinterpret_cast<void*>(&d_ps_srv), &o_ps_srv);
-    hook(vt, 9, reinterpret_cast<void*>(&d_ps), &o_ps);
-    hook(vt, 12, reinterpret_cast<void*>(&d_draw_idx), &o_draw_idx);
-    hook(vt, 13, reinterpret_cast<void*>(&d_draw), &o_draw);
-    hook(vt, 20, reinterpret_cast<void*>(&d_draw_idx_inst), &o_draw_idx_inst);
-    hook(vt, 21, reinterpret_cast<void*>(&d_draw_inst), &o_draw_inst);
-    hook(vt, 33, reinterpret_cast<void*>(&d_om), &o_om);
-    hook(vt, 34, reinterpret_cast<void*>(&d_om_uav), &o_om_uav);
-    hook(vt, 41, reinterpret_cast<void*>(&d_dispatch), &o_dispatch);
-    hook(vt, 47, reinterpret_cast<void*>(&d_copy), &o_copy);
-    hook(vt, 30, reinterpret_cast<void*>(&d_predication), &o_predication);
-    hook(vt, 38, reinterpret_cast<void*>(&d_draw_auto), &o_draw_auto);
-    hook(vt, 39, reinterpret_cast<void*>(&d_draw_idx_indirect), &o_draw_idx_indirect);
-    hook(vt, 40, reinterpret_cast<void*>(&d_draw_indirect), &o_draw_indirect);
-    hook(vt, 46, reinterpret_cast<void*>(&d_copy_region), &o_copy_region);
-    hook(vt, 50, reinterpret_cast<void*>(&d_clear_rtv), &o_clear_rtv);
-    hook(vt, 67, reinterpret_cast<void*>(&d_cs_srv), &o_cs_srv);
-    hook(vt, 68, reinterpret_cast<void*>(&d_cs_uav), &o_cs_uav);
-    hook(vt, 69, reinterpret_cast<void*>(&d_cs), &o_cs);
+    constexpr int kMethods = 70;
+    struct Table { void* entries[kMethods]; };
+    std::vector<Table> tables;
+    std::vector<IUnknown*> faces;
+    const IID ids[] = {__uuidof(ID3D11DeviceContext), __uuidof(ID3D11DeviceContext1), __uuidof(ID3D11DeviceContext2),
+                       __uuidof(ID3D11DeviceContext3), __uuidof(ID3D11DeviceContext4)};
+    for (const IID& id : ids) {
+        IUnknown* p = nullptr;
+        if (SUCCEEDED(ctx->QueryInterface(id, reinterpret_cast<void**>(&p)))) faces.push_back(p);
+    }
+    auto snapshot = [&] {
+        for (IUnknown* p : faces) {
+            Table t;
+            memcpy(t.entries, *reinterpret_cast<void***>(p), sizeof(t.entries));
+            bool seen = false;
+            for (const Table& o : tables) seen = seen || memcmp(o.entries, t.entries, sizeof(t.entries)) == 0;
+            if (!seen) tables.push_back(t);
+        }
+    };
+    snapshot();
+    BOOL was = FALSE;
+    ID3D11Multithread* mt = nullptr;
+    if (SUCCEEDED(ctx->QueryInterface(__uuidof(ID3D11Multithread), reinterpret_cast<void**>(&mt)))) {
+        was = mt->SetMultithreadProtected(!mt->GetMultithreadProtected());
+        snapshot();
+        mt->SetMultithreadProtected(was);
+        mt->Release();
+    }
+    std::string draws;
+    for (size_t i = 0; i < tables.size() && i < kVersions; ++i) {
+        kHookAll[i](tables[i].entries);
+        char b[24];
+        snprintf(b, sizeof(b), " %p", tables[i].entries[13]);
+        draws += b;
+    }
+    for (IUnknown* p : faces) p->Release();
     ctx->Release();
     dev->Release();
     g_installed = true;
-    LOG_I("d3d", "device-context hooks installed");
+    LOG_I("d3d", "device-context hooks installed: %zu interfaces, %zu method tables (thread-safe mode %s), %zu methods hooked; Draw at%s",
+          faces.size(), tables.size(), was ? "on" : "off", g_hooked.size(), draws.c_str());
 }
 
 }  // namespace
 
 void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
     static int poll = 0;
+    static ULONGLONG last_hits = GetTickCount64();
+    if (g_installed && GetTickCount64() - last_hits >= 10000) {
+        last_hits = GetTickCount64();
+        char line[256] = "";
+        size_t len = 0;
+        for (int v = 0; v < kVersions; ++v) {
+            const uint32_t d = g_hits[v][0].exchange(0), o = g_hits[v][1].exchange(0);
+            if (d || o) len += snprintf(line + len, sizeof(line) - len, " v%d draw %u om %u;", v, d, o);
+        }
+        // The context's state now: thread-safe mode, and current methods that aren't hooked (BUG-011).
+        BOOL safe = -1;
+        char miss[256] = "";
+        ID3D11Device* dev = nullptr;
+        if (SUCCEEDED(chain->GetDevice(__uuidof(ID3D11Device), reinterpret_cast<void**>(&dev)))) {
+            ID3D11DeviceContext* ctx = nullptr;
+            dev->GetImmediateContext(&ctx);
+            ID3D11Multithread* mt = nullptr;
+            if (SUCCEEDED(ctx->QueryInterface(__uuidof(ID3D11Multithread), reinterpret_cast<void**>(&mt)))) {
+                safe = mt->GetMultithreadProtected();
+                mt->Release();
+            }
+            void* const* t = *reinterpret_cast<void***>(ctx);
+            size_t ml = 0;
+            for (int i : {9, 12, 13, 20, 21, 33, 34})
+                if (std::find(g_hooked.begin(), g_hooked.end(), t[i]) == g_hooked.end())
+                    ml += snprintf(miss + ml, sizeof(miss) - ml, " %d=%p", i, t[i]);
+            ctx->Release();
+            dev->Release();
+        }
+        LOG_I("d3d", "context calls seen per method version /10 s:%s command lists run %u; thread-safe %d; not hooked:%s",
+              line[0] ? line : " none;", g_exec_lists.exchange(0), safe, miss[0] ? miss : " none");
+    }
     if (!g_installed && taa_eyes::enabled()) install(chain);
     taa_eyes::on_present(chain);
     if (g_tracing.load()) {
@@ -343,6 +494,34 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
     }
     if (++poll % 30) return;
     std::error_code ec;
+    // BUG-011 experiment: MTPROTECT file -> turn on the device's thread-safe mode (as an OpenXR runtime may)
+    // and log whether the context's method table moves away from the hooked functions.
+    if (std::filesystem::remove(dir / L"MTPROTECT", ec)) {
+        ID3D11Device* dev = nullptr;
+        if (SUCCEEDED(chain->GetDevice(__uuidof(ID3D11Device), reinterpret_cast<void**>(&dev)))) {
+            ID3D11DeviceContext* ctx = nullptr;
+            dev->GetImmediateContext(&ctx);
+            ID3D11Multithread* mt = nullptr;
+            void* before = *reinterpret_cast<void**>(ctx);
+            void* draw_before = (*reinterpret_cast<void***>(ctx))[13];
+            BOOL was = FALSE;
+            if (SUCCEEDED(ctx->QueryInterface(__uuidof(ID3D11Multithread), reinterpret_cast<void**>(&mt)))) {
+                was = mt->SetMultithreadProtected(TRUE);
+                mt->Release();
+            }
+            LOG_I("d3d", "thread-safe mode on (was %d): context table %p -> %p, Draw %p -> %p", was, before,
+                  *reinterpret_cast<void**>(ctx), draw_before, (*reinterpret_cast<void***>(ctx))[13]);
+            void* const* t = *reinterpret_cast<void***>(ctx);
+            char miss[512] = "";
+            size_t len = 0;
+            for (int i : {8, 9, 12, 13, 20, 21, 33, 34, 41, 47})
+                if (std::find(g_hooked.begin(), g_hooked.end(), t[i]) == g_hooked.end())
+                    len += snprintf(miss + len, sizeof(miss) - len, " %d=%p", i, t[i]);
+            LOG_I("d3d", "methods now not hooked:%s", miss[0] ? miss : " none");
+            ctx->Release();
+            dev->Release();
+        }
+    }
     const bool asked = g_trace_request.exchange(false);
     if (!std::filesystem::remove(dir / L"TRACE", ec) && !asked) return;
     if (!g_installed) install(chain);
