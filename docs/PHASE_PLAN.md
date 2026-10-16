@@ -17,15 +17,15 @@ Mode: agentic | Gate: hard | Stage 5 of 10 — hands
 ✅ Recentre = hold right stick click 1 s (PLAYTEST-4g)
 ✅ Stage 4 passed (D-032): a full session "great in every way, nothing unwanted"; comfort 5
 🚧 In progress: Stage 5 — hands
-🚧 5d touch to interact: doors + buttons work by touch, nothing stray, comfort 5 (PLAYTEST-5k); fast flick = door slam built, waiting on PLAYTEST-5l
+✅ 5d touch to interact: slow reach = open/use, fast flick = door slam, hold-type works, nothing stray, comfort 5 (PLAYTEST-5k/5l)
 ✅ 5c hands stop at walls, buzz on contact, nothing odd; size 0.9 right; comfort 5 (PLAYTEST-5j)
 ✅ 5b gloved hands: on your real hands, fingers follow you, look OK, comfort 5 (PLAYTEST-5i); a bit big → 10% smaller (hands.size)
 ✅ 5a hand markers at the controllers: one steady box per controller, on the handle, pointing right (PLAYTEST-5h, comfort 5) — after BUG-011 (draw hooks) and BUG-013 (each eye used the other eye's camera, D-034)
 ⬜ Not started: punching, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-5l
+❓ Need from you: PLAYTEST-5m (Stage 5 gate)
 🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-5l (slow touch vs fast flick on doors, hold-type interaction, ~5 min). Then me: 5e Faith's own arms (Q-501: keep until Stage 7) and the Stage 5 gate (a mission with hands on).
+▶ Next: You: STAGE-5 GATE — play one mission with hands on (PLAYTEST-5m, ~20-30 min). Then me: Stage 6 (combat: physical punching).
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -160,14 +160,14 @@ Plan (each step tested in game with the drive tools, then a short playtest):
   5b hand meshes: a glove hand model (CC0/MIT asset or procedural), lit/exposed like the scene, depth-tested; fingers from controller inputs.
   5c collision + haptics: depth-buffer clamp, break distance, contact buzz.
   5d interaction: reach-and-grab Interact while the prompt shows; prompt detection recon (Q-504).
-  5e Faith's own arms per Q-501 (hide, or keep until Stage 7 IK replaces them).
+  5e Faith's own arms per Q-501 (hide, or keep until Stage 7 IK replaces them). — DONE by Q-501 (a): kept until Stage 7; hiding them is possible (stencil 0x20, D-036).
 Verify: hands line up with real hands (5a), look and light right (5b), don't pass through walls (5c), interacting by reach works on doors/buttons/Gridnodes/collectibles (5d); comfort; Stage 5 gate = a mission played with hands on.
 Risk: lighting mismatch (hands look pasted on), hands drawn over the game's own UI, double hands while Faith's arms animate (Q-501/Q-503), cost of an extra pass (small).
 - [x] 5a Hands at the controllers (D-031, D-034): markers line up with the real controllers (PLAYTEST-5h)
 - [x] 5b gloved hands with fingers (D-035): fit, fingers and look OK (PLAYTEST-5i); size 0.9 (hands.size)
 - [x] 5c hands stop at walls + contact buzz (D-036): PLAYTEST-5j
-- [x] 5d touch to interact built (D-037): desktop presses verified; PLAYTEST-5k pending
-- [ ] ★ Collectibles, doors, buttons, Gridnodes by touch; pointer fallback
+- [x] 5d touch to interact (D-037): doors, buttons, Gridnode hold by touch; flick = slam (PLAYTEST-5l)
+- [x] ★ Doors, buttons, Gridnodes by touch; A stays as fallback; collectibles: check in the gate session
 
 ### Stage 6 — Combat and gadgets (L)
 - 6A Holsters: ★ only for gadget equip if needed (no weapons in the game)

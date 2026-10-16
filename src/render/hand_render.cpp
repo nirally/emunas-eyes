@@ -410,7 +410,13 @@ bool g_pressing[2] = {false, false}, g_flicked[2] = {false, false};
 void note_contact(int h, float pushed) {
     // 5d: pressing in (over 1 cm) on something in front of you holds Interact; released when the hand comes away.
     // Arriving fast (a flick, PLAYTEST-5k) taps an attack instead - the door slam - and holds nothing.
-    const bool press = g_touch_interact.load() && g_central[h] && (g_pressing[h] ? pushed > 0.004f : pushed > 0.010f);
+    // Contact flickers frame to frame (eyes alternate; PLAYTEST-5l: a new press every ~20 ms while held), so a
+    // press only ends after 150 ms without contact.
+    static ULONGLONG last_contact[2] = {0, 0};
+    const ULONGLONG now = GetTickCount64();
+    const bool contact = g_touch_interact.load() && g_central[h] && (g_pressing[h] ? pushed > 0.004f : pushed > 0.010f);
+    if (contact) last_contact[h] = now;
+    const bool press = contact || (g_pressing[h] && now - last_contact[h] < 150);
     if (press && !g_pressing[h]) {
         const float speed = hand_pose::recent_speed(h), flick = hand_pose::flick_speed();
         g_flicked[h] = flick > 0 && speed >= flick;
