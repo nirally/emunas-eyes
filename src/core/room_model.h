@@ -65,6 +65,9 @@ struct Model {
     float stall_s = 0.3f, boost_rate = 0.3f, boost_max = 0.2f, stick_max = 0.92f;
     float stalled = 0, boost = 0;
     float bleed = 0.25f;       // m/s: view slides back onto her body while the player drives (PLAYTEST-6e)
+    // Stuck (PLAYTEST-6f): sometimes she won't walk at all, even pushed (taking hits, or her body against an
+    // enemy): stick 0.9, Faith 0.00 m/s for 2-4 s. Stalled this long -> the view slides onto her instead.
+    float stuck_s = 0.8f, stuck_bleed = 0.4f;
 
     V2 anchor;                 // head position Faith is standing under
     V2 last_head, head_vel, faith_vel;
@@ -153,6 +156,13 @@ struct Model {
             }
         }
         if (!walking) stalled = boost = 0;
+        if (stalled > stuck_s && dt > 0) {
+            const float l = off.len();
+            if (l > gap_ok) {
+                anchor = anchor + off * (std::fmin(stuck_bleed * dt, l - gap_ok) / l);
+                off = head - anchor;
+            }
+        }
         // Walls: the view can't run away from Faith; the anchor follows the head beyond max_offset.
         const float l = off.len();
         if (l > max_offset) {

@@ -4,7 +4,7 @@ Mode: agentic
 Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
-## Status — Mirror's Edge Catalyst VR — 2026-10-16
+## Status — Mirror's Edge Catalyst VR — 2026-10-17
 Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
@@ -24,12 +24,12 @@ Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 ✅ Physical punching works: reliable, nothing stray, comfort 5 (PLAYTEST-6a)
 ✅ Hooks = heavy, doors right, Faith stays with you in fights (PLAYTEST-6b)
 ✅ Shift by a quick lean/step: easy enough, nothing stray (PLAYTEST-6d)
-🔧 Faith staying under you in fights: stall push (6e) + slide back while you use the stick → PLAYTEST-6f
+🔧 Faith staying under you in fights: much better in 6f (rarer); last case = game won't let her walk while hit → view slides onto her → PLAYTEST-6g
 ⬜ Not started: other attacks by gesture, MAG Rope/Disruptor by hand, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-6f
-🐞 Open bugs: BUG-016 sev-2 (view off Faith in fights; part 3 built, confirm in 6f); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-6f (one fight, ~5 min). Me: MAG Rope + Disruptor by hand.
+❓ Need from you: PLAYTEST-6g
+🐞 Open bugs: BUG-016 sev-2 (view off Faith in fights; rarer after 6f, part 4 built, confirm in 6g); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: You: PLAYTEST-6g (one fight, ~5 min). Me: MAG Rope + Disruptor by hand.
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

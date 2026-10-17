@@ -82,7 +82,9 @@ TEST(room_model_wall_caps_the_view) {
         if (i < 100) head.z -= 0.01f;  // walk 1 m into a wall
         moved = f.step(m.update(head, moved, false, 0.01f, view), 0.01f, true);
     }
-    CHECK(near(view.len(), 0.5f, 0.01f));  // stays 0.5 m from Faith, never through the wall
+    CHECK(view.len() <= 0.5f + 1e-4f);  // at most 0.5 m from Faith, never through the wall
+    for (int i = 0; i < 200; ++i) moved = f.step(m.update(head, moved, false, 0.01f, view), 0.01f, true);
+    CHECK(view.len() < 0.05f);  // standing against it, the view slides back onto her (stuck, PLAYTEST-6f)
 }
 
 TEST(room_model_unrequested_motion_is_not_absorbed) {
@@ -155,4 +157,16 @@ TEST(room_model_gap_bleeds_while_player_drives) {
     k.update({}, {}, true, 0.01f, view);
     for (int i = 0; i < 100; ++i) k.update({0.03f, 0.f}, {}, true, 0.01f, view);
     CHECK(near(view.x, 0.03f, 1e-4f));
+}
+
+TEST(room_model_view_slides_onto_her_when_she_wont_walk) {
+    // PLAYTEST-6f: after a lean/dodge in a fight the game ignored even the pushed stick (0.9, Faith 0.00 m/s
+    // for 2-4 s); the 0.35 m gap stayed open until it let her go.
+    Model m;
+    V2 view;
+    m.update({}, {}, false, 0.01f, view);
+    for (int i = 0; i < 50; ++i) m.update({0.35f, 0.f}, {}, false, 0.01f, view);  // 0.5 s: not yet
+    CHECK(view.len() > 0.3f);
+    for (int i = 0; i < 150; ++i) m.update({0.35f, 0.f}, {}, false, 0.01f, view);  // 2 s in all
+    CHECK(view.len() < 0.05f);
 }
