@@ -24,12 +24,12 @@ Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 ✅ Physical punching works: reliable, nothing stray, comfort 5 (PLAYTEST-6a)
 ✅ Hooks = heavy, doors right, Faith stays with you in fights (PLAYTEST-6b)
 ✅ Shift by a quick lean/step: easy enough, nothing stray (PLAYTEST-6d)
-🔧 Faith staying under you in fights: much better in 6f (rarer); last case = game won't let her walk while hit → view slides onto her → PLAYTEST-6g
+✅ Faith stays under you in fights: never came apart, slides back OK, walls OK, comfort 5 (PLAYTEST-6g, BUG-016 closed)
 ⬜ Not started: other attacks by gesture, MAG Rope/Disruptor by hand, body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-6g
-🐞 Open bugs: BUG-016 sev-2 (view off Faith in fights; rarer after 6f, part 4 built, confirm in 6g); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-6g (one fight, ~5 min). Me: MAG Rope + Disruptor by hand.
+❓ Need from you: how MAG Rope + Disruptor should work by hand (Q-604)
+🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: 6D MAG Rope + Disruptor by hand (Q-604 first)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
