@@ -281,7 +281,7 @@ void apply_dodge(pad_map::Pad& pad);  // below (D-040)
 // with an open hand is the Disruptor (B) instead of a Light attack (gadget_model).
 punch_model::Hand g_punch[2];
 gadget_model::Throw g_throw[2];
-std::atomic<bool> g_rope_on{true}, g_disruptor_on{false};
+std::atomic<bool> g_rope_on{true}, g_disruptor_on{true};
 float g_open_for[2] = {0, 0};  // s each hand has been held open
 ULONGLONG g_disrupt_since[2] = {0, 0};  // B held since (GetTickCount64), 0 = not holding
 ULONGLONG g_punch_pending[2] = {0, 0}, g_punch_until = 0;

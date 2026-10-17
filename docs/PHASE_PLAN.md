@@ -26,12 +26,12 @@ Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 ✅ Shift by a quick lean/step: easy enough, nothing stray (PLAYTEST-6d)
 ✅ Faith stays under you in fights: never came apart, slides back OK, walls OK, comfort 5 (PLAYTEST-6g, BUG-016 closed)
 ✅ Punch = punch, hook = kick; MAG Rope by throwing a hand up, no stray kicks (PLAYTEST-6j, BUG-017 closed)
-🔧 Disruptor: B has to be held (Q-605) → the push now holds B while the hand stays open → PLAYTEST-6k
+✅ Disruptor by an open-hand push, held while the hand stays open (PLAYTEST-6k: works, ~2 s, nothing stray, comfort 5)
 ⬜ Not started: body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-6k
+❓ Need from you: PLAYTEST-6l (Stage 6 gate)
 🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-6k (Disruptor, ~3 min). Me: Stage 6 gate, then Stage 7 (Faith's IK arms)
+▶ Next: You: PLAYTEST-6l, a mission (~15 min) = Stage 6 gate. Me: then Stage 7 (Faith's IK arms)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -195,7 +195,7 @@ Risk: accidental attacks while waving hands in parkour; latency of the 100 ms do
 - [x] ★ 6C **Physical punching**: straight = light, hook = heavy, either hand, buzz on the punch (D-039, PLAYTEST-6a/6b)
 - [x] ★ 6C heavy = hook (PLAYTEST-6b); wall-run/air attacks come from the game when you punch while wall-running/jumping
 - [x] ★ 6C Shift dodge by a quick lean/step sideways or back, trigger kept (D-040, PLAYTEST-6d)
-- [ ] ★ 6D MAG Rope (throw) and Disruptor (open-hand push), game aims by the view (Q-604, D-041) → PLAYTEST-6h
+- [x] ★ 6D MAG Rope (throw up past the head, lower to let go) and Disruptor (open-hand push, held while open), game aims by the view (Q-604, D-041, PLAYTEST-6j/6k)
 
 ### Stage 7 — Full-body IK (L)
 - [ ] Retarget Faith's skeleton; head and hands from tracking; legs from game animation
