@@ -12,10 +12,12 @@ struct ID3D11Resource;
 
 namespace mecvr::faith_bones {
 
-// cb_capture, at Unmap: a constant buffer write (the 1 MB rings are copied while this module is active).
-void on_cb_write(ID3D11Resource* res, const void* data, unsigned size);
-// cb_capture, at Unmap: a write to a big dynamic non-constant buffer (the bone data; copied while recording).
-void on_bone_write(ID3D11Resource* res, const void* data, unsigned size);
+// cb_capture, after the game's Map of a big buffer: the pointer to hand back to the game. For every 1 MB
+// constant ring (the game rotates through more than 16) and the bone buffers Faith's draws read, that is a
+// shadow in ordinary memory - the mapped memory is write-combined and reading it back cost the frame rate (3 fps).
+void* on_map(ID3D11Resource* res, void* mapped, unsigned size, bool constant_buffer);
+// cb_capture, before the game's Unmap: a shadowed buffer is copied to the real mapping.
+void on_unmap(ID3D11Resource* res);
 // ctx_hooks, before an indexed instanced draw (inside the hook guard).
 void before_draw(ID3D11DeviceContext* ctx);
 // Once per Present: frame boundary, 1 s log of Faith's pieces.
@@ -29,5 +31,10 @@ void set_poke(int piece, int bone);
 // solver (tools/bone_solve).
 void request_record(const std::filesystem::path& dir, int frames);
 bool active();
+
+// body.arms (7A): learn Faith's arms (arm_solve) from the first ~400 frames she is drawn, retried up to 5 times;
+// the result is logged ([bones] "arms from ..."). The IK (7B) uses it.
+void set_arms(bool on);
+bool arms_known();
 
 }  // namespace mecvr::faith_bones

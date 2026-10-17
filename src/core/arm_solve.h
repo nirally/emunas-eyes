@@ -38,6 +38,9 @@ struct Arm {
 struct Result {
     bool ok = false;
     const char* why = "not solved";
+    int joints = 0, wrists = 0, chains = 0;  // how far the solve got (log)
+    struct Found { vm::Vec3 shoulder, elbow, wrist; };
+    std::vector<Found> found;  // every arm chain found (bind space; log)
     Arm arm[2];
     std::vector<int> side;     // per bone: arm 0/1, -1 = not an arm bone
     std::vector<int> segment;  // per bone: Segment
@@ -152,6 +155,7 @@ inline Result Learner::solve() const {
             touch(*hit, j);
         }
     const int J = int(joints.size());
+    res.joints = J;
     std::vector<std::vector<int>> of_bone(n_);  // joints each bone touches
     for (int k = 0; k < J; ++k)
         for (int b : joints[k].bones) of_bone[b].push_back(k);
@@ -166,10 +170,10 @@ inline Result Learner::solve() const {
     // Wrists: joints with 4+ linked joints within 12 cm (finger roots, hand bones).
     std::vector<int> wrists;
     for (int k = 0; k < J; ++k) {
-        int near = 0;
+        int close = 0;  // ("near" is a macro in windows.h)
         for (int o = 0; o < J; ++o)
-            if (o != k && dist(k, o) < 0.12f && linked(k, o)) ++near;
-        if (near >= 4) wrists.push_back(k);
+            if (o != k && dist(k, o) < 0.12f && linked(k, o)) ++close;
+        if (close >= 4) wrists.push_back(k);
     }
     // A hand has several joints that qualify; keep the one each arm chain starts from (it has an elbow).
     struct Chain { int w, e, s; };
@@ -185,14 +189,37 @@ inline Result Learner::solve() const {
                 dist(w, o) > dist(w, e) + 0.10f && (s < 0 || dist(e, o) > dist(e, s)))
                 s = o;
         if (s < 0) continue;
-        bool dup = false;  // another wrist candidate of the same hand found the same elbow
+        bool dup = false;  // another wrist candidate of the same arm (same elbow, or the same shoulder)
         for (Chain& c : chains)
-            if (c.e == e) {
+            if (c.e == e || dist(c.s, s) < 0.05f) {
                 dup = true;
-                // keep the wrist farther from the elbow (the real wrist; the others are hand/finger joints)
-                if (dist(w, e) > dist(c.w, c.e)) c.w = w;
+                // keep the longer chain (the real wrist and elbow; the others are hand, finger or twist joints)
+                if (dist(w, e) + dist(e, s) > dist(c.w, c.e) + dist(c.e, c.s)) c = {w, e, s};
             }
         if (!dup) chains.push_back({w, e, s});
+    }
+    res.wrists = int(wrists.size());
+    res.chains = int(chains.size());
+    for (const Chain& c : chains)  // for the log
+        if (res.found.size() < 6) res.found.push_back({joints[c.s].x, joints[c.e].x, joints[c.w].x});
+    // Faith's two arms mirror each other: equal lengths, and the elbows' and wrists' midpoints on the shoulders'
+    // midline. Other chains (one ran backwards from the breastbone through the collarbone: live, try 1) don't
+    // pair up. Keep the best-mirrored pair.
+    if (chains.size() > 2) {
+        double best_score = 1e9;
+        size_t bi = 0, bj = 1;
+        for (size_t i = 0; i < chains.size(); ++i)
+            for (size_t j = i + 1; j < chains.size(); ++j) {
+                const Chain &a = chains[i], &b = chains[j];
+                const Vec3 lat = (joints[a.s].x - joints[b.s].x).normalized();
+                const Vec3 ms = (joints[a.s].x + joints[b.s].x) * 0.5f, me = (joints[a.e].x + joints[b.e].x) * 0.5f,
+                           mw = (joints[a.w].x + joints[b.w].x) * 0.5f;
+                const double score = std::fabs((me - ms).dot(lat)) + std::fabs((mw - ms).dot(lat)) +
+                                     std::fabs(dist(a.s, a.e) - dist(b.s, b.e)) + std::fabs(dist(a.e, a.w) - dist(b.e, b.w));
+                if (score < best_score) { best_score = score; bi = i; bj = j; }
+            }
+        if (best_score > 0.05) { res.why = "no two arm chains mirror each other"; return res; }
+        chains = {chains[bi], chains[bj]};
     }
     if (chains.size() != 2) { res.why = chains.size() < 2 ? "fewer than two arms found" : "more than two arms found"; return res; }
 
@@ -210,8 +237,8 @@ inline Result Learner::solve() const {
         for (int b = 0; b < n_; ++b) {
             if (of_bone[b].empty()) continue;
             bool body = false, upper = false, fore = false, near_hand = false;
-            for (int k : of_bone[b]) {
-                const Vec3 p = joints[k].x;
+            for (int jk : of_bone[b]) {
+                const Vec3 p = joints[jk].x;
                 if ((p - arm.elbow).length() > reach && (p - arm.elbow).dot(up_dir) > 0) body = true;  // past the shoulder
                 if ((p - arm.elbow).dot(up_dir) > 0.02f) upper = true;
                 else if ((p - arm.wrist).dot(fore_dir) > 0.02f) fore = true;

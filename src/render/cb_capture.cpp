@@ -161,13 +161,16 @@ bool is_constant_buffer(ID3D11Resource* res, UINT* size) {
 
 }  // namespace
 
-void after_map(ID3D11Resource* res, HRESULT hr, const D3D11_MAPPED_SUBRESOURCE* out) {
+void after_map(ID3D11Resource* res, HRESULT hr, D3D11_MAPPED_SUBRESOURCE* out) {
     UINT size = 0;
-    if (SUCCEEDED(hr) && out && is_constant_buffer(res, &size) &&
-        (g_capturing || size == kViewCbBytes || (faith_bones::active() && size == 1048576))) {
+    const bool cb = SUCCEEDED(hr) && out && is_constant_buffer(res, &size);
+    // Stage 7: the game writes Faith's bone and per-draw buffers into a shadow in ordinary memory (read back
+    // cheaply, and the IK's changes kept); copied to the real buffer at Unmap.
+    if (SUCCEEDED(hr) && out && size >= 256 * 1024) out->pData = faith_bones::on_map(res, out->pData, size, cb);
+    if (cb && (g_capturing || size == kViewCbBytes)) {
         std::lock_guard lock(g_mutex);
         g_pending[res] = {out->pData, size};
-    } else if (SUCCEEDED(hr) && out && size >= 256 * 1024 && (ctx_hooks::tracing() || faith_bones::active())) {
+    } else if (SUCCEEDED(hr) && out && !cb && size >= 256 * 1024 && ctx_hooks::tracing()) {
         std::lock_guard lock(g_mutex);
         g_big_pending[res] = {out->pData, size};  // Stage 7 recon: Faith's bone data
     }
@@ -186,17 +189,14 @@ void before_unmap(ID3D11Resource* res) {
         auto it = g_big_pending.find(res);
         if (it != g_big_pending.end()) { big = it->second; g_big_pending.erase(it); }
     }
-    if (big.data) {
-        if (ctx_hooks::tracing()) ctx_hooks::on_big_write(res, big.data, big.size);
-        faith_bones::on_bone_write(res, big.data, big.size);
-    }
+    if (big.data && ctx_hooks::tracing()) ctx_hooks::on_big_write(res, big.data, big.size);
     if (p.data) {
         watch_view(p.data, p.size);
-        faith_bones::on_cb_write(res, p.data, p.size);
         if (p.size == kViewCbBytes && looks_like_view_cb(static_cast<const float*>(p.data)))
             taa_eyes::record_view_cb(static_cast<const float*>(p.data), p.size / 4);
         if (g_capturing) record("Map", res, p.data, p.size);
     }
+    faith_bones::on_unmap(res);  // last: the shadow goes to the real buffer
 }
 
 void before_update(ID3D11Resource* res, const D3D11_BOX* box, const void* data) {

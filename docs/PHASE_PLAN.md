@@ -28,12 +28,12 @@ Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 ✅ Punch = punch, hook = kick; MAG Rope by throwing a hand up, no stray kicks (PLAYTEST-6j, BUG-017 closed)
 ✅ Disruptor by an open-hand push, held while the hand stays open (PLAYTEST-6k: works, ~2 s, nothing stray, comfort 5)
 ✅ Stage 6 passed (D-042): combat and gadgets by body, buttons kept, comfort 5 throughout
-🚧 Stage 7: arm bones found + re-posable (recon); 7A arm_solve finds both arms, joints and segments from the game's own motion (unit-tested + on 600 real frames); next: run it live in faith_bones, then 7B IK
+🚧 Stage 7: 7A done - the mod learns Faith's arms live in ~4 s of play (both arms, 0.28/0.25 m, every bone on its segment; fps unchanged); next 7B: bend her arms onto the controllers
 ⬜ Not started: body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
 ❓ Need from you: nothing yet (Q-701/702 come with the first IK playtest)
 🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: Me: wire arm_solve into faith_bones (learn at runtime, log), then 7B IK arms on the desktop; then PLAYTEST-7a
+▶ Next: Me: 7B IK arms (desktop, simulated hands); then PLAYTEST-7a
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
