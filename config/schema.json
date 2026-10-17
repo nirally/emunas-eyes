@@ -30,7 +30,7 @@
     "combat.dodge_gesture":       { "type": "bool",  "default": true,  "section": "Combat", "label": "Shift by moving: a quick lean or step sideways or back = Shift that way (the trigger still works)" },
     "combat.dodge_speed":         { "type": "float", "min": 0.6, "max": 3.0, "default": 1.0, "section": "Combat", "label": "How quick the lean or step has to be (metres per second)" },
     "combat.rope_throw":          { "type": "bool",  "default": true,  "section": "Combat", "label": "MAG Rope by throwing: throw a hand up toward the point; lower the arm to let go (the grip still works)" },
-    "combat.disruptor_push":      { "type": "bool",  "default": true,  "section": "Combat", "label": "Disruptor by an open-hand push (no fingers on the controller); the button still works" },
+    "combat.disruptor_push":      { "type": "bool",  "default": false, "section": "Combat", "label": "Disruptor by an open-hand push (open the hand fully, then push); the button still works" },
     "diagnostics.hand_sim":       { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Simulated hands in front of you without a headset (developer tests)" },
     "diagnostics.hand_sim_closeup": { "type": "bool", "default": false, "section": "Diagnostics", "label": "Simulated hands close in front of the eyes, turned inwards (developer screenshots)" },
     "diagnostics.room_sim":       { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Room-scale also without a headset (developer tests)" },

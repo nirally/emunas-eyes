@@ -281,7 +281,8 @@ void apply_dodge(pad_map::Pad& pad);  // below (D-040)
 // with an open hand is the Disruptor (B) instead of a Light attack (gadget_model).
 punch_model::Hand g_punch[2];
 gadget_model::Throw g_throw[2];
-std::atomic<bool> g_rope_on{true}, g_disruptor_on{true};
+std::atomic<bool> g_rope_on{true}, g_disruptor_on{false};
+float g_open_for[2] = {0, 0};  // s each hand has been held open
 ULONGLONG g_punch_pending[2] = {0, 0}, g_punch_until = 0;
 int g_punch_kind[2] = {0, 0};
 bool g_punch_open[2] = {false, false};
@@ -321,10 +322,13 @@ uint16_t punches() {
             continue;
         }
         g_punch[h].speed = hand_pose::punch_speed();
+        const hand_pose::Fingers f = hand_pose::fingers(h);
+        g_open_for[h] = gadget_model::open_hand(f.index, f.others, f.thumb) ? g_open_for[h] + dt : 0.f;
         if (const int kind = g_punch[h].update(off, head.rotation.rotate({0, 0, -1}), dt)) {
-            const hand_pose::Fingers f = hand_pose::fingers(h);
-            const bool open = disruptor_on && kind == punch_model::Hand::kStraight &&
-                              gadget_model::open_hand(f.index, f.others, f.thumb);
+            const bool open = disruptor_on && kind == punch_model::Hand::kStraight && g_open_for[h] >= gadget_model::kOpenFor;
+            // A hook can't start a throw (PLAYTEST-6h); a straight one can (looking up at the point), and the throw
+            // cancels it while it waits.
+            if (kind == punch_model::Hand::kHook) g_throw[h].note_punch();
             if (g_throw[h].holding) {
                 // the same swing already fired the MAG Rope
             } else if (open || punch_on) {
