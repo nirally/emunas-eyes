@@ -291,3 +291,10 @@ Chose: dodge_model (core, unit-tested, 6 tests): a quick horizontal head movemen
 Not verified in game (needs real head motion): PLAYTEST-6c.
 D-040 update (PLAYTEST-6c: works and the right way, nothing stray, comfort 5, "too much" movement needed): 1.0 m/s and 8 cm (was 1.3 m/s, 10 cm). The disconnects reported with it were BUG-016 (room-scale), not the dodge.
 D-029 note (BUG-016): the "absorb only what the command explains" rule (BUG-015 fix 2 a) is off - the game accelerates Faith faster than modelled. Room-scale is back to D-029 absorption plus the attack pause and the fast-move release.
+
+### D-041 — 6D MAG Rope and Disruptor by gesture (the game aims by the view)
+Date: 2026-10-17  Stage: 6  (Q-604: gesture, head-aimed; MAG Rope is on the left grip = Up actions, user)
+Chose: gadget_model (core, unit-tested, 7 tests). MAG Rope = a throw: either hand faster than combat.punch_speed relative to the head, more than ~30 deg upwards, ending above chin height (10 cm below the eyes) -> Up actions (LB) held until that arm comes down below the shoulder (18 cm below the eyes), at least 150 ms, at most 4 s. A throw within a punch's 100 ms wait cancels the punch; a punch detected while the throw holds is dropped. Disruptor = a straight punch with an open hand (finger off the trigger, thumb off, grip loose; hand_pose fingers) -> B tap 120 ms instead of the Light attack; works even with combat.punch off. Short buzz on the throw. Target choice stays the game's (the view = head). combat.rope_throw, combat.disruptor_push (default on). Buttons unchanged.
+Rejected: true hand aim (the game's target choice would have to be reverse-engineered); trigger + push for the Disruptor (RT = Shift, LT = Down).
+Known risk: a throw with no MAG point in reach is a jump (LB = Up actions); a straight punch while looking steeply up can count as a throw.
+Not verified in game (needs real hand motion): PLAYTEST-6h.

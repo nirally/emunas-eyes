@@ -28,5 +28,8 @@ void set_stick_pitch(bool on);   // input.stick_pitch
 void set_physical_crouch(bool on, float depth_m);
 // combat.dodge_gesture / combat.dodge_speed: a quick lean or step sideways/back = Shift that way (D-040).
 void set_dodge(bool on, float speed);
+// combat.rope_throw / combat.disruptor_push (6D, Q-604): a throw up past the chin = MAG Rope (Up held until the
+// arm comes down); a straight open-hand push = Disruptor. Both at combat.punch_speed.
+void set_gadgets(bool rope_throw, bool disruptor_push);
 
 }  // namespace mecvr::xr_input

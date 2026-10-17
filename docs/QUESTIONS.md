@@ -24,3 +24,7 @@ Options:
  (a) Faith-style gloved hands drawn by the mod, always at your controllers; Faith's own arms stay visible during her moves (you may see both briefly) until Stage 7 drives her arms from your hands. (Recommended: fastest to a good result; Stage 7 later merges them.)
  (b) Same hands, and hide Faith's own arms when possible (if they can be told apart in the frame; some moves may look odd without arms).
  (c) No separate hands: wait for Stage 7 to move Faith's own arms with yours (much later).
+
+### Q-604 — MAG Rope + Disruptor by hand: how? — ANSWERED 2026-10-17: gesture, head-aimed
+Options: (a) gesture fires the gadget, the game keeps choosing the target from the view (= head) (recommended, small); (b) true hand aim (reverse-engineer target choice, large/uncertain); (c) buttons only, skip 6D.
+Answer: (a). Buttons stay as fallback.

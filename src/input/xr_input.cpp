@@ -15,6 +15,7 @@
 #include "core/pad_map.h"
 #include "core/punch_model.h"
 #include "core/dodge_model.h"
+#include "core/gadget_model.h"
 #include "input/xinput_hook.h"
 #include "render/camera_override.h"
 #include "render/time_sync.h"
@@ -276,9 +277,14 @@ void apply_dodge(pad_map::Pad& pad);  // below (D-040)
 // it is sent 100 ms later - a straight punch as Light attack (X), a hook as Heavy attack (Y, PLAYTEST-6a) -
 // unless the hand hit something in between (then it was a door flick: the slam, D-037). Returns the buttons
 // to add this frame.
+// 6D (Q-604): a throw up past the chin holds Up actions (MAG Rope) until that arm comes down; a straight punch
+// with an open hand is the Disruptor (B) instead of a Light attack (gadget_model).
 punch_model::Hand g_punch[2];
+gadget_model::Throw g_throw[2];
+std::atomic<bool> g_rope_on{true}, g_disruptor_on{true};
 ULONGLONG g_punch_pending[2] = {0, 0}, g_punch_until = 0;
 int g_punch_kind[2] = {0, 0};
+bool g_punch_open[2] = {false, false};
 uint16_t g_punch_button = 0;
 float g_punch_peak[2] = {0, 0};
 uint16_t punches() {
@@ -290,19 +296,43 @@ uint16_t punches() {
     last = now_qpc;
     const ULONGLONG now = GetTickCount64();
     const head_pose::Pose head = head_pose::current().relative;
-    const bool on = hand_pose::punch_on() && head.valid && !time_sync::game_paused();
+    const bool live = head.valid && !time_sync::game_paused();
+    const bool punch_on = hand_pose::punch_on(), disruptor_on = g_disruptor_on.load();
+    const bool on = (punch_on || disruptor_on) && live, rope_on = g_rope_on.load() && live;
+    uint16_t hold = 0;
     for (int h = 0; h < 2; ++h) {
         const head_pose::Pose p = hand_pose::get(h);
+        const vm::Vec3 off = p.position - head.position;
+        if (!rope_on || !p.valid) {
+            g_throw[h].primed = g_throw[h].holding = false;
+        } else {
+            g_throw[h].speed = hand_pose::punch_speed();
+            if (g_throw[h].update(off, dt)) {
+                if (g_punch_pending[h]) g_punch_pending[h] = 0;  // it started like a punch: the throw wins
+                LOG_I("input", "%s throw %.1f m/s -> MAG Rope (Up held until the arm comes down)", h ? "right" : "left",
+                      g_throw[h].vel.length());
+                hand_pose::contact_pulse(h);
+            }
+            if (g_throw[h].holding) hold |= pad_map::kLB;
+        }
         if (!on || !p.valid) {
             g_punch[h].primed = false;
             g_punch_pending[h] = 0;
             continue;
         }
         g_punch[h].speed = hand_pose::punch_speed();
-        if (const int kind = g_punch[h].update(p.position - head.position, head.rotation.rotate({0, 0, -1}), dt)) {
-            g_punch_pending[h] = now;
-            g_punch_kind[h] = kind;
-            g_punch_peak[h] = g_punch[h].vel.length();
+        if (const int kind = g_punch[h].update(off, head.rotation.rotate({0, 0, -1}), dt)) {
+            const hand_pose::Fingers f = hand_pose::fingers(h);
+            const bool open = disruptor_on && kind == punch_model::Hand::kStraight &&
+                              gadget_model::open_hand(f.index, f.others, f.thumb);
+            if (g_throw[h].holding) {
+                // the same swing already fired the MAG Rope
+            } else if (open || punch_on) {
+                g_punch_pending[h] = now;
+                g_punch_kind[h] = kind;
+                g_punch_open[h] = open;
+                g_punch_peak[h] = g_punch[h].vel.length();
+            }
         }
         if (g_punch_pending[h] && g_punch[h].vel.length() > g_punch_peak[h]) g_punch_peak[h] = g_punch[h].vel.length();
         if (g_punch_pending[h] && hand_pose::last_flick_ms() >= g_punch_pending[h]) {
@@ -312,14 +342,15 @@ uint16_t punches() {
             g_punch_pending[h] = 0;
             const bool hook = g_punch_kind[h] == punch_model::Hand::kHook;
             g_punch_until = now + 120;
-            g_punch_button = hook ? pad_map::kY : pad_map::kX;
+            g_punch_button = g_punch_open[h] ? pad_map::kB : hook ? pad_map::kY : pad_map::kX;
             hand_pose::note_punch();
             hand_pose::contact_pulse(h);
-            LOG_I("input", "%s %s %.1f m/s -> %s", h ? "right" : "left", hook ? "hook" : "punch", g_punch_peak[h],
-                  hook ? "Heavy attack" : "Light attack");
+            LOG_I("input", "%s %s %.1f m/s -> %s", h ? "right" : "left",
+                  g_punch_open[h] ? "open-hand push" : hook ? "hook" : "punch", g_punch_peak[h],
+                  g_punch_open[h] ? "Disruptor" : hook ? "Heavy attack" : "Light attack");
         }
     }
-    return now < g_punch_until ? g_punch_button : 0;
+    return hold | (now < g_punch_until ? g_punch_button : 0);
 }
 
 void sync(XrTime time, bool focused) {
@@ -453,6 +484,10 @@ std::atomic<float> g_dodge_speed{1.0f};
 void set_dodge(bool on, float speed) {
     g_dodge_on = on;
     g_dodge_speed = speed;
+}
+void set_gadgets(bool rope_throw, bool disruptor_push) {
+    g_rope_on = rope_throw;
+    g_disruptor_on = disruptor_push;
 }
 
 // Shift by body movement (D-040): a quick head movement sideways or back holds Shift (RT) for 150 ms and,
