@@ -15,6 +15,8 @@
 
 #include "diagnostics/log.h"
 #include "render/cam_hunt.h"
+#include "render/ctx_hooks.h"
+#include "render/faith_bones.h"
 #include "render/hook_guard.h"
 #include "render/camera_override.h"
 #include "render/taa_eyes.h"
@@ -42,6 +44,7 @@ std::mutex g_mutex;
 
 struct Pending { void* data; UINT size; };
 std::unordered_map<ID3D11Resource*, Pending> g_pending;  // mapped, not yet unmapped
+std::unordered_map<ID3D11Resource*, Pending> g_big_pending;  // big dynamic buffers while tracing (Stage 7 recon)
 
 struct Record { std::string how; ID3D11Resource* res; std::vector<float> floats; };
 std::vector<Record> g_records;
@@ -160,9 +163,13 @@ bool is_constant_buffer(ID3D11Resource* res, UINT* size) {
 
 void after_map(ID3D11Resource* res, HRESULT hr, const D3D11_MAPPED_SUBRESOURCE* out) {
     UINT size = 0;
-    if (SUCCEEDED(hr) && out && is_constant_buffer(res, &size) && (g_capturing || size == kViewCbBytes)) {
+    if (SUCCEEDED(hr) && out && is_constant_buffer(res, &size) &&
+        (g_capturing || size == kViewCbBytes || (faith_bones::active() && size == 1048576))) {
         std::lock_guard lock(g_mutex);
         g_pending[res] = {out->pData, size};
+    } else if (SUCCEEDED(hr) && out && size >= 256 * 1024 && (ctx_hooks::tracing() || faith_bones::active())) {
+        std::lock_guard lock(g_mutex);
+        g_big_pending[res] = {out->pData, size};  // Stage 7 recon: Faith's bone data
     }
 }
 
@@ -173,8 +180,19 @@ void before_unmap(ID3D11Resource* res) {
         auto it = g_pending.find(res);
         if (it != g_pending.end()) { p = it->second; g_pending.erase(it); }
     }
+    Pending big{};
+    {
+        std::lock_guard lock(g_mutex);
+        auto it = g_big_pending.find(res);
+        if (it != g_big_pending.end()) { big = it->second; g_big_pending.erase(it); }
+    }
+    if (big.data) {
+        if (ctx_hooks::tracing()) ctx_hooks::on_big_write(res, big.data, big.size);
+        faith_bones::on_bone_write(res, big.data, big.size);
+    }
     if (p.data) {
         watch_view(p.data, p.size);
+        faith_bones::on_cb_write(res, p.data, p.size);
         if (p.size == kViewCbBytes && looks_like_view_cb(static_cast<const float*>(p.data)))
             taa_eyes::record_view_cb(static_cast<const float*>(p.data), p.size / 4);
         if (g_capturing) record("Map", res, p.data, p.size);

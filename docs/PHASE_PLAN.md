@@ -28,11 +28,12 @@ Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 ✅ Punch = punch, hook = kick; MAG Rope by throwing a hand up, no stray kicks (PLAYTEST-6j, BUG-017 closed)
 ✅ Disruptor by an open-hand push, held while the hand stays open (PLAYTEST-6k: works, ~2 s, nothing stray, comfort 5)
 ✅ Stage 6 passed (D-042): combat and gadgets by body, buttons kept, comfort 5 throughout
+🚧 Stage 7: Faith's arm bones found and re-posable (recon done, STAGE7-RECON.md); building the IK next
 ⬜ Not started: body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: nothing yet - Stage 7 recon first
+❓ Need from you: nothing yet (Q-701/702 come with the first IK playtest)
 🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: Me: Stage 7 recon (find Faith's arm skeleton and how the game poses it), then a brief
+▶ Next: Me: 7A find Faith's arms + joints at runtime, 7B IK arms on the desktop; then PLAYTEST-7a
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -199,6 +200,21 @@ Risk: accidental attacks while waving hands in parkour; latency of the 100 ms do
 - [x] ★ 6D MAG Rope (throw up past the head, lower to let go) and Disruptor (open-hand push, held while open), game aims by the view (Q-604, D-041, PLAYTEST-6j/6k)
 
 ### Stage 7 — Full-body IK (L)
+
+#### Stage 7 brief
+Goal: Faith's own arms and hands follow your real arms and hands (two-bone IK), legs and body stay the game's; the game's arm animation is kept where it matters (climbs, grabs).
+Known (docs/recon/STAGE7-RECON.md, confirmed by trace + poke): Faith's body is skinned in the vertex shader from per-frame world-space 3x4 bone matrices the CPU writes into a 1 MB dynamic buffer; each body piece's (start, count) is in its per-draw constants. Both arms + hands are one 81-bone piece. Rewriting its rows (Map NO_OVERWRITE) right before its draw re-poses it on screen. The arm chains (shoulder -> elbow 0.282 m -> wrist ~0.24 m -> fingers) and joint points come out of the matrices themselves (tools/bone_solve, 600 frames).
+Unknowns:
+  Q-701 (user, at the first IK playtest) during climbs, ledge grabs and other parkour moves: should Faith's arms show the game's animation (her hands on the ledge) or always follow yours?
+  Q-702 (user) once Faith's arms follow yours, hide the mod's gloved hands (5b)? Default: hide; option to show.
+  Which solved arm is Faith's left (her facing from the per-draw world matrix); stable identification of the arm piece and its bones across sessions, LODs and outfits.
+Hypotheses:
+  H1 IK by correction: S' = C_seg * S for every bone on a segment (upper arm, forearm, hand+fingers), C from a two-bone solve with the game's shoulder fixed, elbow pole down-and-out, hand = controller grip pose (+ calibrated offset), reach clamped.
+  H2 joints and segment membership solved at runtime from a few seconds of the game's own motion (bone_solve logic in core, unit-tested), not hard-coded indices.
+Plan: 7A arm piece + joints at runtime (log, simulator-checked) -> 7B IK arms with simulated hands (desktop screenshots) -> PLAYTEST-7a (arms follow; Q-701/Q-702) -> 7C blend with parkour animations -> 7D fingers from finger touch -> 7E punches by the arm you punch with -> calibration (arm length, grip offset).
+Verify: looking down and in a mirror-like view (desktop third-person debug or reflections), Faith's hands sit on the controllers, elbows bend naturally, no inversion or popping; comfort.
+Risk: the world matrices are rendered positions - the game's own logic (hit boxes, ledge hands) doesn't know about the IK pose (visual only, intended). Index changes between meshes/LODs. Two eyes per frame pair: the correction must be the same for both eyes' draws.
+- [x] Recon: Faith's arm bones found, re-posable before the draw, skeleton solved from the matrices (STAGE7-RECON.md)
 - [ ] Retarget Faith's skeleton; head and hands from tracking; legs from game animation
 - [ ] ★ Faith punches with the arm you punch with (PLAYTEST-6a request): IK arms carry the attack instead of the game's combo choice
 - [ ] ★ Blend IK arms with parkour animations (climbs, grabs) without breaking them

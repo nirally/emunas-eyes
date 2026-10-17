@@ -51,6 +51,7 @@ add_library(mecvr SHARED
     src/diagnostics/time_recon.cpp
     src/render/time_sync.cpp
     src/render/ctx_hooks.cpp
+    src/render/faith_bones.cpp
     src/render/taa_eyes.cpp
     src/diagnostics/mem_find.cpp
     src/render/motion_fix.cpp
@@ -67,3 +68,4 @@ add_executable(mecvr_tests tests/test_main.cpp tests/test_config.cpp tests/test_
 target_link_libraries(mecvr_tests PRIVATE mecvr_core)
 target_include_directories(mecvr_tests PRIVATE ${CMAKE_SOURCE_DIR})
 add_test(NAME unit COMMAND mecvr_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+add_executable(bone_solve tools/bone_solve.cpp)  # Stage 7 recon (skeleton from recorded bone matrices)

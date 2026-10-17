@@ -36,6 +36,7 @@ namespace mecvr::bug_report { void poll(const std::filesystem::path& mod_dir, co
 #include "input/xr_input.h"
 #include "input/yaw_drive.h"
 #include "render/motion_fix.h"
+#include "render/faith_bones.h"
 #include "render/xr_session.h"
 
 namespace fs = std::filesystem;
@@ -209,6 +210,7 @@ DWORD WINAPI main_thread(LPVOID) {
                 hand_pose::set_flick(flick_mode(g_config.get_string("hands.flick")), static_cast<float>(g_config.get_number("hands.flick_speed")));
                 hand_pose::set_punch(g_config.get_bool("combat.punch"), static_cast<float>(g_config.get_number("combat.punch_speed")));
                 hand_pose::set_sim(g_config.get_bool("diagnostics.hand_sim"));
+                faith_bones::set_poke(int(g_config.get_number("diagnostics.bone_poke_piece")), int(g_config.get_number("diagnostics.bone_poke_bone")));
                 hand_pose::set_sim_closeup(g_config.get_bool("diagnostics.hand_sim_closeup"));
                 camera_override::set_room_sim(g_config.get_bool("diagnostics.room_sim"));
                 camera_override::set_room_explain(g_config.get_bool("diagnostics.room_explain"));
@@ -287,6 +289,8 @@ DWORD WINAPI main_thread(LPVOID) {
             xr_input::set_left_handed(new_v["input.left_handed"].get<bool>());
         if (old_v["combat.dodge_gesture"] != new_v["combat.dodge_gesture"] || old_v["combat.dodge_speed"] != new_v["combat.dodge_speed"])
             xr_input::set_dodge(new_v["combat.dodge_gesture"].get<bool>(), new_v["combat.dodge_speed"].get<float>());
+        if (old_v["diagnostics.bone_poke_piece"] != new_v["diagnostics.bone_poke_piece"] || old_v["diagnostics.bone_poke_bone"] != new_v["diagnostics.bone_poke_bone"])
+            faith_bones::set_poke(new_v["diagnostics.bone_poke_piece"].get<int>(), new_v["diagnostics.bone_poke_bone"].get<int>());
         if (old_v["combat.rope_throw"] != new_v["combat.rope_throw"] || old_v["combat.disruptor_push"] != new_v["combat.disruptor_push"])
             xr_input::set_gadgets(new_v["combat.rope_throw"].get<bool>(), new_v["combat.disruptor_push"].get<bool>());
         if (old_v["comfort.physical_crouch"] != new_v["comfort.physical_crouch"] || old_v["comfort.crouch_depth"] != new_v["comfort.crouch_depth"])

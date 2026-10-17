@@ -10,5 +10,8 @@ namespace mecvr::ctx_hooks {
 // draws/dispatches with shaders, inputs and outputs to trace_<n>.txt) and ticks taa_eyes.
 void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir);
 void request_trace();  // same as a TRACE file: the next frames are traced (BUG-011 auto trace)
+// Stage 7 recon: while a trace runs, cb_capture hands over each CPU write to a big dynamic buffer (at Unmap).
+bool tracing();
+void on_big_write(const void* res, const void* data, unsigned size);
 
 }  // namespace mecvr::ctx_hooks

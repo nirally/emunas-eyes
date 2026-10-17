@@ -23,6 +23,7 @@
 
 #include "diagnostics/log.h"
 #include "render/cb_capture.h"
+#include "render/faith_bones.h"
 #include "render/hand_render.h"
 #include "render/hook_guard.h"
 #include "render/taa_eyes.h"
@@ -71,7 +72,9 @@ std::string describe(ID3D11Resource* r) {
         snprintf(buf, sizeof(buf), "%p(%ux%u f%d%s)", static_cast<void*>(r), d.Width, d.Height, d.Format,
                  d.ArraySize > 1 ? " arr" : "");
     } else if (dim == D3D11_RESOURCE_DIMENSION_BUFFER) {
-        snprintf(buf, sizeof(buf), "%p(buf)", static_cast<void*>(r));
+        D3D11_BUFFER_DESC d;
+        static_cast<ID3D11Buffer*>(r)->GetDesc(&d);
+        snprintf(buf, sizeof(buf), "%p(buf %u/%u u%d)", static_cast<void*>(r), d.ByteWidth, d.StructureByteStride, d.Usage);
     } else {
         snprintf(buf, sizeof(buf), "%p(dim%d)", static_cast<void*>(r), dim);
     }
@@ -98,6 +101,59 @@ void emit(ID3D11DeviceContext* ctx, const char* what, bool compute) {
         for (int i = 0; i < 8; ++i)
             if (s.rtv[i]) line += " r" + std::to_string(i) + "=" + describe(s.rtv[i]);
         if (s.dsv) line += " d=" + describe(s.dsv);
+        // Stage 7 recon: vertex side straight from the context (only while tracing) - which meshes are skinned by
+        // the compute passes, and which draws are Faith's body (stencil 0x20, D-036).
+        char tmp[64];
+        ID3D11VertexShader* vs = nullptr;
+        ctx->VSGetShader(&vs, nullptr, nullptr);
+        snprintf(tmp, sizeof(tmp), " | vs %p", static_cast<void*>(vs));
+        line += tmp;
+        if (vs) vs->Release();
+        ID3D11Buffer* vb[4] = {};
+        UINT stride[4] = {}, offset[4] = {};
+        ctx->IAGetVertexBuffers(0, 4, vb, stride, offset);
+        for (int i = 0; i < 4; ++i)
+            if (vb[i]) {
+                line += " vb" + std::to_string(i) + "=" + describe(vb[i]) + "+" + std::to_string(offset[i]);
+                vb[i]->Release();
+            }
+        ID3D11ShaderResourceView* vsrv[kSlots] = {};
+        ctx->VSGetShaderResources(0, kSlots, vsrv);
+        for (int i = 0; i < kSlots; ++i)
+            if (vsrv[i]) {
+                line += " v" + std::to_string(i) + "=" + describe(resource_of(vsrv[i]));
+                D3D11_SHADER_RESOURCE_VIEW_DESC vd;
+                vsrv[i]->GetDesc(&vd);
+                if (vd.ViewDimension == D3D11_SRV_DIMENSION_BUFFER || vd.ViewDimension == D3D11_SRV_DIMENSION_BUFFEREX) {
+                    snprintf(tmp, sizeof(tmp), "[f%d d%d %u+%u]", vd.Format, vd.ViewDimension, vd.Buffer.FirstElement,
+                             vd.Buffer.NumElements);
+                    line += tmp;
+                }
+                vsrv[i]->Release();
+            }
+        ID3D11DeviceContext1* c1 = nullptr;
+        if (SUCCEEDED(ctx->QueryInterface(__uuidof(ID3D11DeviceContext1), reinterpret_cast<void**>(&c1)))) {
+            ID3D11Buffer* cb[8] = {};
+            UINT first[8] = {}, num[8] = {};
+            c1->VSGetConstantBuffers1(0, 8, cb, first, num);
+            for (int i = 0; i < 8; ++i)
+                if (cb[i]) {
+                    line += " c" + std::to_string(i) + "=" + describe(cb[i]) + "@" + std::to_string(first[i]) + "x" +
+                            std::to_string(num[i]);
+                    cb[i]->Release();
+                }
+            c1->Release();
+        }
+        ID3D11DepthStencilState* dss = nullptr;
+        UINT ref = 0;
+        ctx->OMGetDepthStencilState(&dss, &ref);
+        if (dss) {
+            D3D11_DEPTH_STENCIL_DESC dd;
+            dss->GetDesc(&dd);
+            snprintf(tmp, sizeof(tmp), " st %d ref %02x wm %02x", dd.StencilEnable, ref, dd.StencilWriteMask);
+            line += tmp;
+            dss->Release();
+        }
     }
     fprintf(g_out, "%s\n", line.c_str());
 }
@@ -170,6 +226,10 @@ std::string caller_of(const void* addr) {
 }
 
 bool on() { return g_tracing.load(std::memory_order_relaxed); }
+
+// Stage 7 recon: while tracing, each CPU write to a big dynamic buffer (the 1 MB per-frame data Faith's bones
+// are read from) is saved whole to trace_<n>_buf<k>.bin and noted in the trace.
+int g_buf_dumps = 0;
 using hook_guard::Inside;
 std::atomic<uint32_t> g_hits[kVersions][2];  // Draw, OMSetRenderTargets calls per hooked version (BUG-011)
 
@@ -265,7 +325,10 @@ void STDMETHODCALLTYPE d_draw_idx(ID3D11DeviceContext* c, UINT a, UINT b, INT d)
 template <int V>
 void STDMETHODCALLTYPE d_draw_idx_inst(ID3D11DeviceContext* c, UINT a, UINT b, UINT d, INT e, UINT f) {
     const Inside in;
-    if (!in.nested) taa_eyes::on_other_draw(c, "indexed inst");
+    if (!in.nested) {
+        taa_eyes::on_other_draw(c, "indexed inst");
+        faith_bones::before_draw(c);
+    }
     if (on()) emit(c, "drawidxi", false);
     o_draw_idx_inst[V](c, a, b, d, e, f);
 }
@@ -553,6 +616,7 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
     }
     if (!g_installed && (taa_eyes::enabled() || hand_render::enabled())) install(chain);
     taa_eyes::on_present(chain);
+    faith_bones::on_present();
     if (g_tracing.load()) {
         std::lock_guard lock(g_mutex);
         if (g_out) fprintf(g_out, "------ present (frame boundary) ------\n");
@@ -594,6 +658,10 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
             dev->Release();
         }
     }
+    if (std::filesystem::remove(dir / L"BONEREC", ec)) {  // Stage 7 recon: record Faith's arm bones
+        if (!g_installed) install(chain);
+        faith_bones::request_record(dir, 600);
+    }
     const bool asked = g_trace_request.exchange(false);
     if (!std::filesystem::remove(dir / L"TRACE", ec) && !asked) return;
     if (!g_installed) install(chain);
@@ -603,10 +671,25 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
     std::lock_guard lock(g_mutex);
     if (_wfopen_s(&g_out, (dir / name).c_str(), L"w") != 0) g_out = nullptr;
     g_seq = 0;
+    g_dir = dir;
+    g_buf_dumps = 0;
     g_frames_left = 3;  // the rest of this frame + two full frames
     g_tracing = g_out != nullptr;
 }
 
 void request_trace() { g_trace_request = true; }
+bool tracing() { return g_tracing.load(std::memory_order_relaxed); }
+void on_big_write(const void* res, const void* data, unsigned size) {
+    std::lock_guard lock(g_mutex);
+    if (!g_out || g_buf_dumps >= 24) return;
+    wchar_t name[48];
+    swprintf_s(name, L"trace_%d_buf%d.bin", g_index, ++g_buf_dumps);
+    FILE* f = nullptr;
+    if (_wfopen_s(&f, (g_dir / name).c_str(), L"wb") == 0 && f) {
+        fwrite(data, 1, size, f);
+        fclose(f);
+    }
+    fprintf(g_out, "%6llu big write %p (%u bytes) -> buf%d\n", (unsigned long long)++g_seq, res, size, g_buf_dumps);
+}
 
 }  // namespace mecvr::ctx_hooks
