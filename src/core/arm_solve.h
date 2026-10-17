@@ -1,0 +1,246 @@
+#pragma once
+// Stage 7A: Faith's arms from her own skinning matrices (docs/recon/STAGE7-RECON.md). Pure, unit-tested.
+//
+// Every bone matrix S maps the bind pose to the world (S = M * B^-1, rigid; 3x4 row-major, as the game uploads
+// it). Two bones that meet at a joint share one bind-space point x with S_a(x) = S_b(x) in every frame:
+// (R_a - R_b) x = t_b - t_a, solved by least squares over the frames (`Learner` keeps the normal equations per
+// pair, so frames aren't stored). Pairs that fit within 2 mm and really rotate against each other give joint
+// points; points within 1.5 cm are one joint. A segment bone touches both of its end joints. Then, per arm:
+//   wrist    = a joint with 4+ joints within 12 cm sharing a bone with it (the finger roots),
+//   elbow    = the farthest joint 15-40 cm from the wrist sharing a bone with it,
+//   shoulder = the farthest joint 15-40 cm from the elbow sharing a bone with it, on the far side from the wrist.
+// Each bone rides on the segment of the most proximal joint it touches (bind space): beyond the elbow -> upper
+// arm, beyond the wrist -> forearm, else the hand (fingers included); a bone touching a joint further from the
+// elbow than the shoulder is (collarbone, chest) is left alone. A bone that touches no joint (fits 2-10 mm only)
+// rides with its best-fitting partner.
+#include <cmath>
+#include <vector>
+
+#include "core/vmath.h"
+
+namespace mecvr::arm_solve {
+
+struct Bone {  // 3x4 row-major: world = R * x + t (rows: r00 r01 r02 t0 / r10 ...)
+    float m[12];
+    vm::Vec3 apply(vm::Vec3 x) const {
+        return {m[0] * x.x + m[1] * x.y + m[2] * x.z + m[3], m[4] * x.x + m[5] * x.y + m[6] * x.z + m[7],
+                m[8] * x.x + m[9] * x.y + m[10] * x.z + m[11]};
+    }
+};
+
+enum Segment { kNone = -1, kUpper = 0, kFore = 1, kHand = 2 };
+
+struct Arm {
+    vm::Vec3 shoulder, elbow, wrist;  // bind space; world = S(x) of any bone touching that joint
+    int shoulder_bone = -1, elbow_bone = -1, wrist_bone = -1;  // a bone that touches each joint (to place it)
+};
+
+struct Result {
+    bool ok = false;
+    const char* why = "not solved";
+    Arm arm[2];
+    std::vector<int> side;     // per bone: arm 0/1, -1 = not an arm bone
+    std::vector<int> segment;  // per bone: Segment
+};
+
+class Learner {
+public:
+    // Tunables
+    double fit_m = 0.002;      // rms residual for a joint pair
+    double motion = 1e-4;      // per-frame smallest pivot: the two bones must rotate against each other
+    float merge_m = 0.015f;    // joint points closer than this are one joint
+    double partner_m = 0.010;  // a bone touching no joint rides with a partner it fits this well
+
+    void reset(int bones) {
+        n_ = bones;
+        frames_ = 0;
+        acc_.assign(size_t(bones) * bones, Acc{});
+    }
+    int bones() const { return n_; }
+    int frames() const { return frames_; }
+
+    // One frame of all n bones.
+    void add(const Bone* b) {
+        for (int i = 0; i < n_; ++i)
+            for (int j = i + 1; j < n_; ++j) {
+                Acc& a = acc_[size_t(i) * n_ + j];
+                for (int r = 0; r < 3; ++r) {
+                    const double row[3] = {double(b[i].m[r * 4]) - b[j].m[r * 4], double(b[i].m[r * 4 + 1]) - b[j].m[r * 4 + 1],
+                                           double(b[i].m[r * 4 + 2]) - b[j].m[r * 4 + 2]};
+                    const double rhs = double(b[j].m[r * 4 + 3]) - b[i].m[r * 4 + 3];
+                    a.btb += rhs * rhs;
+                    for (int p = 0; p < 3; ++p) {
+                        a.atb[p] += row[p] * rhs;
+                        for (int q = p; q < 3; ++q) a.ata[p][q] += row[p] * row[q];
+                    }
+                }
+            }
+        ++frames_;
+    }
+
+    Result solve() const;
+
+private:
+    struct Acc { double ata[3][3] = {}, atb[3] = {}, btb = 0; };
+    int n_ = 0, frames_ = 0;
+    std::vector<Acc> acc_;
+};
+
+namespace detail {
+// Symmetric 3x3 (upper triangle filled) solve with partial pivoting; false if a pivot is below min_pivot.
+inline bool solve3(const double (&u)[3][3], const double (&b)[3], double min_pivot, double (&x)[3]) {
+    double m[3][4];
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) m[i][j] = i <= j ? u[i][j] : u[j][i];
+        m[i][3] = b[i];
+    }
+    for (int c = 0; c < 3; ++c) {
+        int p = c;
+        for (int r = c + 1; r < 3; ++r)
+            if (std::fabs(m[r][c]) > std::fabs(m[p][c])) p = r;
+        for (int j = 0; j < 4; ++j) { const double t = m[c][j]; m[c][j] = m[p][j]; m[p][j] = t; }
+        if (std::fabs(m[c][c]) < min_pivot) return false;
+        for (int r = 0; r < 3; ++r)
+            if (r != c) {
+                const double f = m[r][c] / m[c][c];
+                for (int j = c; j < 4; ++j) m[r][j] -= f * m[c][j];
+            }
+    }
+    for (int i = 0; i < 3; ++i) x[i] = m[i][3] / m[i][i];
+    return true;
+}
+}  // namespace detail
+
+inline Result Learner::solve() const {
+    using vm::Vec3;
+    Result res;
+    res.side.assign(n_, -1);
+    res.segment.assign(n_, kNone);
+    if (frames_ < 30) { res.why = "too few frames"; return res; }
+
+    // Joint points and which bones touch them.
+    struct Joint { Vec3 x; std::vector<int> bones; };
+    std::vector<Joint> joints;
+    std::vector<int> best(n_, -1);
+    std::vector<double> best_rms(n_, partner_m);
+    auto touch = [&](Joint& j, int b) {
+        for (int k : j.bones) if (k == b) return;
+        j.bones.push_back(b);
+    };
+    for (int i = 0; i < n_; ++i)
+        for (int j = i + 1; j < n_; ++j) {
+            const Acc& a = acc_[size_t(i) * n_ + j];
+            double x[3];
+            if (!detail::solve3(a.ata, a.atb, motion * frames_, x)) continue;
+            double r2 = a.btb;
+            for (int p = 0; p < 3; ++p) {
+                r2 -= 2 * x[p] * a.atb[p];
+                for (int q = 0; q < 3; ++q) r2 += x[p] * (p <= q ? a.ata[p][q] : a.ata[q][p]) * x[q];
+            }
+            const double rms = std::sqrt(std::fmax(r2, 0.0) / frames_);
+            for (int s = 0; s < 2; ++s) {  // each bone's best partner, for bones that touch no joint (below)
+                const int me = s ? j : i, other = s ? i : j;
+                if (rms < best_rms[me]) { best_rms[me] = rms; best[me] = other; }
+            }
+            if (rms > fit_m) continue;
+            const Vec3 pt{float(x[0]), float(x[1]), float(x[2])};
+            Joint* hit = nullptr;
+            for (Joint& jt : joints)
+                if ((jt.x - pt).length() < merge_m) { hit = &jt; break; }
+            if (!hit) { joints.push_back({pt, {}}); hit = &joints.back(); }
+            touch(*hit, i);
+            touch(*hit, j);
+        }
+    const int J = int(joints.size());
+    std::vector<std::vector<int>> of_bone(n_);  // joints each bone touches
+    for (int k = 0; k < J; ++k)
+        for (int b : joints[k].bones) of_bone[b].push_back(k);
+    auto linked = [&](int a, int b) {  // a bone touches both joints
+        for (int x : joints[a].bones)
+            for (int y : joints[b].bones)
+                if (x == y) return true;
+        return false;
+    };
+    auto dist = [&](int a, int b) { return (joints[a].x - joints[b].x).length(); };
+
+    // Wrists: joints with 4+ linked joints within 12 cm (finger roots, hand bones).
+    std::vector<int> wrists;
+    for (int k = 0; k < J; ++k) {
+        int near = 0;
+        for (int o = 0; o < J; ++o)
+            if (o != k && dist(k, o) < 0.12f && linked(k, o)) ++near;
+        if (near >= 4) wrists.push_back(k);
+    }
+    // A hand has several joints that qualify; keep the one each arm chain starts from (it has an elbow).
+    struct Chain { int w, e, s; };
+    std::vector<Chain> chains;
+    for (int w : wrists) {
+        int e = -1;
+        for (int o = 0; o < J; ++o)
+            if (o != w && linked(w, o) && dist(w, o) > 0.15f && dist(w, o) < 0.40f && (e < 0 || dist(w, o) > dist(w, e))) e = o;
+        if (e < 0) continue;
+        int s = -1;
+        for (int o = 0; o < J; ++o)
+            if (o != e && o != w && linked(e, o) && dist(e, o) > 0.15f && dist(e, o) < 0.40f &&
+                dist(w, o) > dist(w, e) + 0.10f && (s < 0 || dist(e, o) > dist(e, s)))
+                s = o;
+        if (s < 0) continue;
+        bool dup = false;  // another wrist candidate of the same hand found the same elbow
+        for (Chain& c : chains)
+            if (c.e == e) {
+                dup = true;
+                // keep the wrist farther from the elbow (the real wrist; the others are hand/finger joints)
+                if (dist(w, e) > dist(c.w, c.e)) c.w = w;
+            }
+        if (!dup) chains.push_back({w, e, s});
+    }
+    if (chains.size() != 2) { res.why = chains.size() < 2 ? "fewer than two arms found" : "more than two arms found"; return res; }
+
+    for (int a = 0; a < 2; ++a) {
+        const Chain& c = chains[a];
+        Arm& arm = res.arm[a];
+        arm.wrist = joints[c.w].x;
+        arm.elbow = joints[c.e].x;
+        arm.shoulder = joints[c.s].x;
+        arm.wrist_bone = joints[c.w].bones[0];
+        arm.elbow_bone = joints[c.e].bones[0];
+        arm.shoulder_bone = joints[c.s].bones[0];
+        const Vec3 up_dir = (arm.shoulder - arm.elbow).normalized(), fore_dir = (arm.elbow - arm.wrist).normalized();
+        const float reach = (arm.shoulder - arm.elbow).length() + 0.03f;
+        for (int b = 0; b < n_; ++b) {
+            if (of_bone[b].empty()) continue;
+            bool body = false, upper = false, fore = false, near_hand = false;
+            for (int k : of_bone[b]) {
+                const Vec3 p = joints[k].x;
+                if ((p - arm.elbow).length() > reach && (p - arm.elbow).dot(up_dir) > 0) body = true;  // past the shoulder
+                if ((p - arm.elbow).dot(up_dir) > 0.02f) upper = true;
+                else if ((p - arm.wrist).dot(fore_dir) > 0.02f) fore = true;
+                else if ((p - arm.wrist).length() < 0.25f) near_hand = true;
+            }
+            if (body) continue;
+            const int seg = upper ? kUpper : fore ? kFore : near_hand ? kHand : kNone;
+            if (seg == kNone) continue;
+            if (res.side[b] >= 0 && res.side[b] != a) { res.side[b] = -2; continue; }  // claimed by both arms: leave it
+            res.side[b] = a;
+            res.segment[b] = seg;
+        }
+    }
+    for (int b = 0; b < n_; ++b)
+        if (res.side[b] == -2) { res.side[b] = -1; res.segment[b] = kNone; }
+    // Bones that touch no joint (real fingertips fit only 2-5 mm, STAGE7-RECON) ride with their best partner,
+    // repeated so chains of them follow.
+    for (bool changed = true; changed;) {
+        changed = false;
+        for (int b = 0; b < n_; ++b)
+            if (of_bone[b].empty() && res.side[b] < 0 && best[b] >= 0 && res.side[best[b]] >= 0) {
+                res.side[b] = res.side[best[b]];
+                res.segment[b] = res.segment[best[b]];
+                changed = true;
+            }
+    }
+    res.ok = true;
+    res.why = "ok";
+    return res;
+}
+
+}  // namespace mecvr::arm_solve
