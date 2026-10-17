@@ -25,12 +25,12 @@ Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 ✅ Hooks = heavy, doors right, Faith stays with you in fights (PLAYTEST-6b)
 ✅ Shift by a quick lean/step: easy enough, nothing stray (PLAYTEST-6d)
 ✅ Faith stays under you in fights: never came apart, slides back OK, walls OK, comfort 5 (PLAYTEST-6g, BUG-016 closed)
-🔧 MAG Rope by throwing a hand up worked (6h) but the gestures ate punches (BUG-017): stricter throw, Disruptor push off for now → PLAYTEST-6i
+🔧 Punches back + MAG Rope throw works (6i); fixing punches-as-kicks, rope-kicks, Disruptor hold → PLAYTEST-6j
 ⬜ Not started: body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-6i
-🐞 Open bugs: BUG-017 sev-2 (punches lost to gadget gestures; fix built, confirm in 6i); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-6i (fight + MAG Rope, ~5 min). Me: Stage 6 gate, then Stage 7 (Faith's IK arms)
+❓ Need from you: PLAYTEST-6j
+🐞 Open bugs: BUG-017 sev-2 (punches lost to gadget gestures; fix built, part 2 built, confirm in 6j); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: You: PLAYTEST-6j (fight + MAG Rope + Disruptor, ~5 min). Me: Stage 6 gate, then Stage 7 (Faith's IK arms)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

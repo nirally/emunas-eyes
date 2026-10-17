@@ -310,8 +310,9 @@ uint16_t punches() {
             g_throw[h].speed = hand_pose::punch_speed();
             if (g_throw[h].update(off, dt)) {
                 if (g_punch_pending[h]) g_punch_pending[h] = 0;  // it started like a punch: the throw wins
-                LOG_I("input", "%s throw %.1f m/s -> MAG Rope (Up held until the arm comes down)", h ? "right" : "left",
-                      g_throw[h].vel.length());
+                const bool flick = hand_pose::cancel_flick();    // or it met the wall: no door slam (kick)
+                LOG_I("input", "%s throw %.1f m/s -> MAG Rope (Up held until the arm comes down)%s", h ? "right" : "left",
+                      g_throw[h].vel.length(), flick ? ", wall flick dropped" : "");
                 hand_pose::contact_pulse(h);
             }
             if (g_throw[h].holding) hold |= pad_map::kLB;
@@ -345,7 +346,7 @@ uint16_t punches() {
         } else if (g_punch_pending[h] && now - g_punch_pending[h] >= 100) {
             g_punch_pending[h] = 0;
             const bool hook = g_punch_kind[h] == punch_model::Hand::kHook;
-            g_punch_until = now + 120;
+            g_punch_until = now + (g_punch_open[h] ? 500 : 120);  // Disruptor held (PLAYTEST-6i: a 120 ms tap did nothing)
             g_punch_button = g_punch_open[h] ? pad_map::kB : hook ? pad_map::kY : pad_map::kX;
             hand_pose::note_punch();
             hand_pose::contact_pulse(h);

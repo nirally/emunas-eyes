@@ -44,12 +44,17 @@ struct Hand {
         const vm::Vec3 dir = vel * (1.f / s);
         const vm::Vec3 out = off.normalized();
         const bool in_front = out.dot(fwd) > 0.2f;       // hand ahead of the body, not at the side or behind
-        const bool forward = dir.dot(fwd) > 0.64f;        // within ~50 deg of where you look
         const bool away = dir.dot(out) > 0.2f;            // moving away from the head (not pulling back)
-        const bool hook = std::fabs(dir.dot(fwd)) < 0.64f && dir.dot(out) > -0.3f &&
+        // A hook swings across the body, towards the other side (PLAYTEST-6i: "punches register as kicks" -
+        // anything over 50 deg off the view counted, so straight punches drifting outwards were hooks).
+        const vm::Vec3 right = fwd.cross({0, 1, 0}).normalized();
+        const float side = off.dot(right) >= 0 ? 1.f : -1.f;  // which side of the head the hand is on
+        const bool across = dir.dot(right) * side < -0.5f;
+        const bool hook = across && std::fabs(dir.dot(fwd)) < 0.64f && dir.dot(out) > -0.3f &&
                           std::fabs(dir.y) < 0.7f;        // across the front, not pulling back, not up/down
+        const bool forward = dir.dot(fwd) > 0.5f;         // within ~60 deg of where you look
         if (!in_front) return kNone;
-        const int kind = forward && away ? kStraight : hook ? kHook : kNone;
+        const int kind = hook ? kHook : forward && away ? kStraight : kNone;
         if (kind == kNone) return kNone;
         armed = false;
         since = 0;

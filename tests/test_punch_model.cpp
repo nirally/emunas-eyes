@@ -78,3 +78,19 @@ TEST(punch_kinds_straight_vs_hook) {
     for (int i = 0; i < 10 && !kind; ++i) kind = k.update(q = q + vm::Vec3{-4.f / 90, 0, -1.f / 90}, kFwd, 1.f / 90);
     CHECK(kind == Hand::kHook);
 }
+
+TEST(punch_drifting_outwards_is_straight_not_hook) {
+    // PLAYTEST-6i: a right punch going forward and out to the right (~55 deg off the view) came out as a hook.
+    Hand h;
+    vm::Vec3 p{0.2f, -0.3f, -0.15f};
+    int kind = 0;
+    for (int i = 0; i < 20; ++i) h.update(p, kFwd, 1.f / 90);
+    for (int i = 0; i < 10 && !kind; ++i) kind = h.update(p = p + vm::Vec3{3.3f / 90, 0, -2.3f / 90}, kFwd, 1.f / 90);
+    CHECK(kind == Hand::kStraight);
+    Hand k;  // the left hand swinging right, across the body, is a hook
+    vm::Vec3 q{-0.35f, -0.2f, -0.3f};
+    kind = 0;
+    for (int i = 0; i < 20; ++i) k.update(q, kFwd, 1.f / 90);
+    for (int i = 0; i < 10 && !kind; ++i) kind = k.update(q = q + vm::Vec3{4.f / 90, 0, -1.f / 90}, kFwd, 1.f / 90);
+    CHECK(kind == Hand::kHook);
+}

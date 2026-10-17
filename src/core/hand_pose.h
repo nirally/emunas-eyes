@@ -34,6 +34,8 @@ float recent_speed(int hand);
 void set_flick(int mode, float speed);
 float flick_speed();  // 0 when off
 void flick_pulse();
+// A MAG Rope throw met the wall (6D): drop a flick attack that hasn't gone out yet. True if one was dropped.
+bool cancel_flick();
 // Pad buttons the hands add this frame: Interact while pressing, the attack for 150 ms after a flick.
 uint16_t touch_buttons();
 

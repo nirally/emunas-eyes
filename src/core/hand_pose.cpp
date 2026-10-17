@@ -142,7 +142,9 @@ bool touch_press() {
 
 namespace mecvr::hand_pose {
 namespace {
-std::atomic<ULONGLONG> g_flick_until{0};
+// The flick's attack goes out 100 ms late, like a punch, so a MAG Rope throw that meets the wall can cancel it
+// (PLAYTEST-6i: throws at the point kicked).
+std::atomic<ULONGLONG> g_flick_at{0}, g_flick_until{0};
 std::atomic<int> g_flick_mode{1};
 std::atomic<float> g_flick_speed{2.8f};
 }  // namespace
@@ -154,7 +156,8 @@ float flick_speed() { return g_flick_mode.load() ? g_flick_speed.load() : 0.f; }
 void flick_pulse();
 uint16_t touch_buttons() {
     uint16_t b = touch_press() ? pad_map::kA : 0;
-    if (GetTickCount64() < g_flick_until.load()) b |= g_flick_mode.load() == 2 ? pad_map::kX : pad_map::kY;
+    const ULONGLONG now = GetTickCount64();
+    if (now >= g_flick_at.load() && now < g_flick_until.load()) b |= g_flick_mode.load() == 2 ? pad_map::kX : pad_map::kY;
     return b;
 }
 }  // namespace mecvr::hand_pose
@@ -177,5 +180,11 @@ bool punch_recent(unsigned ms) { return GetTickCount64() - g_last_punch.load() <
 }  // namespace mecvr::hand_pose
 void mecvr::hand_pose::flick_pulse() {
     g_last_flick = GetTickCount64();
-    g_flick_until = g_last_flick.load() + 150;
+    g_flick_at = g_last_flick.load() + 100;
+    g_flick_until = g_last_flick.load() + 250;
+}
+bool mecvr::hand_pose::cancel_flick() {
+    const bool pending = GetTickCount64() < g_flick_at.load();
+    if (pending) g_flick_until = 0;
+    return pending;
 }
