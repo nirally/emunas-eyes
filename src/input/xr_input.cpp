@@ -283,6 +283,7 @@ punch_model::Hand g_punch[2];
 gadget_model::Throw g_throw[2];
 std::atomic<bool> g_rope_on{true}, g_disruptor_on{false};
 float g_open_for[2] = {0, 0};  // s each hand has been held open
+ULONGLONG g_disrupt_since[2] = {0, 0};  // B held since (GetTickCount64), 0 = not holding
 ULONGLONG g_punch_pending[2] = {0, 0}, g_punch_until = 0;
 int g_punch_kind[2] = {0, 0};
 bool g_punch_open[2] = {false, false};
@@ -319,12 +320,23 @@ uint16_t punches() {
         }
         if (!on || !p.valid) {
             g_punch[h].primed = false;
-            g_punch_pending[h] = 0;
+            g_punch_pending[h] = g_disrupt_since[h] = 0;
             continue;
         }
         g_punch[h].speed = hand_pose::punch_speed();
         const hand_pose::Fingers f = hand_pose::fingers(h);
         g_open_for[h] = gadget_model::open_hand(f.index, f.others, f.thumb) ? g_open_for[h] + dt : 0.f;
+        // The game's Disruptor needs B held (user, Options > Controls; PLAYTEST-6j: B taps did nothing): held while
+        // the hand stays open, at least kDisruptMin, at most kDisruptMax; closing the hand lets go.
+        if (g_disrupt_since[h]) {
+            const ULONGLONG held = now - g_disrupt_since[h];
+            if (held >= gadget_model::kDisruptMaxMs || (held >= gadget_model::kDisruptMinMs && g_open_for[h] == 0)) {
+                LOG_I("input", "%s Disruptor released after %.1f s", h ? "right" : "left", held / 1000.0);
+                g_disrupt_since[h] = 0;
+            } else {
+                hold |= pad_map::kB;
+            }
+        }
         if (const int kind = g_punch[h].update(off, head.rotation.rotate({0, 0, -1}), dt)) {
             const bool open = disruptor_on && kind == punch_model::Hand::kStraight && g_open_for[h] >= gadget_model::kOpenFor;
             // A hook can't start a throw (PLAYTEST-6h); a straight one can (looking up at the point), and the throw
@@ -346,8 +358,12 @@ uint16_t punches() {
         } else if (g_punch_pending[h] && now - g_punch_pending[h] >= 100) {
             g_punch_pending[h] = 0;
             const bool hook = g_punch_kind[h] == punch_model::Hand::kHook;
-            g_punch_until = now + (g_punch_open[h] ? 500 : 120);  // Disruptor held (PLAYTEST-6i: a 120 ms tap did nothing)
-            g_punch_button = g_punch_open[h] ? pad_map::kB : hook ? pad_map::kY : pad_map::kX;
+            if (g_punch_open[h]) {
+                g_disrupt_since[h] = now;
+            } else {
+                g_punch_until = now + 120;
+                g_punch_button = hook ? pad_map::kY : pad_map::kX;
+            }
             hand_pose::note_punch();
             hand_pose::contact_pulse(h);
             LOG_I("input", "%s %s %.1f m/s -> %s", h ? "right" : "left",

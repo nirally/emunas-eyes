@@ -6,7 +6,7 @@
 // raise to swing, drop to let go. A throw that starts like a punch cancels the punch (punches go out 100 ms
 // late, D-039); a hook just before blocks the throw.
 // Disruptor = an open-hand push: a straight punch with the hand held fully open (no finger on the trigger,
-// thumb off, grip released) for a moment first.
+// thumb off, grip released) for a moment first; B is then held while the hand stays open.
 // Vectors are in the recentred tracking frame (metres, seconds), y up.
 #include "core/vmath.h"
 
@@ -16,6 +16,8 @@ namespace mecvr::gadget_model {
 // PLAYTEST-6h: "grip loose" (others < 0.35) matched relaxed fists in fights; the grip has to be let go.
 inline bool open_hand(float index, float others, float thumb) { return index < 0.1f && others < 0.2f && thumb < 0.2f; }
 constexpr float kOpenFor = 0.3f;  // s the hand has to be open before a push counts
+// The game's Disruptor charges while B is held (user, PLAYTEST-6j): held from the push while the hand stays open.
+constexpr unsigned kDisruptMinMs = 1500, kDisruptMaxMs = 5000;
 
 struct Throw {
     // Tunables. PLAYTEST-6h: chin height / 30 deg / release at the shoulder fired on hooks from a raised guard

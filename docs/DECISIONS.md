@@ -298,4 +298,5 @@ Chose: gadget_model (core, unit-tested, 7 tests). MAG Rope = a throw: either han
 Rejected: true hand aim (the game's target choice would have to be reverse-engineered); trigger + push for the Disruptor (RT = Shift, LT = Down).
 Known risk: a throw with no MAG point in reach is a jump (LB = Up actions); a straight punch while looking steeply up can count as a throw.
 D-041 update (PLAYTEST-6h, BUG-017: MAG Rope worked; punches broke): throw >45 deg up, ending above the head, not after a hook, let go below the eyes; Disruptor push stricter and off by default (no target yet).
+D-041 update 2 (PLAYTEST-6i/6j, Q-605): hook = swing across the body; the wall flick waits 100 ms so a throw can cancel it; the Disruptor needs B held (user: Options > Controls, all unlocked) - the push holds B while the hand stays open, 1.5 s min, 5 s max, closing the hand lets go. Push on in the user config for testing.
 Not verified in game (needs real hand motion): PLAYTEST-6h.

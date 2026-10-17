@@ -32,3 +32,4 @@ Answer: (a). Buttons stay as fallback.
 ### Q-605 — Which pad button is the Disruptor, and is it unlocked in this save?
 Context: PLAYTEST-6j: the push gesture sends B (a sound plays), but pressing B at the target does nothing either. "B = Disruptor" in D-027 came from the assumed default layout, never verified in game.
 Ask: Options > Controls (controller layout) - which button is listed for the Disruptor? Was it used successfully anywhere?
+ANSWERED 2026-10-17: B is the Disruptor, but it has to be held to activate; everything is unlocked in the save. -> the push now holds B while the hand stays open (1.5-5 s).
