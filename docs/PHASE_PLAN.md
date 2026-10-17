@@ -5,7 +5,7 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-17
-Mode: agentic | Gate: hard | Stage 6 of 10 — combat
+Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
 ✅ Stage 2 passed (D-025): true 3D, full headset view, sharp at 2880x1620 (DSR), eyes in sync, anti-aliasing per eye, effects correct in both eyes; size/depth 5/5, comfort 5
@@ -27,11 +27,12 @@ Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 ✅ Faith stays under you in fights: never came apart, slides back OK, walls OK, comfort 5 (PLAYTEST-6g, BUG-016 closed)
 ✅ Punch = punch, hook = kick; MAG Rope by throwing a hand up, no stray kicks (PLAYTEST-6j, BUG-017 closed)
 ✅ Disruptor by an open-hand push, held while the hand stays open (PLAYTEST-6k: works, ~2 s, nothing stray, comfort 5)
+✅ Stage 6 passed (D-042): combat and gadgets by body, buttons kept, comfort 5 throughout
 ⬜ Not started: body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-6l (Stage 6 gate)
+❓ Need from you: nothing yet - Stage 7 recon first
 🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-6l, a mission (~15 min) = Stage 6 gate. Me: then Stage 7 (Faith's IK arms)
+▶ Next: Me: Stage 7 recon (find Faith's arm skeleton and how the game poses it), then a brief
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

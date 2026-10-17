@@ -300,3 +300,9 @@ Known risk: a throw with no MAG point in reach is a jump (LB = Up actions); a st
 D-041 update (PLAYTEST-6h, BUG-017: MAG Rope worked; punches broke): throw >45 deg up, ending above the head, not after a hook, let go below the eyes; Disruptor push stricter and off by default (no target yet).
 D-041 update 2 (PLAYTEST-6i/6j, Q-605): hook = swing across the body; the wall flick waits 100 ms so a throw can cancel it; the Disruptor needs B held (user: Options > Controls, all unlocked) - the push holds B while the hand stays open, 1.5 s min, 5 s max, closing the hand lets go. Push on in the user config for testing.
 Not verified in game (needs real hand motion): PLAYTEST-6h.
+
+### D-042 — Stage 6 gate: pass
+Date: 2026-10-17  Stage: 6
+Passed on: user's answers "1 yes, 2 yes, 3 nothing, 4 5" to PLAYTEST-6l, given without a new session (the game hadn't run since the 6l build); user chose to count today's sessions PLAYTEST-6j and 6k instead (fights, MAG Rope points, Disruptor targets; PLAYTEST-6k.log: 10 attacks, 3 throws, 6 Disruptor holds 1.5-4.2 s, no view gaps over 0.2 m, no errors). Comfort 5 in every Stage 6 playtest.
+Built: physical punching, straight = Light / hook (across the body) = Heavy (D-039); Shift by a quick lean or step (D-040); room-scale keeps Faith under you in fights (BUG-016: stall push, slide while driving, slide when she won't walk); MAG Rope by throwing a hand up past the head, lower to let go; Disruptor by an open-hand push held while open (D-041, BUG-017). All buttons kept.
+Not exercised as a single mission run with this exact build (the 6k -> 6l build only changed the Disruptor default to on, which the user's config already had).
