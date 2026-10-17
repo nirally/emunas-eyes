@@ -25,11 +25,12 @@ Mode: agentic | Gate: hard | Stage 6 of 10 — combat
 ✅ Hooks = heavy, doors right, Faith stays with you in fights (PLAYTEST-6b)
 ✅ Shift by a quick lean/step: easy enough, nothing stray (PLAYTEST-6d)
 ✅ Faith stays under you in fights: never came apart, slides back OK, walls OK, comfort 5 (PLAYTEST-6g, BUG-016 closed)
-🔧 Punches back + MAG Rope throw works (6i); fixing punches-as-kicks, rope-kicks, Disruptor hold → PLAYTEST-6j
+✅ Punch = punch, hook = kick; MAG Rope by throwing a hand up, no stray kicks (PLAYTEST-6j, BUG-017 closed)
+❓ Disruptor: the push sends B but B does nothing in game either (Q-605)
 ⬜ Not started: body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-6j
-🐞 Open bugs: BUG-017 sev-2 (punches lost to gadget gestures; fix built, part 2 built, confirm in 6j); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+❓ Need from you: which button is the Disruptor in Options > Controls (Q-605)
+🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
 ▶ Next: You: PLAYTEST-6j (fight + MAG Rope + Disruptor, ~5 min). Me: Stage 6 gate, then Stage 7 (Faith's IK arms)
 
 ## Prerequisites

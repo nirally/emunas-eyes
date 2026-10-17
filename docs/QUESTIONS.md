@@ -28,3 +28,7 @@ Options:
 ### Q-604 — MAG Rope + Disruptor by hand: how? — ANSWERED 2026-10-17: gesture, head-aimed
 Options: (a) gesture fires the gadget, the game keeps choosing the target from the view (= head) (recommended, small); (b) true hand aim (reverse-engineer target choice, large/uncertain); (c) buttons only, skip 6D.
 Answer: (a). Buttons stay as fallback.
+
+### Q-605 — Which pad button is the Disruptor, and is it unlocked in this save?
+Context: PLAYTEST-6j: the push gesture sends B (a sound plays), but pressing B at the target does nothing either. "B = Disruptor" in D-027 came from the assumed default layout, never verified in game.
+Ask: Options > Controls (controller layout) - which button is listed for the Disruptor? Was it used successfully anywhere?
