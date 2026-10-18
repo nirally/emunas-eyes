@@ -3,7 +3,8 @@
 //    next two frames with the bound pixel/compute shader, inputs (SRVs) and outputs (RTVs/UAVs) to
 //    trace_<n>.txt, per context;
 //  - per-eye TAA history (taa_eyes, D-023): told about pixel shaders, render targets and draws.
-// Installed at the first Present when per-eye TAA is on, or at the first TRACE request.
+// Installed at the first Present when per-eye TAA, the hands or Faith's arms (faith_bones) are on, or at the
+// first TRACE request.
 #include "render/ctx_hooks.h"
 
 #include <d3d11_4.h>
@@ -614,7 +615,8 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
         LOG_I("d3d", "context calls seen per method version /10 s:%s command lists run %u; thread-safe %d; not hooked:%s",
               line[0] ? line : " none;", g_exec_lists.exchange(0), safe, miss[0] ? miss : " none");
     }
-    if (!g_installed && (taa_eyes::enabled() || hand_render::enabled())) install(chain);
+    // Faith's arms need the draw hooks too, with the gloves hidden (live: hands.show off at startup = no arms).
+    if (!g_installed && (taa_eyes::enabled() || hand_render::enabled() || faith_bones::active())) install(chain);
     taa_eyes::on_present(chain);
     faith_bones::on_present();
     if (g_tracing.load()) {

@@ -8,6 +8,7 @@
 // new keeping the game's hand-to-forearm rotation (wrist rotation from the controller is a later step). Segment
 // frames: x along the bone, z = the bend plane's normal, so the twist follows the bend plane.
 #include <cmath>
+#include <vector>
 
 #include "core/vmath.h"
 
@@ -87,6 +88,48 @@ inline Result solve(vm::Vec3 s, vm::Vec3 e0, vm::Vec3 w0, vm::Vec3 target, vm::V
     r.elbow = e1;
     r.wrist = wt;
     return r;
+}
+
+// The hand's own axes in bind space, laid out like the glove's hand space (hand_render): -Z along the straight
+// fingers (wrist -> the mean of the hand joints past 6 cm: knuckles, fingers), +Y the thumb / index side (Faith's
+// front: in her bind pose the palms face the thighs), X = Y x Z. False without finger joints.
+inline bool hand_frame(vm::Vec3 wrist, const std::vector<vm::Vec3>& joints, vm::Vec3 front, vm::Quat& out) {
+    vm::Vec3 sum;
+    int n = 0;
+    for (const vm::Vec3& j : joints)
+        if ((j - wrist).length() > 0.06f) { sum = sum + (j - wrist); ++n; }
+    if (!n) return false;
+    const vm::Vec3 z = (sum * -1.f).normalized();
+    const vm::Vec3 y = (front - z * front.dot(z)).normalized();
+    if (y.length() < 0.5f) return false;
+    out = detail::frame(y.cross(z), z);
+    return true;
+}
+
+// Hand correction: the hand turns from its world rotation `now` (bone rotation * hand_frame) to `want` (the
+// controller's), about the new wrist.
+inline Rigid hand_to(vm::Quat now, vm::Quat want, vm::Vec3 w0, vm::Vec3 wt) {
+    const vm::Quat q = (want * now.conjugate()).normalized();
+    return {q, wt - q.rotate(w0)};
+}
+
+// The part of q that turns about the unit axis (swing-twist decomposition), as a rotation angle in (-pi, pi].
+inline float twist_angle(vm::Quat q, vm::Vec3 axis) {
+    const float s = vm::Vec3{q.x, q.y, q.z}.dot(axis);
+    float a = 2.f * std::atan2(s, q.w);
+    if (a > 3.14159265f) a -= 6.2831853f;
+    if (a < -3.14159265f) a += 6.2831853f;
+    return a;
+}
+
+// The forearm takes the share k (0..1) of the hand's twist about it, so the wrist skin (weighted between forearm and
+// hand) isn't wrung when the controller turns far from the game's hand (live: a gap at the wrist). The forearm
+// still runs elbow -> wrist; the hand is unchanged.
+inline void share_twist(Result& r, vm::Vec3 e0, vm::Vec3 w0, float k) {
+    const vm::Vec3 u0 = (w0 - e0).normalized();
+    const float a = twist_angle(r.fore.q.conjugate() * r.hand.q, u0) * k;
+    r.fore.q = (r.fore.q * vm::Quat::axis_angle(u0, a)).normalized();  // turn about the game's forearm first
+    r.fore.t = r.elbow - r.fore.q.rotate(e0);
 }
 
 // Apply a correction to a 3x4 row-major skinning matrix (world = R x + t): R' = Q R, t' = Q t + c.t.

@@ -87,6 +87,12 @@ int main(int argc, char** argv) {
                 const auto s = w(arm.shoulder, arm.shoulder_bone), e = w(arm.elbow, arm.elbow_bone), h = w(arm.wrist, arm.wrist_bone);
                 printf(" arm %d: shoulder %.3f %.3f %.3f  elbow %.3f %.3f %.3f  wrist %.3f %.3f %.3f  (upper %.3f m, fore %.3f m)\n", a,
                        s.x, s.y, s.z, e.x, e.y, e.z, h.x, h.y, h.z, (s - e).length(), (e - h).length());
+                printf("   bind: shoulder %.3f %.3f %.3f  elbow %.3f %.3f %.3f  wrist %.3f %.3f %.3f\n", arm.shoulder.x, arm.shoulder.y,
+                       arm.shoulder.z, arm.elbow.x, arm.elbow.y, arm.elbow.z, arm.wrist.x, arm.wrist.y, arm.wrist.z);
+                for (const auto& j : arm.hand_joints) {
+                    const auto d = j - arm.wrist;
+                    printf("   hand joint (bind, from wrist): %+.3f %+.3f %+.3f  %.3f m\n", d.x, d.y, d.z, d.length());
+                }
                 for (int seg = 0; seg < 3; ++seg) {
                     printf("   %s:", seg == 0 ? "upper" : seg == 1 ? "fore " : "hand ");
                     for (size_t b = 0; b < N; ++b) if (r.side[b] == a && r.segment[b] == seg) printf(" %zu", b);

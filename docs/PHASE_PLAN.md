@@ -28,12 +28,12 @@ Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 ✅ Punch = punch, hook = kick; MAG Rope by throwing a hand up, no stray kicks (PLAYTEST-6j, BUG-017 closed)
 ✅ Disruptor by an open-hand push, held while the hand stays open (PLAYTEST-6k: works, ~2 s, nothing stray, comfort 5)
 ✅ Stage 6 passed (D-042): combat and gadgets by body, buttons kept, comfort 5 throughout
-🚧 Stage 7: 7A done (the mod learns Faith's arms in ~4 s). 7B first half on the desktop: her arms bend to the (simulated) controllers every frame, her right hand lands where the glove was, no torn skin; her hand doesn't turn with the controller yet
+🚧 Stage 7: 7A done (the mod learns Faith's arms in ~4 s). 7B on the desktop: her arms bend to the (simulated) controllers every frame, her hands turn with them, her wrist wrap follows (no gap), fps unchanged; headset check next
 ⬜ Not started: body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: nothing yet (Q-701/702 come with the first IK playtest)
+❓ Need from you: Q-701, Q-702 in PLAYTEST-7a
 🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: Me: 7B hand rotation from the controller; then PLAYTEST-7a. You: SteamVR shows as not installed (2026-10-18) - reinstall it before the headset test
+▶ Next: You: PLAYTEST-7a (Faith's arms follow yours; Q-701, Q-702). Me after it: Q-702 hide the gloves (needs the wall/touch probes split from the glove drawing)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

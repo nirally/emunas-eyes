@@ -200,6 +200,7 @@ Hands place_hands(vm::Quat cam_rot, vm::Vec3 cam_pos) {
     if (!head.valid) return h;
     const vm::Quat inv_head = head.rotation.conjugate();
     h.view_right = cam_rot.rotate({1, 0, 0});
+    h.view_pos = cam_pos;
     for (int i = 0; i < 2; ++i) {
         const head_pose::Pose p = hand_pose::get(i);
         if (!p.valid) continue;

@@ -36,5 +36,7 @@ bool active();
 // the result is logged ([bones] "arms from ..."). The IK (7B) uses it.
 void set_arms(bool on);
 bool arms_known();
+// body.forearm_twist (7B): the forearm's share of the hand's twist about it (arm_ik::share_twist).
+void set_forearm_twist(float k);
 
 }  // namespace mecvr::faith_bones

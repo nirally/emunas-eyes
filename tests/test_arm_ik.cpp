@@ -112,3 +112,42 @@ TEST(arm_ik_apply_to_skinning_matrix) {
     arm_ik::apply(c, m);
     for (int i = 0; i < 2; ++i) CHECK(near3(S(m, xs[i]), want[i], 1e-3f));
 }
+
+TEST(arm_ik_hand_frame_from_bind_joints) {
+    // A right hand in an A-pose facing -z: fingers out and down, knuckle row along z, thumb towards the front (-z).
+    const Vec3 w{0.47f, 1.04f, 0.15f};
+    const Vec3 f = Vec3{0.6f, -0.8f, 0}.normalized();
+    std::vector<Vec3> joints = {w + Vec3{0, 0, -0.03f}};  // thumb root, near: ignored
+    for (int k = 0; k < 4; ++k) joints.push_back(w + f * 0.08f + Vec3{0, 0, -0.03f + 0.02f * k});
+    Quat q;
+    CHECK(arm_ik::hand_frame(w, joints, {0, 0, -1}, q));
+    CHECK(near3(q.rotate({0, 0, -1}), f, 0.02f));            // -Z along the fingers
+    CHECK(near3(q.rotate({0, 1, 0}), {0, 0, -1}, 0.02f));    // +Y to the thumb side
+    CHECK(q.rotate({1, 0, 0}).dot(Vec3{1, 0.75f, 0}.normalized()) > 0.99f);  // X away from the body: palm (-X) on the thigh
+    CHECK(!arm_ik::hand_frame(w, {w + Vec3{0, 0, -0.03f}}, {0, 0, -1}, q));  // no finger joints
+}
+
+TEST(arm_ik_hand_to_turns_about_new_wrist) {
+    const Quat now = Quat::axis_angle({0.2f, 1, 0.3f}, 0.9f), want = Quat::axis_angle({1, -0.4f, 0}, -1.2f);
+    const Vec3 w0{0.2f, 0.9f, 0}, wt{0.3f, 1.3f, -0.35f};
+    const auto c = arm_ik::hand_to(now, want, w0, wt);
+    CHECK(near3(c.apply(w0), wt));
+    for (const Vec3& ax : {Vec3{1, 0, 0}, Vec3{0, 1, 0}, Vec3{0, 0, 1}})
+        CHECK(near3(c.q.rotate(now.rotate(ax)), want.rotate(ax)));
+}
+
+TEST(arm_ik_share_twist_moves_twist_into_forearm) {
+    auto r = arm_ik::solve(kS, kE, kW, {0.30f, 1.30f, -0.35f}, kPole);
+    const Vec3 u0 = (kW - kE).normalized();
+    // A hand turned 150 deg about the forearm relative to the forearm's correction.
+    r.hand.q = (r.fore.q * Quat::axis_angle(u0, 2.6f)).normalized();
+    r.hand.t = r.wrist - r.hand.q.rotate(kW);
+    const Quat hand = r.hand.q;
+    arm_ik::share_twist(r, kE, kW, 0.5f);
+    CHECK(std::fabs(arm_ik::twist_angle(r.fore.q.conjugate() * r.hand.q, u0) - 1.3f) < 0.01f);  // half left at the wrist
+    CHECK(near3(r.fore.apply(kE), r.elbow));
+    CHECK(near3(r.fore.apply(kW), r.wrist));
+    CHECK(qangle(r.hand.q * hand.conjugate()) < 1e-3f);
+    arm_ik::share_twist(r, kE, kW, 1.f);
+    CHECK(std::fabs(arm_ik::twist_angle(r.fore.q.conjugate() * r.hand.q, u0)) < 0.01f);
+}

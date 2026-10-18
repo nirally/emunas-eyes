@@ -85,6 +85,9 @@ TEST(arm_solve_finds_both_arms_and_segments) {
         CHECK((r.arm[a].shoulder - Vec3{0.18f * x, 1.45f, 0}).length() < 0.005f);
         CHECK((r.arm[a].elbow - Vec3{0.46f * x, 1.45f, 0}).length() < 0.005f);
         CHECK((r.arm[a].wrist - Vec3{0.70f * x, 1.45f, 0}).length() < 0.005f);
+        const int hb = r.arm[a].hand_bone;
+        CHECK(hb >= 0 && r.segment[hb] == arm_solve::kHand && r.side[hb] == a);
+        CHECK(r.arm[a].hand_joints.size() >= 10);  // finger roots and knuckles
     }
     int wrong = 0;
     for (size_t b = 0; b < rig.bones.size(); ++b) {

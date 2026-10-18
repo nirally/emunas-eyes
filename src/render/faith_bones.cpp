@@ -35,9 +35,17 @@ int g_tries = 0;
 std::atomic<bool> g_ik_ready{false};
 unsigned g_arm_count = 0;
 int g_left = -1;               // which solved arm is Faith's left (-1: still voting)
+bool g_hand_ok[2] = {};        // the hand turns with the controller (its bind-space frame is known)
+vm::Quat g_hand_bind[2];
+std::atomic<float> g_forearm_twist{0.5f};
+float g_twist_sum = 0;  // 5 s log: mean |twist| the hand had about the forearm, degrees       // the hand's axes in bind space, as the glove's hand space (arm_ik::hand_frame)
 float g_vote = 0;
 int g_votes = 0;
+int g_patched_other = 0;  // 5 s log: rows of other pieces moved with the arms
 int g_ik_frames = 0, g_ik_arms = 0, g_ik_clamped = 0, g_ik_far = 0;  // 5 s log
+int g_not_arms = 0;     // 5 s log: arm blocks rejected (the IK then waits for the arm piece's own draw)
+int g_far_eye[3] = {};  // too-far hands by the rendered eye (mono/unknown, left, right)
+float g_far_min = 1e9f, g_far_max = 0, g_near_max = 0;  // shoulder -> target (m)
 double g_copy_ms = 0, g_copy_max_ms = 0;  // shadow -> real copies at Unmap
 unsigned g_copies = 0;
 bool learning() { return g_learning.load(std::memory_order_relaxed); }
@@ -84,19 +92,31 @@ int piece_index(ID3D11Resource* buf, unsigned start) {
     return -1;
 }
 
-// 7B: Faith's arms onto the controllers. The game's pose (this frame's shadow) -> two-bone IK per arm
-// (arm_ik) -> every bone riding on a segment corrected, written to the real buffer right before the piece's
-// first draw this frame (later draws of it - shadow passes - read the same rows). The shadow keeps the game's
-// own pose. Hands: the grip pose's wrist point (the glove's wrist band, hand_render).
-void ik(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) {
+// 7B: Faith's arms onto the controllers. The game's pose (this frame's shadow of the arm piece) -> two-bone IK
+// per arm (arm_ik) -> every bone riding on a segment corrected. The corrected matrices are kept as (game matrix ->
+// new matrix) pairs: every Faith piece carries its own copies of the skeleton's matrices (a wrist wrap is its own
+// piece, drawn before the arms: live, a gap at her right wrist), so each piece's rows that equal an arm bone's are
+// replaced, right before the piece's first draw this frame (later draws of it - shadow passes - read the same
+// rows). The shadows keep the game's own pose. Hands: the grip pose's wrist point (the glove's wrist band).
+struct Fix { float game[12], now[12]; };
+std::vector<Fix> g_fixes;  // this frame's (render thread)
+unsigned g_fix_frame = 0;
+// Where the arm piece was last frame, in rows after the frame's first Faith piece: the bone buffers rotate and
+// her pieces move about in them, but stay together in the same order (live: always 212 rows after the first).
+unsigned g_first_start = 0;  // this frame's first Faith piece
+int g_arm_rel = -1;
+
+// Fills g_fixes from the arm block at `off` in buf's shadow; false if it isn't the arms (layout changed) or no
+// hand is tracked. Under g_mutex.
+bool compute(ID3D11Resource* buf, size_t off, int bones) {
+    g_fixes.clear();
     const camera_override::Hands h = camera_override::rendered_hands();
-    if (!h.valid[0] && !h.valid[1]) return;
+    if (!h.valid[0] && !h.valid[1]) return false;
+    const Shadow* v = contents(buf);
+    if (!v || off + size_t(bones) * 48 > v->size() || int(g_arms.side.size()) != bones) return false;
     static std::vector<float> rows;  // render thread only
+    rows.assign(reinterpret_cast<const float*>(v->data() + off), reinterpret_cast<const float*>(v->data() + off) + bones * 12);
     {
-        std::lock_guard lock(g_mutex);
-        const Shadow* v = contents(buf);
-        if (!v || off + size_t(bones) * 48 > v->size() || int(g_arms.side.size()) != bones) return;
-        rows.assign(reinterpret_cast<const float*>(v->data() + off), reinterpret_cast<const float*>(v->data() + off) + bones * 12);
         const auto* b = reinterpret_cast<const arm_solve::Bone*>(rows.data());
         vm::Vec3 s[2], e[2], w[2];
         for (int a = 0; a < 2; ++a) {
@@ -104,15 +124,30 @@ void ik(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) {
             s[a] = b[arm.shoulder_bone].apply(arm.shoulder);
             e[a] = b[arm.elbow_bone].apply(arm.elbow);
             w[a] = b[arm.wrist_bone].apply(arm.wrist);
+            // The arms really are here: the hand bone meets the wrist where the arm's bone does, and the shoulders
+            // are at the head (live: blocks that weren't the arms gave shoulders 600 m away).
+            if (arm.hand_bone >= 0 && (b[arm.hand_bone].apply(arm.wrist) - w[a]).length() > 0.01f) { ++g_not_arms; return false; }
+            if ((s[a] - h.view_pos).length() > 1.5f) { ++g_not_arms; return false; }
         }
         if (g_left < 0) {  // the camera's right (Faith's view) over 60 frames: the arm on the left is her left
-            if (h.view_right.length() < 0.5f) return;
+            if (h.view_right.length() < 0.5f) return false;
             g_vote += (s[0] - s[1]).dot(h.view_right) > 0 ? 1.f : -1.f;
             if (++g_votes >= 60) {
                 g_left = g_vote > 0 ? 1 : 0;
                 LOG_I("bones", "Faith's left arm is arm %d (%d of %d frames agree)", g_left, int(std::fabs(g_vote) + g_votes) / 2, g_votes);
+                // Her front in bind space (y up): up x (left shoulder -> right shoulder).
+                const vm::Vec3 front =
+                    vm::Vec3{0, 1, 0}.cross(g_arms.arm[1 - g_left].shoulder - g_arms.arm[g_left].shoulder).normalized();
+                for (int a = 0; a < 2; ++a) {
+                    const auto& arm = g_arms.arm[a];
+                    g_hand_ok[a] = arm.hand_bone >= 0 && arm_ik::hand_frame(arm.wrist, arm.hand_joints, front, g_hand_bind[a]);
+                    const vm::Vec3 f = g_hand_bind[a].rotate({0, 0, -1}), t = g_hand_bind[a].rotate({0, 1, 0});
+                    LOG_I("bones", "  arm %d hand (bind): bone %d, %zu joints, fingers %+.2f %+.2f %+.2f, thumb side %+.2f %+.2f %+.2f%s", a,
+                          arm.hand_bone, arm.hand_joints.size(), f.x, f.y, f.z, t.x, t.y, t.z,
+                          g_hand_ok[a] ? "" : " - not found, the hand keeps the game's turn");
+                }
             }
-            return;
+            return false;
         }
         ++g_ik_frames;
         bool moved = false;
@@ -121,34 +156,80 @@ void ik(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) {
             const int a = hand == 0 ? g_left : 1 - g_left;
             const vm::Quat grip = (h.rot[hand] * vm::Quat::axis_angle({1, 0, 0}, -1.5707963f)).normalized();
             const vm::Vec3 target = h.pos[hand] + grip.rotate({hand == 0 ? -0.042f : 0.042f, -0.004f, 0.108f});
-            if ((target - s[a]).length() > 1.0f) {  // not where an arm can be (tracking lost, cutscene camera)
+            const float dist = (target - s[a]).length();
+            if (dist > 1.0f) {  // not where an arm can be (tracking lost, cutscene camera)
                 ++g_ik_far;
+                ++g_far_eye[head_pose::rendered_eye() + 1 > 2 ? 0 : head_pose::rendered_eye() + 1];
+                g_far_min = dist < g_far_min ? dist : g_far_min;
+                g_far_max = dist > g_far_max ? dist : g_far_max;
                 continue;
             }
+            g_near_max = dist > g_near_max ? dist : g_near_max;
             vm::Vec3 out = s[a] - s[1 - a];
             out.y = 0;
             const vm::Vec3 pole = (vm::Vec3{0, -1, 0} + out.normalized() * 0.7f).normalized();  // elbows down and out
-            const arm_ik::Result r = arm_ik::solve(s[a], e[a], w[a], target, pole);
+            arm_ik::Result r = arm_ik::solve(s[a], e[a], w[a], target, pole);
+            if (g_hand_ok[a]) {  // the hand takes the controller's turn (the glove's hand space)
+                const float* m = &rows[g_arms.arm[a].hand_bone * 12];
+                vm::LinearTransform lt{};  // basis = the matrix's columns
+                for (int c = 0; c < 3; ++c) {
+                    lt.right[c] = m[c * 4];
+                    lt.up[c] = m[c * 4 + 1];
+                    lt.back[c] = m[c * 4 + 2];
+                }
+                r.hand = arm_ik::hand_to((vm::quat_of(lt) * g_hand_bind[a]).normalized(), grip, w[a], r.wrist);
+                g_twist_sum += std::fabs(arm_ik::twist_angle(r.fore.q.conjugate() * r.hand.q, (w[a] - e[a]).normalized())) * 57.29578f;
+                arm_ik::share_twist(r, e[a], w[a], g_forearm_twist.load());
+            }
             g_ik_clamped += r.clamped;
             ++g_ik_arms;
             for (int k = 0; k < bones; ++k) {
                 if (g_arms.side[k] != a) continue;
                 const int seg = g_arms.segment[k];
-                arm_ik::apply(seg == arm_solve::kUpper ? r.upper : seg == arm_solve::kFore ? r.fore : r.hand, &rows[k * 12]);
+                Fix f;
+                memcpy(f.game, &rows[k * 12], sizeof(f.game));
+                memcpy(f.now, f.game, sizeof(f.now));
+                arm_ik::apply(seg == arm_solve::kUpper ? r.upper : seg == arm_solve::kFore ? r.fore : r.hand, f.now);
+                g_fixes.push_back(f);
             }
             moved = true;
         }
-        if (!moved) return;
+        if (!moved) return false;
     }
+    return true;
+}
+
+// Rows of a piece's block (bones at `off` in buf's shadow) equal to a fixed arm bone's game matrix get the new
+// one, in the real buffer. Returns how many. Takes g_mutex itself (our Map must be outside it).
+int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) {
+    static std::vector<std::pair<int, const Fix*>> hits;  // render thread only
+    hits.clear();
+    {
+        std::lock_guard lock(g_mutex);
+        const Shadow* v = contents(buf);
+        if (g_fixes.empty() || !v || off + size_t(bones) * 48 > v->size()) return 0;
+        const float* rows = reinterpret_cast<const float*>(v->data() + off);
+        for (int k = 0; k < bones; ++k)
+            for (const Fix& f : g_fixes) {
+                int j = 0;
+                while (j < 12 && std::fabs(rows[k * 12 + j] - f.game[j]) <= 1e-5f * (1.f + std::fabs(f.game[j]))) ++j;
+                if (j == 12) { hits.push_back({k, &f}); break; }
+            }
+    }
+    if (hits.empty()) return 0;
     // Our own Map is nested in the draw hook (not shadowed): straight into the real buffer.
     D3D11_MAPPED_SUBRESOURCE m{};
     if (SUCCEEDED(ctx->Map(buf, 0, D3D11_MAP_WRITE_NO_OVERWRITE, 0, &m)) && m.pData) {
-        memcpy(static_cast<unsigned char*>(m.pData) + off, rows.data(), size_t(bones) * 48);
+        float* rows = reinterpret_cast<float*>(static_cast<unsigned char*>(m.pData) + off);
+        for (const auto& hit : hits) memcpy(rows + hit.first * 12, hit.second->now, 48);  // fixes unchanged until next frame
         ctx->Unmap(buf, 0);
     }
+    return int(hits.size());
 }
 
 }  // namespace
+
+void set_forearm_twist(float k) { g_forearm_twist = k; }
 
 void set_poke(int piece, int bone) {
     g_poke_piece = piece;
@@ -280,8 +361,32 @@ void before_draw(ID3D11DeviceContext* ctx) {
         g_pieces.push_back({buf, start, count, vb_id});
         idx = int(g_pieces.size()) - 1;
     }
-    if (g_ik_ready.load() && count == g_arm_count)
-        ik(ctx, buf, (size_t(vd.Buffer.FirstElement) + start + kHeaderRows) * 16, int(count - kHeaderRows) / 3);
+    if (g_ik_ready.load()) {
+        const size_t fe = vd.Buffer.FirstElement;
+        bool have;
+        {
+            std::lock_guard lock(g_mutex);
+            // The first Faith piece this frame: the IK from the arm block where it was last frame (all her pieces
+            // share one bone buffer); at the arm piece itself again if that failed.
+            const bool arm = count == g_arm_count;
+            if (g_fix_frame != g_frame) {
+                g_fix_frame = g_frame;
+                g_first_start = start;
+                if (arm || g_arm_rel >= 0)
+                    compute(buf, (fe + (arm ? start : start + g_arm_rel) + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3);
+                else
+                    g_fixes.clear();
+            } else if (g_fixes.empty() && arm) {
+                compute(buf, (fe + start + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3);
+            }
+            if (arm) g_arm_rel = int(start - g_first_start);
+            have = !g_fixes.empty();
+        }
+        if (have) {
+            const int n = patch(ctx, buf, (fe + start + kHeaderRows) * 16, int(count - kHeaderRows) / 3);
+            if (count != g_arm_count) g_patched_other += n;
+        }
+    }
     if (idx + 1 == g_poke_piece.load()) {
         // Our own Map is nested in the draw hook, so it isn't shadowed: write the real buffer and the shadow.
         D3D11_MAPPED_SUBRESOURCE m{};
@@ -391,9 +496,21 @@ void on_present() {
     static ULONGLONG ik_log = 0;
     if (g_ik_ready.load() && GetTickCount64() - ik_log >= 5000) {
         ik_log = GetTickCount64();
-        LOG_I("bones", "IK arms in 5 s: %d frames, %d arms posed (%d out of reach, clamped), %d hands too far", g_ik_frames,
-              g_ik_arms, g_ik_clamped, g_ik_far);
+        LOG_I("bones", "IK arms in 5 s: %d frames, %d arms posed (%d out of reach, clamped), %d hands too far; hand twist about "
+              "the forearm %.0f deg avg, forearm takes %.2f; %d rows of other pieces followed", g_ik_frames, g_ik_arms, g_ik_clamped, g_ik_far,
+              g_ik_arms ? g_twist_sum / g_ik_arms : 0.f, g_forearm_twist.load(), g_patched_other);
+        if (g_ik_far)
+            LOG_I("bones", "  hands too far: %.2f-%.2f m from the shoulder (mono %d, left eye %d, right eye %d)", g_far_min,
+                  g_far_max, g_far_eye[0], g_far_eye[1], g_far_eye[2]);
+        if (g_ik_arms) LOG_I("bones", "  posed hands up to %.2f m from the shoulder", g_near_max);
+        if (g_not_arms) LOG_I("bones", "  %d blocks looked for the arms weren't them", g_not_arms);
+        g_not_arms = 0;
+        g_far_eye[0] = g_far_eye[1] = g_far_eye[2] = 0;
+        g_far_min = 1e9f;
+        g_far_max = g_near_max = 0;
+        g_patched_other = 0;
         g_ik_frames = g_ik_arms = g_ik_clamped = g_ik_far = 0;
+        g_twist_sum = 0;
     }
     if (g_poke_piece.load() && GetTickCount64() - last >= 1000 && !g_pieces.empty()) {
         last = GetTickCount64();

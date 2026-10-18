@@ -33,6 +33,8 @@ enum Segment { kNone = -1, kUpper = 0, kFore = 1, kHand = 2 };
 struct Arm {
     vm::Vec3 shoulder, elbow, wrist;  // bind space; world = S(x) of any bone touching that joint
     int shoulder_bone = -1, elbow_bone = -1, wrist_bone = -1;  // a bone that touches each joint (to place it)
+    std::vector<vm::Vec3> hand_joints;  // bind space: the other joints hand bones touch (finger roots, knuckles)
+    int hand_bone = -1;                 // a hand bone touching the wrist (the hand's rotation)
 };
 
 struct Result {
@@ -254,6 +256,16 @@ inline Result Learner::solve() const {
     }
     for (int b = 0; b < n_; ++b)
         if (res.side[b] == -2) { res.side[b] = -1; res.segment[b] = kNone; }
+    for (int a = 0; a < 2; ++a)
+        for (int k = 0; k < J; ++k) {
+            if ((joints[k].x - res.arm[a].wrist).length() < 0.005f) {  // the wrist: the hand bone that turns on it
+                for (int b : joints[k].bones)
+                    if (res.side[b] == a && res.segment[b] == kHand && res.arm[a].hand_bone < 0) res.arm[a].hand_bone = b;
+                continue;
+            }
+            for (int b : joints[k].bones)
+                if (res.side[b] == a && res.segment[b] == kHand) { res.arm[a].hand_joints.push_back(joints[k].x); break; }
+        }
     // Bones that touch no joint (real fingertips fit only 2-5 mm, STAGE7-RECON) ride with their best partner,
     // repeated so chains of them follow.
     for (bool changed = true; changed;) {
