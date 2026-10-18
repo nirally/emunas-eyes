@@ -11,3 +11,7 @@ Play ~10 min: touch walls and doors, punch, run, climb, hang from a ledge and mo
 5. Comfort, 5 = very comfortable.
 
 Reply example: "1 yes yes, 2 yes nothing, 3 no, 4 once after a fight, 5 5".
+
+## Result (2026-10-18)
+User: "1 yes, 2 didnt test, 3 yes the pinky and forth finger on the left hand has stretch skin towards the ground and on the right hand the palm of the hand is a bit glitching, 4 no, 5 5".
+Log: PLAYTEST-7b.log (session 21:05-21:07, ~1.5 min with IK). Left hand placed 22 of its bones (earlier sessions 25-26) -> BUG-019. 18-144 frames per 5 s without her stencil mark in normal play; the right glove/wrist wrap (drawn before the arms) kept the game's pose in them -> BUG-020. Walls: 0 touches logged (stopping at walls confirmed by the user). Body/head: 2 short gaps (0.15-0.17 m, closed in 1.8 s), not noticed.

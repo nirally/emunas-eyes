@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstring>
 #include <mutex>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -27,24 +28,31 @@ std::atomic<int> g_poke_piece{0}, g_poke_bone{-1};
 std::atomic<int> g_record_left{0};
 
 // 7A: learning Faith's arms from the game's own motion (arm_solve), once per session.
-constexpr int kLearnFrames = 400, kLearnTries = 5;
+constexpr int kLearnFrames = 400, kLearnTries = 1000;  // retried while her arms barely move (each try ~4 s)
+// After the IK starts the learner keeps the arm piece's frames (marked ones only) and solves each kRefineEvery
+// frames on their own, kRefineWindows times (~10 min), for bones the first solve couldn't place
+// (arm_solve::adopt_new_bones). Windows as short as the first solve: the motion test grows with the frames, so long
+// still stretches hid joints (desktop: 12000 frames found no arms, 1500-frame windows mostly failed).
+constexpr int kRefineEvery = kLearnFrames, kRefineWindows = 150;
+int g_refines = 0, g_refine_same = 0, g_refine_other = 0, g_refine_failed = 0;  // 10-window log
+std::vector<int> g_pending;  // per bone: side * 4 + segment a window placed it on (-1 none); taken when the next agrees
 std::atomic<bool> g_arms_on{true}, g_learning{false};
 arm_solve::Learner g_learner;
 arm_solve::Result g_arms;  // ok once learned
 int g_tries = 0;
 // 7B: IK onto the controllers, once the arms are known. The arm piece = the piece with the learned row count.
 std::atomic<bool> g_ik_ready{false};
-// While she hangs from a ledge the game draws everything with stencil ref 0x02 - her body loses its 0x20 mark
-// (desktop: 0 marked pieces for the whole hang). After a frame without a marked piece, the draw with the arm
-// piece's bone count is taken as her arms (compute() still checks hand meets wrist, shoulders at the head).
+// Her body isn't always stencil-marked (0x20): in a ledge hang the game draws everything with ref 0x02, and in the
+// headset whole frames went unmarked in normal play too (PLAYTEST-7b: 18-144 per 5 s; the right glove, drawn
+// before the arms, then kept the game's pose - "the palm glitching"). So once the IK runs every skinned draw of
+// 3+ bones is taken (patch() only replaces rows equal to an arm bone's game matrix: others are untouched), and
+// the IK runs at the earliest draw that can find the arm block - from her first marked piece (g_arm_rel), else
+// from a piece whose offset to the arm block is known: each piece size learns it (rows, same buffer) whenever
+// the arms are found at their own draw, marked or not; compute() checks every guess.
 bool g_marked_now = false;               // a marked piece this frame (render thread)
-std::atomic<bool> g_unmarked{false};     // the last frame had none
+std::atomic<bool> g_unmarked{false};     // the last frame had none (walls and touch off, body_marked())
 int g_unmarked_frames = 0;               // 5 s log
-// Unmarked frames: every skinned draw is taken (patch() only replaces rows equal to an arm bone's game matrix, so
-// her wrist wrap - drawn before the arms - follows and others are untouched); the IK runs at the first draw from a
-// earliest draw that can find the arm block: her glove and wrist wrap are drawn before the arms, so each piece
-// size learns where the arm block was from it (rows, same buffer) when the arms were found at their own draw -
-// as g_arm_rel does from her first piece in marked frames. Under g_mutex.
+// Under g_mutex.
 struct Seen { ID3D11Resource* buf; size_t row; unsigned count; };
 std::vector<Seen> g_seen_now;                       // this frame's skinned draws before the IK found the arms
 std::unordered_map<unsigned, long long> g_rel_by_count;  // piece size -> arm block row minus the piece's row
@@ -103,7 +111,7 @@ const Shadow* contents(ID3D11Resource* r) {  // written this frame, else null
     return it == g_shadow.end() || !it->second.mem || it->second.frame != g_frame ? nullptr : &it->second;
 }
 
-struct Piece { ID3D11Resource* buf; unsigned start, count; unsigned long long vb; };
+struct Piece { ID3D11Resource* buf; unsigned start, count; unsigned long long vb; bool marked; };
 std::vector<Piece> g_pieces;      // this frame's Faith pieces, in draw order
 std::vector<Piece> g_last_pieces;  // the previous frame's (log)
 
@@ -336,7 +344,7 @@ void before_draw(ID3D11DeviceContext* ctx) {
     dss->GetDesc(&dd);
     dss->Release();
     const bool marked = dd.StencilEnable && ref == 0x20;  // Faith's body (D-036)
-    if (!marked && !(g_unmarked.load(std::memory_order_relaxed) && g_ik_ready.load(std::memory_order_relaxed))) return;
+    if (!marked && !g_ik_ready.load(std::memory_order_relaxed)) return;
 
     ID3D11DeviceContext1* c1 = nullptr;
     if (FAILED(ctx->QueryInterface(__uuidof(ID3D11DeviceContext1), reinterpret_cast<void**>(&c1)))) return;
@@ -358,6 +366,7 @@ void before_draw(ID3D11DeviceContext* ctx) {
     }
     cb->Release();
     if (count <= kHeaderRows || (count - kHeaderRows) % 3) return;
+    if (!marked && count < kHeaderRows + 9) return;  // props drawn with one or two bones come by the hundred
 
     ID3D11ShaderResourceView* srv = nullptr;
     ctx->VSGetShaderResources(0, 1, &srv);
@@ -383,7 +392,7 @@ void before_draw(ID3D11DeviceContext* ctx) {
             buf->Release();
             return;
         }
-        g_pieces.push_back({buf, start, count, vb_id});
+        g_pieces.push_back({buf, start, count, vb_id, marked});
         g_marked_now |= marked;
         idx = int(g_pieces.size()) - 1;
     }
@@ -395,39 +404,32 @@ void before_draw(ID3D11DeviceContext* ctx) {
             // The first Faith piece this frame: the IK from the arm block where it was last frame (all her pieces
             // share one bone buffer); at the arm piece itself again if that failed.
             const bool arm = count == g_arm_count;
-            bool found_here = marked;  // an unmarked 81-bone draw may be someone else: kept once compute() accepts it
-            if (!marked) {
-                if (g_fix_frame != g_frame) {
-                    g_fix_frame = g_frame;
-                    g_fixes.clear();
-                    g_seen_now.clear();
-                    g_tries_now = 0;
-                }
-                if (g_fixes.empty()) {
-                    const auto rel = g_rel_by_count.find(count);
-                    if (arm) {
-                        found_here = compute(buf, (fe + start + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3);
-                        if (found_here)
-                            for (const Seen& e : g_seen_now)
-                                if (e.buf == buf) g_rel_by_count[e.count] = (long long)(fe + start) - (long long)e.row;
-                    } else if (count >= kHeaderRows + 9 && rel != g_rel_by_count.end() && g_tries_now < 8 && (long long)(fe + start) + rel->second >= 0) {
-                        ++g_tries_now;
-                        if (compute(buf, ((fe + start) + rel->second + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3)) ++g_early;
-                    }
-                    // Props drawn with one bone come by the hundred (desktop log): only pieces of 3+ bones.
-                    if (g_fixes.empty() && count >= kHeaderRows + 9 && g_seen_now.size() < 64) g_seen_now.push_back({buf, fe + start, count});
-                }
-            } else if (g_fix_frame != g_frame) {
+            if (g_fix_frame != g_frame) {
                 g_fix_frame = g_frame;
-                g_first_start = start;
-                if (arm || g_arm_rel >= 0)
-                    compute(buf, (fe + (arm ? start : start + g_arm_rel) + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3);
-                else
-                    g_fixes.clear();
-            } else if (g_fixes.empty() && arm) {
-                compute(buf, (fe + start + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3);
+                g_fixes.clear();
+                g_first_start = ~0u;
+                g_seen_now.clear();
+                g_tries_now = 0;
             }
-            if (arm && marked) g_arm_rel = int(start - g_first_start);
+            // Her first marked piece: the arm block where it was last frame, from it (D-044).
+            if (marked && g_first_start == ~0u) {
+                g_first_start = start;
+                if (!arm && g_arm_rel >= 0 && g_fixes.empty())
+                    compute(buf, (fe + start + g_arm_rel + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3);
+            }
+            if (g_fixes.empty()) {
+                const auto rel = g_rel_by_count.find(count);
+                if (arm) {
+                    if (compute(buf, (fe + start + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3))
+                        for (const Seen& e : g_seen_now)  // where the arm block is from each piece drawn before it
+                            if (e.buf == buf) g_rel_by_count[e.count] = (long long)(fe + start) - (long long)e.row;
+                } else if (!marked && rel != g_rel_by_count.end() && g_tries_now < 8 && (long long)(fe + start) + rel->second >= 0) {
+                    ++g_tries_now;
+                    if (compute(buf, ((fe + start) + rel->second + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3)) ++g_early;
+                }
+                if (g_fixes.empty() && g_seen_now.size() < 64) g_seen_now.push_back({buf, fe + start, count});
+            }
+            if (arm && marked && g_first_start != ~0u) g_arm_rel = int(start - g_first_start);
             have = !g_fixes.empty();
         }
         if (have) {
@@ -463,14 +465,15 @@ void on_present() {
     static ULONGLONG last = 0;
     std::lock_guard lock(g_mutex);
     if (g_record_left.load() > 0 && !g_pieces.empty()) {
-        // The biggest piece (the arms, 81 bones, STAGE7-RECON) from the bone buffer shadow.
+        // Her biggest piece (the arms, 81 bones, STAGE7-RECON) from the bone buffer shadow; marked pieces only (once
+        // the IK runs, others' skinned draws are taken too).
         const Piece* big = &g_pieces[0];
         for (const Piece& p : g_pieces)
-            if (p.count > big->count) big = &p;
+            if (p.marked && (!big->marked || p.count > big->count)) big = &p;
         const auto* v = contents(big->buf);
         const size_t from = (size_t(big->start) + kHeaderRows) * 16;
         const unsigned bones = (big->count - kHeaderRows) / 3;
-        if (v && from + bones * 48 <= v->size()) {
+        if (v && big->marked && from + bones * 48 <= v->size()) {
             if (!g_rec) _wfopen_s(&g_rec, (g_dir / L"bones_rec.bin").c_str(), L"wb");
             if (g_rec) {
                 fwrite(&bones, 4, 1, g_rec);
@@ -511,10 +514,11 @@ void on_present() {
                 const double t0 = now_ms();
                 g_arms = g_learner.solve();
                 ++g_tries;
+                if (g_tries <= 5 || g_tries % 10 == 0 || g_arms.ok)
                 LOG_I("bones", "arms from %d frames of the %d-bone piece (try %d, %.0f ms; %d joints, %d wrist candidates, %d arm chains): %s",
                       g_learner.frames(), bones, g_tries, now_ms() - t0, g_arms.joints, g_arms.wrists, g_arms.chains,
                       g_arms.why);
-                if (!g_arms.ok)
+                if (!g_arms.ok && g_tries <= 5)
                     for (const auto& c : g_arms.found)
                         LOG_I("bones", "  chain found (bind space): shoulder %.3f %.3f %.3f, elbow %.3f %.3f %.3f, wrist %.3f %.3f %.3f",
                               c.shoulder.x, c.shoulder.y, c.shoulder.z, c.elbow.x, c.elbow.y, c.elbow.z, c.wrist.x, c.wrist.y,
@@ -534,10 +538,53 @@ void on_present() {
                 g_learning = !g_arms.ok && g_tries < kLearnTries;
                 g_arm_count = big->count;
                 g_ik_ready = g_arms.ok && g_arms_on.load();
-                g_learner.reset(bones);
+                if (!g_arms.ok) g_learner.reset(bones);  // else it goes on learning (below)
                 g_copy_ms = g_copy_max_ms = 0;
                 g_copies = 0;
 
+            }
+        }
+    }
+    if (g_ik_ready.load() && g_refines < kRefineWindows && g_learner.bones() == int(g_arm_count - kHeaderRows) / 3) {
+        const Piece* arm = nullptr;
+        for (const Piece& p : g_pieces)
+            if (p.marked && p.count == g_arm_count) { arm = &p; break; }
+        const auto* v = arm ? contents(arm->buf) : nullptr;
+        const size_t from = arm ? (size_t(arm->start) + kHeaderRows) * 16 : 0;
+        const int bones = g_learner.bones();
+        if (v && from + size_t(bones) * 48 <= v->size()) {
+            g_learner.add(reinterpret_cast<const arm_solve::Bone*>(v->data() + from));
+            if (g_learner.frames() >= kRefineEvery) {
+                const arm_solve::Result next = g_learner.solve();
+                arm_solve::Result trial = g_arms;
+                int taken = arm_solve::adopt_new_bones(trial, next);
+                g_learner.reset(bones);
+                ++g_refines;
+                if (taken > 0) {  // only bones two windows place the same way (one bad window can't add a chest bone)
+                    g_pending.resize(size_t(bones), -1);
+                    taken = 0;
+                    for (int k = 0; k < bones; ++k) {
+                        if (g_arms.side[k] >= 0) continue;
+                        const int code = trial.side[k] >= 0 ? trial.side[k] * 4 + trial.segment[k] : -1;
+                        if (code >= 0 && code == g_pending[k]) {
+                            g_arms.side[k] = trial.side[k];
+                            g_arms.segment[k] = trial.segment[k];
+                            ++taken;
+                        }
+                        g_pending[k] = code;
+                    }
+                }
+                ++(!next.ok ? g_refine_failed : taken < 0 ? g_refine_other : g_refine_same);
+                int hand[2] = {0, 0};
+                for (int k = 0; k < bones; ++k)
+                    if (g_arms.side[k] >= 0 && g_arms.segment[k] == arm_solve::kHand) ++hand[g_arms.side[k]];
+                if (taken > 0)
+                    LOG_I("bones", "arms again (window %d): %d more bones placed; hand bones now %d and %d", g_refines, taken, hand[0], hand[1]);
+                if (g_refines % 10 == 0) {
+                    LOG_I("bones", "arms again, windows %d-%d: %d agreed, %d other arms (kept ours), %d no arms found; hand bones %d and %d",
+                          g_refines - 9, g_refines, g_refine_same, g_refine_other, g_refine_failed, hand[0], hand[1]);
+                    g_refine_same = g_refine_other = g_refine_failed = 0;
+                }
             }
         }
     }
@@ -561,7 +608,7 @@ void on_present() {
                   g_no_hands, g_stale, g_no_arm_piece, (g_arm_count - kHeaderRows) / 3, sizes);
         }
         if (g_unmarked_frames)
-            LOG_I("bones", "  %d frames her body wasn't marked (ledge hang): arms found by their bone count, %d of them before the arms' own draw",
+            LOG_I("bones", "  %d frames her body wasn't marked (ledge hang or other); IK before the arms' own draw from a piece's offset in %d frames",
                   g_unmarked_frames, g_early);
         g_unmarked_frames = g_early = 0;
         if (g_no_faith) LOG_I("bones", "  %d frames without any piece of Faith", g_no_faith);

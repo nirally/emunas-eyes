@@ -109,3 +109,72 @@ TEST(arm_solve_needs_motion) {
     for (int f = 0; f < 120; ++f) l.add(still.data());  // the same pose every frame: nothing can be told apart
     CHECK(!l.solve().ok);
 }
+
+TEST(arm_solve_adopt_takes_only_bones_left_off) {
+    Rig rig;
+    arm_solve::Learner l;
+    l.reset(int(rig.bones.size()));
+    for (int f = 0; f < 120; ++f) l.add(frame(rig).data());
+    const auto full = l.solve();
+    CHECK(full.ok);
+    if (!full.ok) return;
+    // The first solve missed three finger bones of one hand; a later one places them.
+    auto cur = full;
+    std::vector<int> missed;
+    for (size_t b = 0; b < cur.side.size() && missed.size() < 3; ++b)
+        if (cur.side[b] == 1 && cur.segment[b] == arm_solve::kHand && int(b) != cur.arm[1].hand_bone) {
+            missed.push_back(int(b));
+            cur.side[b] = -1;
+            cur.segment[b] = arm_solve::kNone;
+        }
+    // The later solve numbered the arms the other way round, and put one bone elsewhere (must not move it).
+    auto next = full;
+    std::swap(next.arm[0], next.arm[1]);
+    for (int& sd : next.side)
+        if (sd >= 0) sd = 1 - sd;
+    int moved = -1;
+    for (size_t b = 0; b < next.side.size(); ++b)
+        if (cur.side[b] == 0 && cur.segment[b] == arm_solve::kUpper) { moved = int(b); next.segment[b] = arm_solve::kFore; break; }
+    CHECK(arm_solve::adopt_new_bones(cur, next) == 3);
+    for (int b : missed) CHECK(cur.side[b] == 1 && cur.segment[b] == arm_solve::kHand);
+    CHECK(moved >= 0 && cur.segment[moved] == arm_solve::kUpper);
+    CHECK(arm_solve::adopt_new_bones(cur, next) == 0);  // nothing left to take
+}
+
+TEST(arm_solve_adopt_matches_arms_by_their_bones) {
+    Rig rig;
+    arm_solve::Learner l;
+    l.reset(int(rig.bones.size()));
+    for (int f = 0; f < 120; ++f) l.add(frame(rig).data());
+    auto cur = l.solve();
+    CHECK(cur.ok);
+    if (!cur.ok) return;
+    auto next = cur;
+    next.arm[0].elbow = next.arm[0].elbow + Vec3{0, 0.03f, 0};  // joints a few cm off: still the same arms
+    for (size_t b = 0; b < cur.side.size(); ++b)
+        if (cur.segment[b] == arm_solve::kHand) { cur.side[b] = -1; cur.segment[b] = arm_solve::kNone; break; }
+    auto other = next;  // a solve that put the forearms' bones on the upper arms: not the same arms
+    for (size_t b = 0; b < other.side.size(); ++b)
+        if (other.segment[b] == arm_solve::kFore || other.segment[b] == arm_solve::kHand) other.segment[b] = arm_solve::kUpper;
+    CHECK(arm_solve::adopt_new_bones(cur, other) == -1);
+    CHECK(arm_solve::adopt_new_bones(cur, next) == 1);
+}
+
+TEST(arm_solve_rejects_arms_that_cannot_be_hers) {
+    Rig rig;
+    arm_solve::Learner l;
+    l.reset(int(rig.bones.size()));
+    for (int f = 0; f < 120; ++f) l.add(frame(rig).data());
+    const auto good = l.solve();
+    CHECK(good.ok && arm_solve::implausible(good) == nullptr);
+    auto r = good;  // one forearm 6 cm longer than the other
+    r.arm[1].wrist = r.arm[1].wrist + (r.arm[1].wrist - r.arm[1].elbow).normalized() * 0.06f;
+    CHECK(arm_solve::implausible(r) != nullptr);
+    r = good;  // upper arm 40 cm
+    r.arm[0].shoulder = r.arm[0].elbow + (r.arm[0].shoulder - r.arm[0].elbow).normalized() * 0.40f;
+    CHECK(arm_solve::implausible(r) != nullptr);
+    r = good;  // a hand without its bones
+    for (size_t b = 0; b < r.side.size(); ++b)
+        if (r.side[b] == 0 && r.segment[b] == arm_solve::kHand) r.side[b] = -1;
+    CHECK(arm_solve::implausible(r) != nullptr);
+}

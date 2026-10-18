@@ -662,7 +662,7 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
     }
     if (std::filesystem::remove(dir / L"BONEREC", ec)) {  // Stage 7 recon: record Faith's arm bones
         if (!g_installed) install(chain);
-        faith_bones::request_record(dir, 600);
+        faith_bones::request_record(dir, 1500);
     }
     const bool asked = g_trace_request.exchange(false);
     if (!std::filesystem::remove(dir / L"TRACE", ec) && !asked) return;

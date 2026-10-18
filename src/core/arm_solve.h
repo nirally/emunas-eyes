@@ -48,6 +48,23 @@ struct Result {
     std::vector<int> segment;  // per bone: Segment
 };
 
+// Arms a solve found that can't be Faith's (desktop: with her arms nearly still, a solve gave upper arms 0.37 and
+// 0.40 m, forearms 0.31 and 0.20 m and 2 hand bones, and was taken): both arms of a human length and alike, each
+// with a hand of several bones. Her arms: upper 0.282 m, forearm 0.245-0.267 m, 22-26 hand bones. Null if fine.
+inline const char* implausible(const Result& r) {
+    float up[2], fore[2];
+    for (int a = 0; a < 2; ++a) {
+        up[a] = (r.arm[a].shoulder - r.arm[a].elbow).length();
+        fore[a] = (r.arm[a].elbow - r.arm[a].wrist).length();
+        if (up[a] < 0.20f || up[a] > 0.36f || fore[a] < 0.18f || fore[a] > 0.32f) return "arm lengths not human";
+        int hand = 0;
+        for (size_t b = 0; b < r.side.size(); ++b) hand += r.side[b] == a && r.segment[b] == kHand;
+        if (hand < 6) return "too few hand bones";
+    }
+    if (std::fabs(up[0] - up[1]) > 0.03f || std::fabs(fore[0] - fore[1]) > 0.03f) return "the two arms differ";
+    return nullptr;
+}
+
 class Learner {
 public:
     // Tunables
@@ -279,7 +296,39 @@ inline Result Learner::solve() const {
     }
     res.ok = true;
     res.why = "ok";
+    if (const char* bad = implausible(res)) {
+        res.ok = false;
+        res.why = bad;
+    }
     return res;
+}
+
+// 7C (PLAYTEST-7b: two fingers of her left hand kept the game's pose - stretched skin; that session placed 22 of
+// its hand bones, earlier ones 25-26): learning goes on after the IK starts, and a later solve can place bones the
+// first one couldn't (a finger the game hardly moved in the first seconds). Bones `cur` left off the arms that
+// `next` puts on a segment join it; nothing placed changes. The arms are matched by the bones both placed (joint
+// points move a few cm between solves: another hand joint can win as the wrist) and must agree on at least
+// `agree` of them (arm and segment), else nothing is taken. Returns the bones taken, -1 on a mismatch.
+inline int adopt_new_bones(Result& cur, const Result& next, float agree = 0.9f, float* agreed = nullptr) {
+    if (!cur.ok || !next.ok || cur.side.size() != next.side.size()) return -1;
+    int same = 0, swapped = 0, both = 0;  // bones on an arm in both: same arm number / the other one
+    for (size_t b = 0; b < cur.side.size(); ++b)
+        if (cur.side[b] >= 0 && next.side[b] >= 0) {
+            ++both;
+            if (cur.segment[b] != next.segment[b]) continue;
+            (cur.side[b] == next.side[b] ? same : swapped)++;
+        }
+    const bool swap = swapped > same;
+    if (agreed) *agreed = both ? float(swap ? swapped : same) / float(both) : 0.f;
+    if (both == 0 || float(swap ? swapped : same) < agree * float(both)) return -1;
+    int taken = 0;
+    for (size_t b = 0; b < cur.side.size(); ++b) {
+        if (cur.side[b] >= 0 || next.side[b] < 0 || next.segment[b] == kNone) continue;
+        cur.side[b] = swap ? 1 - next.side[b] : next.side[b];
+        cur.segment[b] = next.segment[b];
+        ++taken;
+    }
+    return taken;
 }
 
 }  // namespace mecvr::arm_solve
