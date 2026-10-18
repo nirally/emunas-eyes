@@ -15,6 +15,7 @@
 #include "diagnostics/log.h"
 #include "render/camera_override.h"
 #include "render/d3d_state.h"
+#include "render/faith_bones.h"
 
 namespace mecvr::hand_render {
 namespace {
@@ -458,12 +459,19 @@ void note_contact(int h, float pushed) {
     g_touch_max[0] = g_touch_max[1] = 0;
 }
 
+// 7C: Faith's own hands stop at walls like the gloves - the latest read-back push, along the latest camera ray
+// to the palm (render thread).
+float g_push[2] = {0, 0};
+vm::Vec3 g_push_dir[2] = {};
+
 }  // namespace
 
 void set_enabled(bool on) { g_enabled = on; }
 void set_collide(bool on) { g_collide = on; }
 void set_touch_interact(bool on) { g_touch_interact = on; }
-bool enabled() { return g_enabled.load(); }
+// The pass also runs with the gloves hidden while Faith's arms follow the controllers (Q-702): walls and touch.
+bool enabled() { return g_enabled.load() || ((g_collide.load() || g_touch_interact.load()) && faith_bones::arms_known()); }
+vm::Vec3 wall_offset(int h) { return g_push_dir[h] * -g_push[h]; }
 void stencil_probe_next(const std::filesystem::path& dir) {
     g_dir = dir;
     g_stencil_req = true;
@@ -472,9 +480,10 @@ void set_size(float s) { g_size = s < 0.5f ? 0.5f : s > 1.5f ? 1.5f : s; }
 
 void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_color, ID3D11Texture2D* depth,
           const float* vp) {
-    if (!g_enabled.load() || g_failed || !scene_color || !depth) return;
+    if (!enabled() || g_failed || !scene_color || !depth) return;
     const camera_override::Hands hands = camera_override::rendered_hands();
     if (!hands.valid[0] && !hands.valid[1]) return;
+    const bool gloves = g_enabled.load();
     if (!g_ready) {
         if (!init(dev)) { g_failed = true; LOG_E("hands", "hand drawing unavailable"); return; }
         g_ready = true;
@@ -487,7 +496,7 @@ void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_co
 
     d3d_state::State s;
     s.save(ctx);
-    if (g_depth_copy) ctx->CopyResource(g_depth_copy, depth);
+    if (g_depth_copy && gloves) ctx->CopyResource(g_depth_copy, depth);
     const D3D11_VIEWPORT viewport{0, 0, float(d.Width), float(d.Height), 0, 1};
     const float zero[4] = {};
     ctx->OMSetRenderTargets(1, &g_rtv, g_dsv);
@@ -539,10 +548,12 @@ void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_co
         // In front of the view (within ~40 deg of the view direction; the w row of the view-projection is forward).
         const vm::Vec3 fwd = vm::Vec3{vp[12], vp[13], vp[14]}.normalized();
         g_central[h] = (palm - eye).normalized().dot(fwd) > 0.766f;
+        g_push_dir[h] = (palm - eye).normalized();
         const float pr[8] = {palm.x, palm.y, palm.z, 1, tips.x, tips.y, tips.z, 1};
         memcpy(base.probe + h * 8, pr, sizeof(pr));
     }
-    const bool collide = g_collide.load() && g_scene_depth && g_scene_stencil;
+    // Her own arms count as walls when the game doesn't mark her body (ledge hangs): no walls or touch then.
+    const bool collide = g_collide.load() && g_scene_depth && g_scene_stencil && faith_bones::body_marked();
     D3D11_TEXTURE2D_DESC dd{};
     depth->GetDesc(&dd);
     base.coll[0] = float(dd.Width);
@@ -555,7 +566,7 @@ void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_co
     if (collide) ctx->VSSetShaderResources(14, 2, srv);
 
     Part parts[kMaxParts];
-    for (int h = 0; h < 2; ++h) {
+    for (int h = 0; h < 2 && gloves; ++h) {
         if (!hands.valid[h]) continue;
         const int n = build_hand(hands.fingers[h], parts);
         const M3& H = Hm[h];
@@ -614,11 +625,15 @@ void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_co
                     float pushed[2];
                     memcpy(pushed, m.pData, sizeof(pushed));
                     ctx->Unmap(t, 0);
-                    for (int h = 0; h < 2; ++h) note_contact(h, hands.valid[h] ? pushed[h] : 0.f);
+                    for (int h = 0; h < 2; ++h) {
+                        g_push[h] = hands.valid[h] ? pushed[h] : 0.f;
+                        note_contact(h, g_push[h]);
+                    }
                 }
             }
         }
     }
+    if (!collide) g_push[0] = g_push[1] = 0;
     ctx->VSSetShaderResources(14, 2, old_srv);
     for (auto* v : old_srv)
         if (v) v->Release();

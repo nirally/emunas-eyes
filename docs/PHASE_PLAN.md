@@ -236,3 +236,5 @@ Risk: the world matrices are rendered positions - the game's own logic (hit boxe
 ### Stage 10 — Sweep and package (M)
 - [ ] Opening hour end to end, left-handed and seated pass, simulator regression
 - [ ] dist/: installer, README, uninstall; no game files redistributed
+
+<!-- 2026-10-18 WIP (7C): gloves hidden by default (hands.show off), wall/touch probes keep running for Faith's arms, her IK hands take the wall push (desktop: stop at a wall, 12-14 cm held back). Found: in a ledge hang the game drops her stencil 0x20 mark (all draws ref 0x02) -> arms found by bone count, walls/touch off then; arms follow in the hang, but her right glove / wrist wrap pieces don't reliably follow there yet (arm block position in rotated buffers; the known-start lookup fails every frame). Next: find the wrap/glove pieces' arm rows in the hang. Desktop test save resumes in that hang. -->

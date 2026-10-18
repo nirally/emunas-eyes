@@ -15,6 +15,7 @@
 #include "core/arm_solve.h"
 #include "diagnostics/log.h"
 #include "render/camera_override.h"
+#include "render/hand_render.h"
 
 namespace mecvr::faith_bones {
 namespace {
@@ -33,6 +34,19 @@ arm_solve::Result g_arms;  // ok once learned
 int g_tries = 0;
 // 7B: IK onto the controllers, once the arms are known. The arm piece = the piece with the learned row count.
 std::atomic<bool> g_ik_ready{false};
+// While she hangs from a ledge the game draws everything with stencil ref 0x02 - her body loses its 0x20 mark
+// (desktop: 0 marked pieces for the whole hang). After a frame without a marked piece, the draw with the arm
+// piece's bone count is taken as her arms (compute() still checks hand meets wrist, shoulders at the head).
+bool g_marked_now = false;               // a marked piece this frame (render thread)
+std::atomic<bool> g_unmarked{false};     // the last frame had none
+int g_unmarked_frames = 0;               // 5 s log
+// Unmarked frames: every skinned draw is taken (patch() only replaces rows equal to an arm bone's game matrix, so
+// her wrist wrap - drawn before the arms - follows and others are untouched); the IK runs at the first draw from a
+// frame's first skinned draw, from whichever bone buffer written this frame held her arm block before, at that
+// start (the buffers rotate; her glove is drawn from another buffer before the arms). Under g_mutex.
+std::unordered_map<ID3D11Resource*, size_t> g_arm_start_in;  // first row of the arm block (with the view's first element)
+bool g_tried_known = false;
+int g_blocks_used = 0;  // 5 s log
 unsigned g_arm_count = 0;
 int g_left = -1;               // which solved arm is Faith's left (-1: still voting)
 bool g_hand_ok[2] = {};        // the hand turns with the controller (its bind-space frame is known)
@@ -44,6 +58,10 @@ int g_votes = 0;
 int g_patched_other = 0;  // 5 s log: rows of other pieces moved with the arms
 int g_ik_frames = 0, g_ik_arms = 0, g_ik_clamped = 0, g_ik_far = 0;  // 5 s log
 int g_not_arms = 0;     // 5 s log: arm blocks rejected (the IK then waits for the arm piece's own draw)
+int g_no_hands = 0, g_stale = 0, g_no_arm_piece = 0;  // 5 s log: frames the IK couldn't run, and why
+unsigned g_seen_counts[4] = {}, g_seen_n = 0;
+int g_no_faith = 0;  // 5 s log: frames with no Faith piece at all
+unsigned g_refs[256] = {};  // 5 s log: stencil refs of indexed instanced draws (render thread)  // 5 s log: piece sizes seen in frames without the arm piece
 int g_far_eye[3] = {};  // too-far hands by the rendered eye (mono/unknown, left, right)
 float g_far_min = 1e9f, g_far_max = 0, g_near_max = 0;  // shoulder -> target (m)
 double g_copy_ms = 0, g_copy_max_ms = 0;  // shadow -> real copies at Unmap
@@ -111,9 +129,9 @@ int g_arm_rel = -1;
 bool compute(ID3D11Resource* buf, size_t off, int bones) {
     g_fixes.clear();
     const camera_override::Hands h = camera_override::rendered_hands();
-    if (!h.valid[0] && !h.valid[1]) return false;
+    if (!h.valid[0] && !h.valid[1]) { ++g_no_hands; return false; }
     const Shadow* v = contents(buf);
-    if (!v || off + size_t(bones) * 48 > v->size() || int(g_arms.side.size()) != bones) return false;
+    if (!v || off + size_t(bones) * 48 > v->size() || int(g_arms.side.size()) != bones) { ++g_stale; return false; }
     static std::vector<float> rows;  // render thread only
     rows.assign(reinterpret_cast<const float*>(v->data() + off), reinterpret_cast<const float*>(v->data() + off) + bones * 12);
     {
@@ -155,7 +173,8 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
             if (!h.valid[hand]) continue;
             const int a = hand == 0 ? g_left : 1 - g_left;
             const vm::Quat grip = (h.rot[hand] * vm::Quat::axis_angle({1, 0, 0}, -1.5707963f)).normalized();
-            const vm::Vec3 target = h.pos[hand] + grip.rotate({hand == 0 ? -0.042f : 0.042f, -0.004f, 0.108f});
+            const vm::Vec3 target = h.pos[hand] + grip.rotate({hand == 0 ? -0.042f : 0.042f, -0.004f, 0.108f}) +
+                                   hand_render::wall_offset(hand);  // stops at walls like the gloves
             const float dist = (target - s[a]).length();
             if (dist > 1.0f) {  // not where an arm can be (tracking lost, cutscene camera)
                 ++g_ik_far;
@@ -246,6 +265,8 @@ void set_arms(bool on) {
     g_learning = on && !g_arms.ok && g_tries < kLearnTries;
     g_ik_ready = on && g_arms.ok;
 }
+bool body_marked() { return !g_unmarked.load(std::memory_order_relaxed); }
+
 bool arms_known() {
     std::lock_guard lock(g_mutex);
     return g_arms.ok;
@@ -311,7 +332,9 @@ void before_draw(ID3D11DeviceContext* ctx) {
     D3D11_DEPTH_STENCIL_DESC dd;
     dss->GetDesc(&dd);
     dss->Release();
-    if (!dd.StencilEnable || ref != 0x20) return;  // Faith's body (D-036)
+    if (dd.StencilEnable) ++g_refs[ref & 0xff];
+    const bool marked = dd.StencilEnable && ref == 0x20;  // Faith's body (D-036)
+    if (!marked && !(g_unmarked.load(std::memory_order_relaxed) && g_ik_ready.load(std::memory_order_relaxed))) return;
 
     ID3D11DeviceContext1* c1 = nullptr;
     if (FAILED(ctx->QueryInterface(__uuidof(ID3D11DeviceContext1), reinterpret_cast<void**>(&c1)))) return;
@@ -359,6 +382,7 @@ void before_draw(ID3D11DeviceContext* ctx) {
             return;
         }
         g_pieces.push_back({buf, start, count, vb_id});
+        g_marked_now |= marked;
         idx = int(g_pieces.size()) - 1;
     }
     if (g_ik_ready.load()) {
@@ -369,7 +393,29 @@ void before_draw(ID3D11DeviceContext* ctx) {
             // The first Faith piece this frame: the IK from the arm block where it was last frame (all her pieces
             // share one bone buffer); at the arm piece itself again if that failed.
             const bool arm = count == g_arm_count;
-            if (g_fix_frame != g_frame) {
+            bool found_here = marked;  // an unmarked 81-bone draw may be someone else: kept once compute() accepts it
+            if (!marked) {
+                if (g_fix_frame != g_frame) {
+                    g_fix_frame = g_frame;
+                    g_fixes.clear();
+                    g_tried_known = false;
+                }
+                if (g_fixes.empty() && !g_tried_known) {
+                    g_tried_known = true;
+                    // Her pieces copy the arm matrices from more than one block (live: the glove matched one, the
+                    // wrist wrap another): the fixes of every block that passes, together.
+                    static std::vector<Fix> all;  // render thread only
+                    all.clear();
+                    for (const auto& [b, row] : g_arm_start_in)
+                        if (contents(b) && compute(b, (row + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3)) {
+                            all.insert(all.end(), g_fixes.begin(), g_fixes.end());
+                            ++g_blocks_used;
+                        }
+                    g_fixes.swap(all);
+                }
+                if (g_fixes.empty() && arm)
+                    found_here = compute(buf, (fe + start + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3);
+            } else if (g_fix_frame != g_frame) {
                 g_fix_frame = g_frame;
                 g_first_start = start;
                 if (arm || g_arm_rel >= 0)
@@ -379,7 +425,8 @@ void before_draw(ID3D11DeviceContext* ctx) {
             } else if (g_fixes.empty() && arm) {
                 compute(buf, (fe + start + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3);
             }
-            if (arm) g_arm_rel = int(start - g_first_start);
+            if (arm && marked) g_arm_rel = int(start - g_first_start);
+            if (arm && found_here) g_arm_start_in[buf] = fe + start;
             have = !g_fixes.empty();
         }
         if (have) {
@@ -504,7 +551,29 @@ void on_present() {
                   g_far_max, g_far_eye[0], g_far_eye[1], g_far_eye[2]);
         if (g_ik_arms) LOG_I("bones", "  posed hands up to %.2f m from the shoulder", g_near_max);
         if (g_not_arms) LOG_I("bones", "  %d blocks looked for the arms weren't them", g_not_arms);
-        g_not_arms = 0;
+        if (g_no_hands || g_stale || g_no_arm_piece) {
+            char sizes[96] = "";
+            size_t len = 0;
+            for (unsigned i = 0; i < g_seen_n && len < sizeof(sizes) - 16; ++i)
+                len += snprintf(sizes + len, sizeof(sizes) - len, " %u", (g_seen_counts[i] - kHeaderRows) / 3);
+            LOG_I("bones", "  frames not posed: %d no hands, %d bone block not written this frame, %d without the %u-bone arm piece (bones per piece then:%s)",
+                  g_no_hands, g_stale, g_no_arm_piece, (g_arm_count - kHeaderRows) / 3, sizes);
+        }
+        if (g_unmarked_frames)
+            LOG_I("bones", "  %d frames her body wasn't marked (ledge hang): arms found by their bone count, %.1f arm blocks a frame",
+                  g_unmarked_frames, double(g_blocks_used) / g_unmarked_frames);
+        g_unmarked_frames = g_blocks_used = 0;
+        if (g_no_faith) {
+            char refs[160] = "";
+            size_t len = 0;
+            for (int r = 0; r < 256 && len < sizeof(refs) - 16; ++r)
+                if (g_refs[r]) len += snprintf(refs + len, sizeof(refs) - len, " %02x:%u", r, g_refs[r]);
+            LOG_I("bones", "  %d frames without any Faith piece (stencil 0x20); stencil refs of draws in 5 s:%s", g_no_faith, refs);
+        }
+        memset(g_refs, 0, sizeof(g_refs));
+        g_no_faith = 0;
+        g_not_arms = g_no_hands = g_stale = g_no_arm_piece = 0;
+        g_seen_n = 0;
         g_far_eye[0] = g_far_eye[1] = g_far_eye[2] = 0;
         g_far_min = 1e9f;
         g_far_max = g_near_max = 0;
@@ -521,6 +590,22 @@ void on_present() {
                             g_pieces[i].count, (g_pieces[i].count - kHeaderRows) / 3, g_pieces[i].vb & 0xffffff);
         LOG_I("bones", "Faith pieces this frame:%s; poking piece %d bone %d", line, g_poke_piece.load(),
               g_poke_bone.load());
+    }
+    if (g_ik_ready.load() && g_pieces.empty()) ++g_no_faith;
+    g_unmarked = !g_marked_now;
+    if (!g_marked_now && g_ik_ready.load()) ++g_unmarked_frames;
+    g_marked_now = false;
+    if (g_ik_ready.load() && !g_pieces.empty()) {
+        bool arm = false;
+        for (const Piece& p : g_pieces) arm |= p.count == g_arm_count;
+        if (!arm) {
+            ++g_no_arm_piece;
+            for (const Piece& p : g_pieces) {
+                bool known = false;
+                for (unsigned i = 0; i < g_seen_n; ++i) known |= g_seen_counts[i] == p.count;
+                if (!known && g_seen_n < 4) g_seen_counts[g_seen_n++] = p.count;
+            }
+        }
     }
     ++g_frame;
     g_last_pieces.swap(g_pieces);

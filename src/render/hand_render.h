@@ -1,6 +1,8 @@
 #pragma once
 #include <filesystem>
 
+#include "core/vmath.h"
+
 struct ID3D11Device;
 struct ID3D11DeviceContext;
 struct ID3D11Texture2D;
@@ -13,8 +15,12 @@ namespace mecvr::hand_render {
 // Render thread; saves and restores all pipeline state it touches.
 void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_color, ID3D11Texture2D* depth,
           const float* vp);
-void set_enabled(bool on);  // hands.show
+void set_enabled(bool on);  // hands.show: draw the gloves
+// The pass runs (gloves, or only the wall/touch probes while Faith's arms follow the controllers, Q-702).
 bool enabled();
+// 7C: how far hand h (0 left) was last held back from a wall, as a world offset (zero when free; a few frames
+// late - the read-back). Faith's IK hands take it so they stop where the gloves would. Render thread.
+vm::Vec3 wall_offset(int h);
 void set_size(float s);  // hands.size: scales the whole hand about the controller's handle
 void set_collide(bool on);  // hands.collide: hands stop at walls (5c)
 void set_touch_interact(bool on);  // hands.touch_interact: pressing a hand into something in front of you = Interact (5d)
