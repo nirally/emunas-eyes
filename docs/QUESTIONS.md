@@ -38,6 +38,8 @@ ANSWERED 2026-10-17: B is the Disruptor, but it has to be held to activate; ever
 Context: Stage 7 makes Faith's own arms follow your real arms. In climbs, ledge grabs, pipe/ladder climbs and some attacks the game animates her hands onto the world.
 Options: (a) game animation during those moves, blending back to yours after (recommended: her hands land on the ledge); (b) always yours.
 Default if unanswered: (a). Ask at the first IK playtest.
+ANSWERED 2026-10-18 (PLAYTEST-7a): (b) always yours - her arms follow you in climbs and grabs too.
 
 ### Q-702 — Hide the mod's gloved hands once Faith's own hands follow you?
 Default: hide them (one pair of hands), with an option to show them. Ask at the first IK playtest.
+ANSWERED 2026-10-18 (PLAYTEST-7a): hide.

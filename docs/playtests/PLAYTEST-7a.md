@@ -15,3 +15,8 @@ run, climb, grab a ledge, use a zipline if you pass one. Quit normally.
 5. Comfort, 5 = very comfortable.
 
 Reply example: "1 yes, elbows ok, 2 right wrist stretched when punching, 3 game's animation, 4 hide, 5 5".
+
+## Result (2026-10-18)
+User: "1 yes, elbows ok, 2 the body still sometimes disconnets from the head, 3 follow, 4 hide, 5 5".
+Log: PLAYTEST-7a.log (session 17:06-17:10, ~3 min with IK). Arms learned at 17:07:55 (upper arm 0.28 m, forearm 0.25/0.26 m, left = arm 1, 60/60); then both arms posed ~70 frames/s per 5 s window, 0 hands too far, clamped (out of reach) 0-286 per window, hands posed up to 0.86 m from the shoulder; no warnings or errors.
+Disconnects -> BUG-018. Q-701 = always follow, Q-702 = hide.

@@ -28,12 +28,13 @@ Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 ✅ Punch = punch, hook = kick; MAG Rope by throwing a hand up, no stray kicks (PLAYTEST-6j, BUG-017 closed)
 ✅ Disruptor by an open-hand push, held while the hand stays open (PLAYTEST-6k: works, ~2 s, nothing stray, comfort 5)
 ✅ Stage 6 passed (D-042): combat and gadgets by body, buttons kept, comfort 5 throughout
-🚧 Stage 7: 7A done (the mod learns Faith's arms in ~4 s). 7B on the desktop: her arms bend to the (simulated) controllers every frame, her hands turn with them, her wrist wrap follows (no gap), fps unchanged; headset check next
+✅ 7B Faith's own arms follow yours: hands at the gloves, turn with yours, elbows OK, comfort 5 (PLAYTEST-7a)
+🚧 Stage 7: next hide the gloves (Q-702: hide), arms follow you in climbs too (Q-701: always yours)
 ⬜ Not started: body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: Q-701, Q-702 in PLAYTEST-7a
-🐞 Open bugs: BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-7a (Faith's arms follow yours; Q-701, Q-702). Me after it: Q-702 hide the gloves (needs the wall/touch probes split from the glove drawing)
+❓ Need from you: nothing right now
+🐞 Open bugs: BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: Me: hide the gloves (split the wall/touch probes from the glove drawing); BUG-018 onset logging. Then PLAYTEST-7b
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -211,7 +212,7 @@ Unknowns:
 Hypotheses:
   H1 IK by correction: S' = C_seg * S for every bone on a segment (upper arm, forearm, hand+fingers), C from a two-bone solve with the game's shoulder fixed, elbow pole down-and-out, hand = controller grip pose (+ calibrated offset), reach clamped.
   H2 joints and segment membership solved at runtime from a few seconds of the game's own motion (bone_solve logic in core, unit-tested), not hard-coded indices.
-Plan: 7A arm piece + joints at runtime (log, simulator-checked) -> 7B IK arms with simulated hands (desktop screenshots) -> PLAYTEST-7a (arms follow; Q-701/Q-702) -> 7C blend with parkour animations -> 7D fingers from finger touch -> 7E punches by the arm you punch with -> calibration (arm length, grip offset).
+Plan: 7A arm piece + joints at runtime (log, simulator-checked) -> 7B IK arms with simulated hands (desktop screenshots) -> PLAYTEST-7a (arms follow; Q-701/Q-702) -> 7C hide the gloves (Q-702) -> (blend with parkour animations dropped: Q-701 = always yours) -> 7D fingers from finger touch -> 7E punches by the arm you punch with -> calibration (arm length, grip offset).
 Verify: looking down and in a mirror-like view (desktop third-person debug or reflections), Faith's hands sit on the controllers, elbows bend naturally, no inversion or popping; comfort.
 Risk: the world matrices are rendered positions - the game's own logic (hit boxes, ledge hands) doesn't know about the IK pose (visual only, intended). Index changes between meshes/LODs. Two eyes per frame pair: the correction must be the same for both eyes' draws.
 - [x] Recon: Faith's arm bones found, re-posable before the draw, skeleton solved from the matrices (STAGE7-RECON.md)
