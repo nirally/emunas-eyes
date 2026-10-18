@@ -5,13 +5,16 @@
 #include <windows.h>
 
 #include <atomic>
+#include <cmath>
 #include <cstring>
 #include <mutex>
 #include <unordered_map>
 #include <vector>
 
+#include "core/arm_ik.h"
 #include "core/arm_solve.h"
 #include "diagnostics/log.h"
+#include "render/camera_override.h"
 
 namespace mecvr::faith_bones {
 namespace {
@@ -28,6 +31,13 @@ std::atomic<bool> g_arms_on{true}, g_learning{false};
 arm_solve::Learner g_learner;
 arm_solve::Result g_arms;  // ok once learned
 int g_tries = 0;
+// 7B: IK onto the controllers, once the arms are known. The arm piece = the piece with the learned row count.
+std::atomic<bool> g_ik_ready{false};
+unsigned g_arm_count = 0;
+int g_left = -1;               // which solved arm is Faith's left (-1: still voting)
+float g_vote = 0;
+int g_votes = 0;
+int g_ik_frames = 0, g_ik_arms = 0, g_ik_clamped = 0, g_ik_far = 0;  // 5 s log
 double g_copy_ms = 0, g_copy_max_ms = 0;  // shadow -> real copies at Unmap
 unsigned g_copies = 0;
 bool learning() { return g_learning.load(std::memory_order_relaxed); }
@@ -74,19 +84,86 @@ int piece_index(ID3D11Resource* buf, unsigned start) {
     return -1;
 }
 
+// 7B: Faith's arms onto the controllers. The game's pose (this frame's shadow) -> two-bone IK per arm
+// (arm_ik) -> every bone riding on a segment corrected, written to the real buffer right before the piece's
+// first draw this frame (later draws of it - shadow passes - read the same rows). The shadow keeps the game's
+// own pose. Hands: the grip pose's wrist point (the glove's wrist band, hand_render).
+void ik(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) {
+    const camera_override::Hands h = camera_override::rendered_hands();
+    if (!h.valid[0] && !h.valid[1]) return;
+    static std::vector<float> rows;  // render thread only
+    {
+        std::lock_guard lock(g_mutex);
+        const Shadow* v = contents(buf);
+        if (!v || off + size_t(bones) * 48 > v->size() || int(g_arms.side.size()) != bones) return;
+        rows.assign(reinterpret_cast<const float*>(v->data() + off), reinterpret_cast<const float*>(v->data() + off) + bones * 12);
+        const auto* b = reinterpret_cast<const arm_solve::Bone*>(rows.data());
+        vm::Vec3 s[2], e[2], w[2];
+        for (int a = 0; a < 2; ++a) {
+            const auto& arm = g_arms.arm[a];
+            s[a] = b[arm.shoulder_bone].apply(arm.shoulder);
+            e[a] = b[arm.elbow_bone].apply(arm.elbow);
+            w[a] = b[arm.wrist_bone].apply(arm.wrist);
+        }
+        if (g_left < 0) {  // the camera's right (Faith's view) over 60 frames: the arm on the left is her left
+            if (h.view_right.length() < 0.5f) return;
+            g_vote += (s[0] - s[1]).dot(h.view_right) > 0 ? 1.f : -1.f;
+            if (++g_votes >= 60) {
+                g_left = g_vote > 0 ? 1 : 0;
+                LOG_I("bones", "Faith's left arm is arm %d (%d of %d frames agree)", g_left, int(std::fabs(g_vote) + g_votes) / 2, g_votes);
+            }
+            return;
+        }
+        ++g_ik_frames;
+        bool moved = false;
+        for (int hand = 0; hand < 2; ++hand) {
+            if (!h.valid[hand]) continue;
+            const int a = hand == 0 ? g_left : 1 - g_left;
+            const vm::Quat grip = (h.rot[hand] * vm::Quat::axis_angle({1, 0, 0}, -1.5707963f)).normalized();
+            const vm::Vec3 target = h.pos[hand] + grip.rotate({hand == 0 ? -0.042f : 0.042f, -0.004f, 0.108f});
+            if ((target - s[a]).length() > 1.0f) {  // not where an arm can be (tracking lost, cutscene camera)
+                ++g_ik_far;
+                continue;
+            }
+            vm::Vec3 out = s[a] - s[1 - a];
+            out.y = 0;
+            const vm::Vec3 pole = (vm::Vec3{0, -1, 0} + out.normalized() * 0.7f).normalized();  // elbows down and out
+            const arm_ik::Result r = arm_ik::solve(s[a], e[a], w[a], target, pole);
+            g_ik_clamped += r.clamped;
+            ++g_ik_arms;
+            for (int k = 0; k < bones; ++k) {
+                if (g_arms.side[k] != a) continue;
+                const int seg = g_arms.segment[k];
+                arm_ik::apply(seg == arm_solve::kUpper ? r.upper : seg == arm_solve::kFore ? r.fore : r.hand, &rows[k * 12]);
+            }
+            moved = true;
+        }
+        if (!moved) return;
+    }
+    // Our own Map is nested in the draw hook (not shadowed): straight into the real buffer.
+    D3D11_MAPPED_SUBRESOURCE m{};
+    if (SUCCEEDED(ctx->Map(buf, 0, D3D11_MAP_WRITE_NO_OVERWRITE, 0, &m)) && m.pData) {
+        memcpy(static_cast<unsigned char*>(m.pData) + off, rows.data(), size_t(bones) * 48);
+        ctx->Unmap(buf, 0);
+    }
+}
+
 }  // namespace
 
 void set_poke(int piece, int bone) {
     g_poke_piece = piece;
     g_poke_bone = bone;
 }
-bool active() { return g_poke_piece.load() != 0 || g_record_left.load() > 0 || learning(); }
+bool active() {
+    return g_poke_piece.load() != 0 || g_record_left.load() > 0 || learning() || g_ik_ready.load(std::memory_order_relaxed);
+}
 
 void set_arms(bool on) {
     std::lock_guard lock(g_mutex);
     g_arms_on = on;
     // Learn (again) when switched on and not learned yet.
     g_learning = on && !g_arms.ok && g_tries < kLearnTries;
+    g_ik_ready = on && g_arms.ok;
 }
 bool arms_known() {
     std::lock_guard lock(g_mutex);
@@ -203,6 +280,8 @@ void before_draw(ID3D11DeviceContext* ctx) {
         g_pieces.push_back({buf, start, count, vb_id});
         idx = int(g_pieces.size()) - 1;
     }
+    if (g_ik_ready.load() && count == g_arm_count)
+        ik(ctx, buf, (size_t(vd.Buffer.FirstElement) + start + kHeaderRows) * 16, int(count - kHeaderRows) / 3);
     if (idx + 1 == g_poke_piece.load()) {
         // Our own Map is nested in the draw hook, so it isn't shadowed: write the real buffer and the shadow.
         D3D11_MAPPED_SUBRESOURCE m{};
@@ -300,12 +379,21 @@ void on_present() {
                               (s - e).length(), (e - w).length(), n[0], n[1], n[2]);
                     }
                 g_learning = !g_arms.ok && g_tries < kLearnTries;
+                g_arm_count = big->count;
+                g_ik_ready = g_arms.ok && g_arms_on.load();
                 g_learner.reset(bones);
                 g_copy_ms = g_copy_max_ms = 0;
                 g_copies = 0;
 
             }
         }
+    }
+    static ULONGLONG ik_log = 0;
+    if (g_ik_ready.load() && GetTickCount64() - ik_log >= 5000) {
+        ik_log = GetTickCount64();
+        LOG_I("bones", "IK arms in 5 s: %d frames, %d arms posed (%d out of reach, clamped), %d hands too far", g_ik_frames,
+              g_ik_arms, g_ik_clamped, g_ik_far);
+        g_ik_frames = g_ik_arms = g_ik_clamped = g_ik_far = 0;
     }
     if (g_poke_piece.load() && GetTickCount64() - last >= 1000 && !g_pieces.empty()) {
         last = GetTickCount64();

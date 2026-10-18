@@ -84,6 +84,7 @@ struct Hands {
     vm::Vec3 pos[2];
     hand_pose::Fingers fingers[2];
     bool valid[2] = {false, false};
+    vm::Vec3 view_right;  // the camera's right in the world (7B: which of Faith's arms is her left)
 };
 Hands rendered_hands();
 
