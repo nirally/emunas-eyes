@@ -378,6 +378,35 @@ void update_room(const vm::LinearTransform& game_cam) {
               std::sqrt(g_room.faith_vel.x * g_room.faith_vel.x + g_room.faith_vel.z * g_room.faith_vel.z),
               held ? " (player stick / after attack)" : "");
     }
+    // BUG-018: the moment the view comes off her body (over 15 cm), with what was going on, and how long it took
+    // to close (under 5 cm). The 2 s line above can't tell how it started.
+    {
+        static bool apart = false;
+        static ULONGLONG apart_at = 0;
+        static float max_gap = 0;
+        static room_model::V2 last_head{};
+        const float gap = std::sqrt(view.x * view.x + view.z * view.z);
+        const room_model::V2 head{s.relative.position.x, s.relative.position.z};
+        const float head_step = std::sqrt((head.x - last_head.x) * (head.x - last_head.x) + (head.z - last_head.z) * (head.z - last_head.z));
+        last_head = head;
+        if (!apart && gap > 0.15f) {
+            apart = true;
+            apart_at = GetTickCount64();
+            max_gap = gap;
+            LOG_I("room", "view came off Faith: gap %+.2f %+.2f m; this frame head moved %.3f m, Faith %+.3f %+.3f m (%.2f m/s); "
+                  "stick %+.2f %+.2f, %s, push %.2f%s%s, attack %llu ms ago",
+                  view.x, view.z, head_step, moved.x, moved.z,
+                  std::sqrt(g_room.faith_vel.x * g_room.faith_vel.x + g_room.faith_vel.z * g_room.faith_vel.z), cmd.x, cmd.y,
+                  g_room.walking ? "walking" : "idle", g_room.boost, held ? ", player stick / after attack" : "",
+                  g_room.stalled > g_room.stuck_s ? ", stuck" : "", GetTickCount64() - g_last_attack.load());
+        } else if (apart) {
+            max_gap = gap > max_gap ? gap : max_gap;
+            if (gap < 0.05f) {
+                apart = false;
+                LOG_I("room", "view back on Faith after %.1f s (largest gap %.2f m)", (GetTickCount64() - apart_at) / 1000.0, max_gap);
+            }
+        }
+    }
     static unsigned seen_released = 0;
     if (g_room.released != seen_released) {
         seen_released = g_room.released;

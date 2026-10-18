@@ -42,11 +42,14 @@ std::atomic<bool> g_unmarked{false};     // the last frame had none
 int g_unmarked_frames = 0;               // 5 s log
 // Unmarked frames: every skinned draw is taken (patch() only replaces rows equal to an arm bone's game matrix, so
 // her wrist wrap - drawn before the arms - follows and others are untouched); the IK runs at the first draw from a
-// frame's first skinned draw, from whichever bone buffer written this frame held her arm block before, at that
-// start (the buffers rotate; her glove is drawn from another buffer before the arms). Under g_mutex.
-std::unordered_map<ID3D11Resource*, size_t> g_arm_start_in;  // first row of the arm block (with the view's first element)
-bool g_tried_known = false;
-int g_blocks_used = 0;  // 5 s log
+// earliest draw that can find the arm block: her glove and wrist wrap are drawn before the arms, so each piece
+// size learns where the arm block was from it (rows, same buffer) when the arms were found at their own draw -
+// as g_arm_rel does from her first piece in marked frames. Under g_mutex.
+struct Seen { ID3D11Resource* buf; size_t row; unsigned count; };
+std::vector<Seen> g_seen_now;                       // this frame's skinned draws before the IK found the arms
+std::unordered_map<unsigned, long long> g_rel_by_count;  // piece size -> arm block row minus the piece's row
+int g_tries_now = 0;
+int g_early = 0;  // 5 s log: frames the IK ran before the arm piece's own draw
 unsigned g_arm_count = 0;
 int g_left = -1;               // which solved arm is Faith's left (-1: still voting)
 bool g_hand_ok[2] = {};        // the hand turns with the controller (its bind-space frame is known)
@@ -61,7 +64,7 @@ int g_not_arms = 0;     // 5 s log: arm blocks rejected (the IK then waits for t
 int g_no_hands = 0, g_stale = 0, g_no_arm_piece = 0;  // 5 s log: frames the IK couldn't run, and why
 unsigned g_seen_counts[4] = {}, g_seen_n = 0;
 int g_no_faith = 0;  // 5 s log: frames with no Faith piece at all
-unsigned g_refs[256] = {};  // 5 s log: stencil refs of indexed instanced draws (render thread)  // 5 s log: piece sizes seen in frames without the arm piece
+  // 5 s log: piece sizes seen in frames without the arm piece
 int g_far_eye[3] = {};  // too-far hands by the rendered eye (mono/unknown, left, right)
 float g_far_min = 1e9f, g_far_max = 0, g_near_max = 0;  // shoulder -> target (m)
 double g_copy_ms = 0, g_copy_max_ms = 0;  // shadow -> real copies at Unmap
@@ -332,7 +335,6 @@ void before_draw(ID3D11DeviceContext* ctx) {
     D3D11_DEPTH_STENCIL_DESC dd;
     dss->GetDesc(&dd);
     dss->Release();
-    if (dd.StencilEnable) ++g_refs[ref & 0xff];
     const bool marked = dd.StencilEnable && ref == 0x20;  // Faith's body (D-036)
     if (!marked && !(g_unmarked.load(std::memory_order_relaxed) && g_ik_ready.load(std::memory_order_relaxed))) return;
 
@@ -398,23 +400,23 @@ void before_draw(ID3D11DeviceContext* ctx) {
                 if (g_fix_frame != g_frame) {
                     g_fix_frame = g_frame;
                     g_fixes.clear();
-                    g_tried_known = false;
+                    g_seen_now.clear();
+                    g_tries_now = 0;
                 }
-                if (g_fixes.empty() && !g_tried_known) {
-                    g_tried_known = true;
-                    // Her pieces copy the arm matrices from more than one block (live: the glove matched one, the
-                    // wrist wrap another): the fixes of every block that passes, together.
-                    static std::vector<Fix> all;  // render thread only
-                    all.clear();
-                    for (const auto& [b, row] : g_arm_start_in)
-                        if (contents(b) && compute(b, (row + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3)) {
-                            all.insert(all.end(), g_fixes.begin(), g_fixes.end());
-                            ++g_blocks_used;
-                        }
-                    g_fixes.swap(all);
+                if (g_fixes.empty()) {
+                    const auto rel = g_rel_by_count.find(count);
+                    if (arm) {
+                        found_here = compute(buf, (fe + start + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3);
+                        if (found_here)
+                            for (const Seen& e : g_seen_now)
+                                if (e.buf == buf) g_rel_by_count[e.count] = (long long)(fe + start) - (long long)e.row;
+                    } else if (count >= kHeaderRows + 9 && rel != g_rel_by_count.end() && g_tries_now < 8 && (long long)(fe + start) + rel->second >= 0) {
+                        ++g_tries_now;
+                        if (compute(buf, ((fe + start) + rel->second + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3)) ++g_early;
+                    }
+                    // Props drawn with one bone come by the hundred (desktop log): only pieces of 3+ bones.
+                    if (g_fixes.empty() && count >= kHeaderRows + 9 && g_seen_now.size() < 64) g_seen_now.push_back({buf, fe + start, count});
                 }
-                if (g_fixes.empty() && arm)
-                    found_here = compute(buf, (fe + start + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3);
             } else if (g_fix_frame != g_frame) {
                 g_fix_frame = g_frame;
                 g_first_start = start;
@@ -426,7 +428,6 @@ void before_draw(ID3D11DeviceContext* ctx) {
                 compute(buf, (fe + start + kHeaderRows) * 16, int(g_arm_count - kHeaderRows) / 3);
             }
             if (arm && marked) g_arm_rel = int(start - g_first_start);
-            if (arm && found_here) g_arm_start_in[buf] = fe + start;
             have = !g_fixes.empty();
         }
         if (have) {
@@ -560,17 +561,10 @@ void on_present() {
                   g_no_hands, g_stale, g_no_arm_piece, (g_arm_count - kHeaderRows) / 3, sizes);
         }
         if (g_unmarked_frames)
-            LOG_I("bones", "  %d frames her body wasn't marked (ledge hang): arms found by their bone count, %.1f arm blocks a frame",
-                  g_unmarked_frames, double(g_blocks_used) / g_unmarked_frames);
-        g_unmarked_frames = g_blocks_used = 0;
-        if (g_no_faith) {
-            char refs[160] = "";
-            size_t len = 0;
-            for (int r = 0; r < 256 && len < sizeof(refs) - 16; ++r)
-                if (g_refs[r]) len += snprintf(refs + len, sizeof(refs) - len, " %02x:%u", r, g_refs[r]);
-            LOG_I("bones", "  %d frames without any Faith piece (stencil 0x20); stencil refs of draws in 5 s:%s", g_no_faith, refs);
-        }
-        memset(g_refs, 0, sizeof(g_refs));
+            LOG_I("bones", "  %d frames her body wasn't marked (ledge hang): arms found by their bone count, %d of them before the arms' own draw",
+                  g_unmarked_frames, g_early);
+        g_unmarked_frames = g_early = 0;
+        if (g_no_faith) LOG_I("bones", "  %d frames without any piece of Faith", g_no_faith);
         g_no_faith = 0;
         g_not_arms = g_no_hands = g_stale = g_no_arm_piece = 0;
         g_seen_n = 0;

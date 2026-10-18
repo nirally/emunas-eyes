@@ -29,12 +29,12 @@ Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 ✅ Disruptor by an open-hand push, held while the hand stays open (PLAYTEST-6k: works, ~2 s, nothing stray, comfort 5)
 ✅ Stage 6 passed (D-042): combat and gadgets by body, buttons kept, comfort 5 throughout
 ✅ 7B Faith's own arms follow yours: hands at the gloves, turn with yours, elbows OK, comfort 5 (PLAYTEST-7a)
-🚧 Stage 7: next hide the gloves (Q-702: hide), arms follow you in climbs too (Q-701: always yours)
+🚧 Stage 7: 7C on the desktop: gloves hidden (her own hands only), her hands stop at walls, her arms (with glove and wrist wrap) follow you while hanging from a ledge too (D-045); headset check next
 ⬜ Not started: body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: nothing right now
+❓ Need from you: PLAYTEST-7b
 🐞 Open bugs: BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: Me: hide the gloves (split the wall/touch probes from the glove drawing); BUG-018 onset logging. Then PLAYTEST-7b
+▶ Next: You: PLAYTEST-7b (gloves gone, walls, climbs and ledge hangs; BUG-018 is now logged at the moment it starts). Me after it: 7D fingers / 7E punches with the arm you punch with
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -237,4 +237,3 @@ Risk: the world matrices are rendered positions - the game's own logic (hit boxe
 - [ ] Opening hour end to end, left-handed and seated pass, simulator regression
 - [ ] dist/: installer, README, uninstall; no game files redistributed
 
-<!-- 2026-10-18 WIP (7C): gloves hidden by default (hands.show off), wall/touch probes keep running for Faith's arms, her IK hands take the wall push (desktop: stop at a wall, 12-14 cm held back). Found: in a ledge hang the game drops her stencil 0x20 mark (all draws ref 0x02) -> arms found by bone count, walls/touch off then; arms follow in the hang, but her right glove / wrist wrap pieces don't reliably follow there yet (arm block position in rotated buffers; the known-start lookup fails every frame). Next: find the wrap/glove pieces' arm rows in the hang. Desktop test save resumes in that hang. -->
