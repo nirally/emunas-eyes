@@ -22,6 +22,7 @@
 #include "core/yaw_model.h"
 #include "input/xinput_hook.h"
 #include "input/yaw_drive.h"
+#include "render/faith_bones.h"
 #include "render/time_sync.h"
 #include "diagnostics/log.h"
 #include "diagnostics/time_recon.h"
@@ -366,17 +367,25 @@ void update_room(const vm::LinearTransform& game_cam) {
     const float dt = last.QuadPart ? float(double(now.QuadPart - last.QuadPart) / double(freq.QuadPart)) : 0.f;
     last = now;
     g_room.explain_gain = g_room_explain.load() ? 1.5f : 1e6f;  // diagnostics.room_explain (A/B, BUG-016)
-    const bool held = xinput_hook::move_stick_in_use() || GetTickCount64() - g_last_attack.load() < 1000;
+    // Hanging / on a pipe or ladder / climbing a wall (a game hand above its shoulder, and 0.6 s after): the stick
+    // climbs her there (PLAYTEST-7d: "faith's body acts on it's own and start climbing up"). No walking stick;
+    // the view slides back onto her as while the player drives.
+    const bool climbing = GetTickCount64() - faith_bones::hand_up_at() < 600;
+    static unsigned climb_holds = 0;
+    static bool was_climbing = false;
+    if (climbing && !was_climbing) ++climb_holds;
+    was_climbing = climbing;
+    const bool held = xinput_hook::move_stick_in_use() || GetTickCount64() - g_last_attack.load() < 1000 || climbing;
     const room_model::Stick cmd = g_room.update({s.relative.position.x, s.relative.position.z}, {moved.x, moved.z},
                                                 held, dt, view);
     static ULONGLONG room_log = 0;
     if (GetTickCount64() - room_log > 2000) {
         room_log = GetTickCount64();
-        LOG_D("room", "gap %+.2f %+.2f m, stick %+.2f %+.2f, %s, push %.2f%s, Faith %.2f m/s%s", view.x, view.z,
+        LOG_D("room", "gap %+.2f %+.2f m, stick %+.2f %+.2f, %s, push %.2f%s, Faith %.2f m/s%s; %u climb holds", view.x, view.z,
               cmd.x, cmd.y, g_room.walking ? "walking" : "idle", g_room.boost,
               g_room.stalled > g_room.stuck_s ? " stuck: view slides" : "",
               std::sqrt(g_room.faith_vel.x * g_room.faith_vel.x + g_room.faith_vel.z * g_room.faith_vel.z),
-              held ? " (player stick / after attack)" : "");
+              climbing ? " (hands up: hanging/climbing)" : held ? " (player stick / after attack)" : "", climb_holds);
     }
     // BUG-018: the moment the view comes off her body (over 15 cm), with what was going on, and how long it took
     // to close (under 5 cm). The 2 s line above can't tell how it started.

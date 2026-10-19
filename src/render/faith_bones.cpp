@@ -69,8 +69,11 @@ std::atomic<float> g_forearm_twist{0.5f};
 // both hands for ~0.15 s - desktop) -> the IK fades out over kFadeFrames frames, and back in once they've been down
 // for kLetGoFrames. The stencil mark can't tell (normal play in the headset has unmarked frames too).
 std::atomic<bool> g_game_when_hanging{true};
-constexpr int kHangFrames = 30, kLetGoFrames = 6, kFadeFrames = 18;
+// kLetGoFrames 30 (was 6, PLAYTEST-7d: "the arms glitch"): a hand comes down for a moment between pipe steps.
+constexpr int kHangFrames = 30, kLetGoFrames = 30, kFadeFrames = 18;
 int g_up_run = 0, g_down_run = 0;
+std::atomic<ULONGLONG> g_hand_up_at{0};  // last frame either of her game hands was above its shoulder
+int g_hand_up_frames = 0;                // 5 s log
 bool g_hanging = false;
 float g_ik_weight = 1.f;
 int g_hang_frames = 0;  // 5 s log
@@ -192,7 +195,12 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
         }
         ++g_ik_frames;
         // Hanging: the game's hands both above her shoulders.
-        const bool up = w[0].y - s[0].y > 0.10f && w[1].y - s[1].y > 0.10f;
+        const bool up0 = w[0].y - s[0].y > 0.10f, up1 = w[1].y - s[1].y > 0.10f, up = up0 && up1;
+        // Either hand up (a pipe or ladder takes them in turn): room-scale's walking stick would climb her.
+        if (up0 || up1) {
+            g_hand_up_at = GetTickCount64();
+            ++g_hand_up_frames;
+        }
         g_up_run = up ? g_up_run + 1 : 0;
         g_down_run = up ? 0 : g_down_run + 1;
         if (!g_hanging && g_up_run >= kHangFrames && g_game_when_hanging.load()) {
@@ -318,6 +326,7 @@ int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) 
 
 void set_forearm_twist(float k) { g_forearm_twist = k; }
 void set_game_when_hanging(bool on) { g_game_when_hanging = on; }
+unsigned long long hand_up_at() { return g_hand_up_at.load(); }
 
 void set_poke(int piece, int bone) {
     g_poke_piece = piece;
@@ -672,7 +681,8 @@ void on_present() {
               g_ik_arms ? g_twist_sum / g_ik_arms : 0.f, g_forearm_twist.load(), g_patched_other, g_carried);
         g_carried = 0;
         if (g_hang_frames) LOG_I("bones", "  %d frames hanging (game's arms)", g_hang_frames);
-        g_hang_frames = 0;
+        if (g_hand_up_frames) LOG_I("bones", "  %d frames a game hand above the shoulder (no room-scale walking)", g_hand_up_frames);
+        g_hang_frames = g_hand_up_frames = 0;
         if (g_ik_far)
             LOG_I("bones", "  hands too far: %.2f-%.2f m from the shoulder (mono %d, left eye %d, right eye %d)", g_far_min,
                   g_far_max, g_far_eye[0], g_far_eye[1], g_far_eye[2]);

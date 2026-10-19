@@ -30,13 +30,13 @@ Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 ✅ Stage 6 passed (D-042): combat and gadgets by body, buttons kept, comfort 5 throughout
 ✅ 7B Faith's own arms follow yours: hands at the gloves, turn with yours, elbows OK, comfort 5 (PLAYTEST-7a)
 ✅ 7C gloves gone, hands stop at walls, body stays with the head, comfort 5 (PLAYTEST-7b)
-✅ Left hand fully learned in PLAYTEST-7c (25/26 hand bones; BUG-019 fix working in the log)
-🚧 Stage 7: arms take the game's pose while Faith hangs or climbs (your request in 7c), and a second fix for the right palm (BUG-020): built and desktop-tested
+✅ Left fingers and right palm fixed (PLAYTEST-7d: BUG-019, BUG-020 closed); arms hold the ledge while hanging (7d: "look ok"); comfort 5
+🚧 Stage 7: room-scale made Faith climb on her own on ledges and pipes (BUG-021): fix built and desktop-tested
 ⬜ Not started: body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-7d
-🐞 Open bugs: BUG-019 sev-3 (left fingers stretched; fix working in the log, needs your confirmation); BUG-020 sev-3 (right palm glitch; second fix built); BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-7d (ledge hangs, right palm). Me after it: 7D fingers / 7E punches with the arm you punch with
+❓ Need from you: PLAYTEST-7e
+🐞 Open bugs: BUG-021 sev-2 (climbs on her own on ledges/pipes; fix built); BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: You: PLAYTEST-7e (ledges, pipes, ladders while moving your head). Me after it: 7D fingers / 7E punches with the arm you punch with
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
