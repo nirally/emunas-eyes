@@ -207,3 +207,36 @@ TEST(arm_ik_share_twist_moves_twist_into_forearm) {
     arm_ik::share_twist(r, kE, kW, 1.f);
     CHECK(std::fabs(arm_ik::twist_angle(r.fore.q.conjugate() * r.hand.q, u0)) < 0.01f);
 }
+
+TEST(arm_ik_punching_elbow_rises_clear_of_her_chest) {
+    // An attack twists her torso (the game's animation) while her hands stay on yours: her right arm, facing -z,
+    // shoulders turned 30 deg either way, hands where a punch or guard put them. Her upper arm (past the shoulder
+    // joint's own 20%) should stay out of her chest - a box in front of and between the shoulders, turned with them
+    // (PLAYTEST-7h: "the arms bend a little into the body when throwing a punch"; desktop: an arm across her body).
+    const Vec3 old_pole = (Vec3{0, -1, 0} + Vec3{1, 0, 0} * 0.7f).normalized();  // down and out, always
+    int before = 0, after = 0;
+    for (float deg : {-30.f, 30.f}) {
+        const Quat turn = Quat::axis_angle({0, 1, 0}, deg * 0.01745329f);
+        const Vec3 s = turn.rotate(kS), other = turn.rotate(Vec3{-0.18f, 1.45f, 0});
+        auto in_chest = [&](Vec3 a, Vec3 b) {
+            int n = 0;
+            for (int i = 4; i <= 20; ++i) {
+                const Vec3 p = turn.conjugate().rotate(a + (b - a) * (i / 20.f));
+                n += std::fabs(p.x) < 0.16f && p.z > -0.15f && p.z < 0.10f && p.y < 1.40f && p.y > 1.0f;
+            }
+            return n;
+        };
+        for (Vec3 t : {Vec3{0.15f, 1.40f, -0.50f}, Vec3{0.0f, 1.42f, -0.42f}, Vec3{0.06f, 1.50f, -0.22f}, Vec3{0.05f, 1.45f, -0.30f},
+                       Vec3{-0.05f, 1.35f, -0.30f}}) {
+            const Vec3 e = turn.rotate(kE), w = turn.rotate(kW);
+            const auto a = arm_ik::solve(s, e, w, t, old_pole), b = arm_ik::solve(s, e, w, t, arm_ik::elbow_pole(s, other, t));
+            before += in_chest(s, a.elbow);
+            after += in_chest(s, b.elbow);
+        }
+    }
+    CHECK(before > 0);
+    CHECK(after * 2 <= before);  // 23 -> 9 here (a low hand across her turned-away chest is left)
+    // A hand low by her hip keeps the elbow down and out.
+    const Vec3 p = arm_ik::elbow_pole(kS, {-0.18f, 1.45f, 0}, {0.25f, 1.0f, -0.10f});
+    CHECK(near3(p, old_pole, 1e-4f));
+}

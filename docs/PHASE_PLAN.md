@@ -34,12 +34,13 @@ Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 ✅ No climbing on her own on ledges/pipes; room-scale on the ground unchanged; comfort 5 (PLAYTEST-7e, BUG-021 closed)
 ✅ Arms take the game's pose on pipes, ladders, wall climbs and ledges, follow yours on the ground; comfort 5 (PLAYTEST-7f, BUG-022 closed)
 ✅ 7D Faith's fingers follow yours, look right, fist about right, comfort 5 (PLAYTEST-7g retry, D-046); whole-body glitch fixed (BUG-023 closed); her thumb (the game's) a little odd
-🚧 Stage 7: 7E punches with the arm you punch with - already true since 7B (PLAYTEST-7g log: both arms on your controllers in every frame of every fight, no game takeover); confirming in PLAYTEST-7h
+✅ 7E Faith punches with the arm you punch with (PLAYTEST-7h: yes; true since 7B)
+🚧 Stage 7: arms sank a little into her body when punching (BUG-024: the game's attack twists her torso): elbows now rise with the hand; fix built, desktop-tested
 ⬜ Not started: body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-7h (short fight test)
-🐞 Open bugs: BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-7h. Me after it: Stage 7 wrap-up (calibration: arm length / grip offset), then Stage 8 HUD
+❓ Need from you: PLAYTEST-7i (short fight test)
+🐞 Open bugs: BUG-024 sev-3 (arm into her body when punching; fix built, partial); BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: You: PLAYTEST-7i. Me after it: Stage 7 wrap-up (calibration: arm length / grip offset), then Stage 8 HUD
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -222,7 +223,7 @@ Verify: looking down and in a mirror-like view (desktop third-person debug or re
 Risk: the world matrices are rendered positions - the game's own logic (hit boxes, ledge hands) doesn't know about the IK pose (visual only, intended). Index changes between meshes/LODs. Two eyes per frame pair: the correction must be the same for both eyes' draws.
 - [x] Recon: Faith's arm bones found, re-posable before the draw, skeleton solved from the matrices (STAGE7-RECON.md)
 - [ ] Retarget Faith's skeleton; head and hands from tracking; legs from game animation
-- [ ] ★ Faith punches with the arm you punch with (PLAYTEST-6a request): IK arms carry the attack instead of the game's combo choice
+- [x] ★ Faith punches with the arm you punch with (PLAYTEST-6a request): IK arms carry the attack instead of the game's combo choice (PLAYTEST-7h)
 - [x] ★ Blend IK arms with parkour animations (climbs, grabs) without breaking them: the game's arms while a game hand is above the shoulder, yours otherwise, 18-frame fades (PLAYTEST-7f)
 - [ ] Calibration flow + mirror view; persists
 

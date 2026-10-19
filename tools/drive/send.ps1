@@ -1,4 +1,4 @@
-# Usage: send.ps1 key <scancode-hex, e0 prefix = extended e.g. e050 = Down> [holdMs]   |   send.ps1 mouse <dx> <dy> [steps]   |   send.ps1 shot <name>
+# Usage: send.ps1 key <scancode-hex, e0 prefix = extended e.g. e050 = Down> [holdMs]   |   send.ps1 mouse <dx> <dy> [steps]   |   send.ps1 click <left|right> [holdMs]   |   send.ps1 shot <name>
 param([string]$cmd, [string]$a, [string]$b, [string]$c)
 Add-Type @"
 using System;
@@ -15,6 +15,10 @@ public static class Inj {
     var i = new INPUT[1]; i[0].type = 1; i[0].u.k.scan = scan; i[0].u.k.flags = 0x8u | (up ? 0x2u : 0u) | (ext ? 0x1u : 0u);
     SendInput(1, i, Marshal.SizeOf(typeof(INPUT)));
   }
+  public static void Button(uint flags) {
+    var i = new INPUT[1]; i[0].type = 0; i[0].u.m.flags = flags;
+    SendInput(1, i, Marshal.SizeOf(typeof(INPUT)));
+  }
   public static void Move(int dx, int dy) {
     var i = new INPUT[1]; i[0].type = 0; i[0].u.m.dx = dx; i[0].u.m.dy = dy; i[0].u.m.flags = 0x1;
     SendInput(1, i, Marshal.SizeOf(typeof(INPUT)));
@@ -25,5 +29,6 @@ $p = Get-Process MirrorsEdgeCatalyst -ErrorAction SilentlyContinue
 if ($p) { [Inj]::SetForegroundWindow($p.MainWindowHandle) | Out-Null; Start-Sleep -Milliseconds 150 }
 switch ($cmd) {
   'key'   { $ext = $a.StartsWith('e0'); $s = [Convert]::ToUInt16($a.Substring($(if ($ext) { 2 } else { 0 })), 16); $hold = if ($b) { [int]$b } else { 80 }; [Inj]::Key($s, $false, $ext); Start-Sleep -Milliseconds $hold; [Inj]::Key($s, $true, $ext) }
+  'click' { $r = $a -eq 'right'; $hold = if ($b) { [int]$b } else { 80 }; [Inj]::Button($(if ($r) { 0x8 } else { 0x2 })); Start-Sleep -Milliseconds $hold; [Inj]::Button($(if ($r) { 0x10 } else { 0x4 })) }
   'mouse' { $steps = if ($c) { [int]$c } else { 10 }; for ($n = 0; $n -lt $steps; $n++) { [Inj]::Move([int]$a / $steps, [int]$b / $steps); Start-Sleep -Milliseconds 16 } }
 }

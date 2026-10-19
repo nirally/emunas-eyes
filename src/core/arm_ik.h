@@ -47,6 +47,18 @@ inline vm::Vec3 bend_normal(vm::Vec3 x, vm::Vec3 d, vm::Vec3 fallback) {
 }
 }  // namespace detail
 
+// Where the elbow should point (unit, world) for a hand at `target`: down and out from the body with the hand
+// low, turning to out (a little down) as the hand rises towards shoulder height - a punch lifts the elbow.
+// PLAYTEST-7h ("the arms bend a little into the body when throwing a punch", elbow / upper arm, since 7B): with the
+// elbow kept low, the upper arm hung from the shoulder across the front of her chest.
+inline vm::Vec3 elbow_pole(vm::Vec3 shoulder, vm::Vec3 other, vm::Vec3 target) {
+    vm::Vec3 out = shoulder - other;
+    out.y = 0;
+    float k = (target.y - (shoulder.y - 0.35f)) / 0.30f;  // 0 with the hand 35+ cm below the shoulder, 1 at 5 cm below
+    k = k < 0 ? 0 : k > 1 ? 1 : k;
+    return (vm::Vec3{0, -1.f + 0.75f * k, 0} + out.normalized() * (0.7f + 0.5f * k)).normalized();
+}
+
 // pole: preferred elbow direction (unit, world), e.g. down and out from the body.
 inline Result solve(vm::Vec3 s, vm::Vec3 e0, vm::Vec3 w0, vm::Vec3 target, vm::Vec3 pole) {
     using vm::Vec3;

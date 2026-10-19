@@ -247,9 +247,7 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
                 continue;
             }
             g_near_max = dist > g_near_max ? dist : g_near_max;
-            vm::Vec3 out = s[a] - s[1 - a];
-            out.y = 0;
-            const vm::Vec3 pole = (vm::Vec3{0, -1, 0} + out.normalized() * 0.7f).normalized();  // elbows down and out
+            const vm::Vec3 pole = arm_ik::elbow_pole(s[a], s[1 - a], target);  // down and out; out as the hand rises
             arm_ik::Result r = arm_ik::solve(s[a], e[a], w[a], target, pole);
             if (g_hand_ok[a]) {  // the hand takes the controller's turn (the glove's hand space)
                 const float* m = &rows[g_arms.arm[a].hand_bone * 12];
