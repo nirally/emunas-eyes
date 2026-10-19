@@ -166,7 +166,8 @@ Desktop: standing 0 hand-up frames. A real ledge hang (she backed off an edge) -
 Result: PLAYTEST-7e - no climbing on her own on ledges/pipes; room-scale on the ground as before; comfort 5. Log: 39 climb holds, stick 0.00 in every [room] line while hands up.
 
 ### BUG-022 — Faith's arms glitch while climbing pipes and walls (one game hand up at a time)
-Status: open (fix built) | Severity: 3 | Stage: 7 | Reported: PLAYTEST-7e ("2 yes but less frequently")
+Status: closed 2026-10-19 (PLAYTEST-7f: "1 no, 2 yes no") | Severity: 3 | Stage: 7 | Reported: PLAYTEST-7e ("2 yes but less frequently")
 Evidence: PLAYTEST-7e.log 20:07:03-20:07:28: 93-165 frames per 5 s with a game hand above the shoulder but no "hanging" at all - the hang pose (D-045 follow-up, PLAYTEST-7c) needed BOTH hands up 30 frames in a row, which pipes and wall climbs (hands in turn) rarely give. Hangs that did start lasted 0.2-0.7 s. Meanwhile the IK put her arms on the controllers while the climb animation moved her shoulders: up to 497 of 816 arm poses per 5 s out of reach (stretched, clamped).
 Fix: the game's arms take over when EITHER hand is up for 30 frames, with dips of up to 8 frames (between climb steps) not breaking the run; back to yours after 30 frames with no hand up (faith_bones kGapFrames).
 Desktop: running, jumps and vaults on the start roof - 0 hand-up frames, arms on the simulated hands throughout (no false handover). No pipe or ledge reachable there: climbs untested on the desktop.
+Result: PLAYTEST-7f - no glitch while climbing/hanging, arms follow yours on the ground, no wrong handovers, comfort 5. Log: 23 handovers, all ended; arm poses clamped 5.3% (7e: 11.9%).
