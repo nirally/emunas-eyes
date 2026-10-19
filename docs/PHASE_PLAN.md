@@ -222,7 +222,7 @@ Risk: the world matrices are rendered positions - the game's own logic (hit boxe
 - [x] Recon: Faith's arm bones found, re-posable before the draw, skeleton solved from the matrices (STAGE7-RECON.md)
 - [ ] Retarget Faith's skeleton; head and hands from tracking; legs from game animation
 - [ ] ★ Faith punches with the arm you punch with (PLAYTEST-6a request): IK arms carry the attack instead of the game's combo choice
-- [ ] ★ Blend IK arms with parkour animations (climbs, grabs) without breaking them
+- [x] ★ Blend IK arms with parkour animations (climbs, grabs) without breaking them: the game's arms while a game hand is above the shoulder, yours otherwise, 18-frame fades (PLAYTEST-7f)
 - [ ] Calibration flow + mirror view; persists
 
 ### Stage 8 — HUD, UI, cutscenes, audio (M)
