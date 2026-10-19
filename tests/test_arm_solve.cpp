@@ -15,21 +15,22 @@ namespace {
 // A synthetic Faith-like skeleton in bind space (T-pose, arms along +-x), animated with random joint rotations.
 // Each bone's skinning matrix S_b = S_parent o (T(pivot) R T(-pivot)) maps bind space to the world, like the game's.
 struct Rig {
-    struct B { int parent; Vec3 pivot; float range; int seg; int side; };  // seg/side: what the solver should say
+    struct B { int parent; Vec3 pivot; float range; int seg; int side; Vec3 axis; };  // seg/side: what the solver should say; axis 0 = random
     std::vector<B> bones;
     std::vector<int> sloppy;  // fingertips whose matrices jitter ~3 mm (real ones fit only 2-5 mm)
-    int add(int parent, Vec3 pivot, float range, int seg = -1, int side = -1) {
-        bones.push_back({parent, pivot, range, seg, side});
+    int add(int parent, Vec3 pivot, float range, int seg = -1, int side = -1, Vec3 axis = {}) {
+        bones.push_back({parent, pivot, range, seg, side, axis});
         return int(bones.size()) - 1;
     }
-    Rig() {
+    // no_sternum: the collarbones are roots (their joint with the chest isn't in the piece; live 7g: 28 joints).
+    explicit Rig(bool no_sternum = false) {
         const int chest = add(-1, {0, 1.4f, 0}, 0.3f);
         add(chest, {0, 1.38f, 0.08f}, 0.2f);  // chest helper
         for (int s = 0; s < 2; ++s) {
             const float x = s ? -1.f : 1.f;
-            const int clav = add(chest, {0.02f * x, 1.45f, 0}, 0.25f);
+            const int clav = add(no_sternum ? -1 : chest, {0.02f * x, 1.45f, 0}, 0.25f);
             const int upper = add(clav, {0.18f * x, 1.45f, 0}, 0.8f, arm_solve::kUpper, s);
-            add(clav, {0.18f * x, 1.45f, 0}, 0.4f, arm_solve::kUpper, s);           // upper-arm twist
+            add(upper, {0.18f * x, 1.45f, 0}, 0.6f, arm_solve::kUpper, s, {1, 0, 0});  // upper-arm twist (about the arm)
             add(upper, {0.40f * x, 1.45f, 0.01f}, 0.3f, arm_solve::kUpper, s);      // elbow helper, above the elbow
             const int fore = add(upper, {0.46f * x, 1.45f, 0}, 0.9f, arm_solve::kFore, s);
             add(fore, {0.54f * x, 1.45f, 0}, 0.4f, arm_solve::kFore, s);            // forearm twist
@@ -55,7 +56,7 @@ std::vector<Bone> frame(const Rig& rig) {
     std::vector<Bone> out(rig.bones.size());
     for (size_t i = 0; i < rig.bones.size(); ++i) {
         const auto& b = rig.bones[i];
-        const Quat r = Quat::axis_angle({rnd(), rnd(), rnd()}, b.range * rnd());
+        const Quat r = Quat::axis_angle(b.axis.length() > 0 ? b.axis : Vec3{rnd(), rnd(), rnd()}, b.range * rnd());
         Xf local{r, b.pivot - r.rotate(b.pivot)};  // rotate about the pivot
         if (b.parent < 0) local.t = local.t + Vec3{550.f + rnd() * 0.5f, 66.f, 22.f + rnd() * 0.5f};
         xf[i] = b.parent < 0 ? local : compose(xf[b.parent], local);
@@ -96,6 +97,27 @@ TEST(arm_solve_finds_both_arms_and_segments) {
         if (r.segment[b] != want.seg || (want.seg >= 0 && r.side[b] != side)) {
             ++wrong;
             printf("    bone %zu: want seg %d side %d, got seg %d side %d\n", b, want.seg, side, r.segment[b], r.side[b]);
+        }
+    }
+    CHECK(wrong == 0);
+}
+
+TEST(arm_solve_leaves_a_collarbone_without_its_breastbone_joint) {
+    // Only the shoulder joint shows for the collarbone: it must not ride with the upper arm (live 7g: Faith's whole
+    // body swung with the arms).
+    Rig rig(true);
+    arm_solve::Learner l;
+    l.reset(int(rig.bones.size()));
+    for (int f = 0; f < 120; ++f) l.add(frame(rig).data());
+    const auto r = l.solve();
+    CHECK(r.ok);
+    if (!r.ok) return;
+    int wrong = 0;
+    for (size_t b = 0; b < rig.bones.size(); ++b) {
+        const auto& want = rig.bones[b];
+        if ((want.seg < 0) != (r.segment[b] < 0)) {
+            ++wrong;
+            printf("    bone %zu: want seg %d, got seg %d side %d\n", b, want.seg, r.segment[b], r.side[b]);
         }
     }
     CHECK(wrong == 0);

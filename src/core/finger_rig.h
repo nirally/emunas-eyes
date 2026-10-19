@@ -132,10 +132,14 @@ inline Hand build(const std::vector<Vertex>& verts, const arm_solve::Result& arm
     const arm_solve::Arm& arm = arms.arm[a];
     auto centroid = [&](int b) { return sk.sum[b] * float(1.0 / sk.w[b]); };
     auto out = [&](int b) { return (centroid(b) - arm.wrist).length(); };
-    // Candidates: her hand's bones with skin 6+ cm from the wrist (the palm's bones are nearer).
+    // Candidates: her arm's bones with skin 6+ cm from the wrist, past it (the palm's bones are nearer; the
+    // forearm's are on the elbow side). Any segment: a solve from little motion put finger bones on the forearm
+    // (desktop, standing: 29 and 32); the finger pose replaces the segment's correction for them anyway.
+    const Vec3 fore = (arm.wrist - arm.elbow).normalized();
     std::vector<int> cand;
     for (int b = 0; b < bones; ++b)
-        if (arms.side[b] == a && arms.segment[b] == arm_solve::kHand && sk.w[b] >= min_weight && out(b) > 0.06f) cand.push_back(b);
+        if (arms.side[b] == a && arms.segment[b] >= 0 && sk.w[b] >= min_weight && out(b) > 0.06f && (centroid(b) - arm.wrist).dot(fore) > 0)
+            cand.push_back(b);
     // Shared skin between candidates, as a share of the smaller one's: a finger's bones share skin at their
     // knuckles; neighbouring fingers only a little at the web (live: 15-34% along a finger, 8-11% across).
     std::vector<double> share(size_t(bones) * bones, 0);

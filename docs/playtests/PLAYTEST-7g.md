@@ -1,5 +1,7 @@
 # PLAYTEST-7g — Faith's fingers (~10 min)
 
+Retry (2026-10-19, after BUG-023): first look down at her body for a minute while moving your arms and turning. If her body glitches again, quit and tell me (that answer alone is enough).
+
 New: Faith's own fingers now follow yours. Her index finger follows your trigger finger and her other three fingers follow your grip, the same way the old gloves did. Her thumb still keeps the game's pose. When her arms switch to the game's animation (hanging, climbing), her fingers do too.
 
 Play ~10 min. Look at your hands often: point (lift your index off the trigger), make a fist (grip and trigger), open your hand, and do it while standing, running and fighting. Climb a little too. Quit normally.

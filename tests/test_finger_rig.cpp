@@ -128,6 +128,15 @@ TEST(finger_rig_finds_four_fingers_index_first) {
     }
 }
 
+TEST(finger_rig_takes_finger_bones_the_solve_put_on_the_forearm) {
+    Mesh m;
+    m.arms.segment[m.finger[0][2][1]] = arm_solve::kFore;  // desktop, standing: finger bones on the forearm
+    m.arms.segment[m.finger[0][3][0]] = arm_solve::kFore;
+    const auto h = finger_rig::build(m.verts, m.arms, 0, kFront, nullptr, 5);
+    CHECK(h.ok);
+    CHECK(h.finger[2].bone[1] == m.finger[0][2][1] && h.finger[3].bone[0] == m.finger[0][3][0]);
+}
+
 TEST(finger_rig_prefers_the_matrices_knuckle) {
     Mesh m;
     finger_rig::Fits fits;

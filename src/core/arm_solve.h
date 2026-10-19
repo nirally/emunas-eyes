@@ -104,6 +104,8 @@ public:
     // The bind-space point bones i and j share over the frames so far, and the fit's rms (m). False if they don't
     // turn against each other (no point is determined). 7D: a finger's first knuckle, from the hand bone.
     bool joint(int i, int j, vm::Vec3& x, double& rms) const;
+    // How far apart (rms, m) bones i and j put the bind-space point x over the frames so far.
+    double apart(int i, int j, vm::Vec3 x) const;
 
 private:
     struct Acc { double ata[3][3] = {}, atb[3] = {}, btb = 0; };
@@ -150,6 +152,19 @@ inline bool Learner::joint(int i, int j, vm::Vec3& x, double& rms) const {
     rms = std::sqrt(std::fmax(r2, 0.0) / frames_);
     x = {float(p[0]), float(p[1]), float(p[2])};
     return true;
+}
+
+inline double Learner::apart(int i, int j, vm::Vec3 x) const {
+    if (i == j || i < 0 || j < 0 || i >= n_ || j >= n_ || frames_ == 0) return 0;
+    if (i > j) { const int t = i; i = j; j = t; }  // the residual's square doesn't change with the order
+    const Acc& a = acc_[size_t(i) * n_ + j];
+    const double p[3] = {x.x, x.y, x.z};
+    double r2 = a.btb;
+    for (int u = 0; u < 3; ++u) {
+        r2 -= 2 * p[u] * a.atb[u];
+        for (int v = 0; v < 3; ++v) r2 += p[u] * (u <= v ? a.ata[u][v] : a.ata[v][u]) * p[v];
+    }
+    return std::sqrt(std::fmax(r2, 0.0) / frames_);
 }
 
 inline Result Learner::solve() const {
@@ -261,6 +276,7 @@ inline Result Learner::solve() const {
     }
     if (chains.size() != 2) { res.why = chains.size() < 2 ? "fewer than two arms found" : "more than two arms found"; return res; }
 
+    std::vector<bool> not_arm(n_, false);
     for (int a = 0; a < 2; ++a) {
         const Chain& c = chains[a];
         Arm& arm = res.arm[a];
@@ -289,7 +305,24 @@ inline Result Learner::solve() const {
             res.side[b] = a;
             res.segment[b] = seg;
         }
+        // A bone that pivots only at the shoulder rides with the upper arm only if it keeps her elbow where the
+        // upper arm does (a twist bone turns about the line through it). Her collarbone pivots there too: when the
+        // piece shows no joint of it past the shoulder (live, PLAYTEST-7g: 28 joints, upper arms of 5 bones) it took
+        // the arm's turns and swung her whole body with the arms.
+        int main_upper = -1;  // the upper arm itself: touches the shoulder and the elbow
+        for (int x : joints[c.s].bones)
+            for (int y : joints[c.e].bones)
+                if (x == y && res.side[x] == a && res.segment[x] == kUpper) main_upper = x;
+        if (main_upper >= 0)
+            for (int b = 0; b < n_; ++b) {
+                if (b == main_upper || res.side[b] != a || res.segment[b] != kUpper) continue;
+                bool only_shoulder = true;
+                for (int jk : of_bone[b]) only_shoulder &= (joints[jk].x - arm.shoulder).length() < 0.03f;
+                if (only_shoulder && apart(b, main_upper, arm.elbow) > 0.02) not_arm[b] = true;
+            }
     }
+    for (int b = 0; b < n_; ++b)
+        if (not_arm[b]) { res.side[b] = -1; res.segment[b] = kNone; }
     for (int b = 0; b < n_; ++b)
         if (res.side[b] == -2) { res.side[b] = -1; res.segment[b] = kNone; }
     for (int a = 0; a < 2; ++a)

@@ -790,8 +790,14 @@ void on_present() {
                         int n[3] = {0, 0, 0};
                         for (int k = 0; k < bones; ++k)
                             if (g_arms.side[k] == a) ++n[g_arms.segment[k]];
-                        LOG_I("bones", "  arm %d: upper arm %.3f m, forearm %.3f m; bones upper %d, forearm %d, hand %d", a,
-                              (s - e).length(), (e - w).length(), n[0], n[1], n[2]);
+                        char list[2][96] = {"", ""};  // which bones (PLAYTEST-7g: a chest bone on the upper arm)
+                        for (int seg = 0; seg < 2; ++seg) {
+                            size_t len = 0;
+                            for (int k = 0; k < bones && len < sizeof(list[seg]) - 5; ++k)
+                                if (g_arms.side[k] == a && g_arms.segment[k] == seg) len += snprintf(list[seg] + len, sizeof(list[seg]) - len, " %d", k);
+                        }
+                        LOG_I("bones", "  arm %d: upper arm %.3f m, forearm %.3f m; bones upper %d (%s), forearm %d (%s), hand %d", a,
+                              (s - e).length(), (e - w).length(), n[0], list[0] + (list[0][0] == ' '), n[1], list[1] + (list[1][0] == ' '), n[2]);
                         // 7D: each bone's joint with the hand bone, for the fingers' first knuckles (finger_rig).
                         g_fits[a].at.assign(bones, {});
                         g_fits[a].rms.assign(bones, -1);

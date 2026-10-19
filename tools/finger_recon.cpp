@@ -133,6 +133,18 @@ int main(int argc, char** argv) {
                arm.hand_bone, hf ? "ok" : "NOT FOUND", arm.wrist.x, arm.wrist.y, arm.wrist.z);
         printf("shoulder %.3f %.3f %.3f, elbow %.3f %.3f %.3f\n", arm.shoulder.x, arm.shoulder.y, arm.shoulder.z, arm.elbow.x,
                arm.elbow.y, arm.elbow.z);
+        for (int seg = 0; seg < 2; ++seg) {
+            printf("%s bones:", seg ? "forearm" : "upper arm");
+            for (int b = 0; b < int(bones); ++b)
+                if (res.side[b] == a && res.segment[b] == seg) printf(" %d", b);
+            printf("\n");
+        }
+        // How far each bone near the shoulder puts her elbow from where the upper arm bones put it (rms over the
+        // recording): bones riding with the arm keep it; her chest and collarbone don't.
+        printf("elbow apart from upper arm bones (cm):");
+        for (int b : {13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 41, 56, 57, 58, 59})
+            printf(" %d: %.1f/%.1f", b, L.apart(b, a == 0 ? 13 : 56, arm.elbow) * 100, L.apart(b, a == 0 ? 20 : 58, arm.elbow) * 100);
+        printf("\n");
         // Knuckles: pair joints among the hand bones.
         struct Edge { int p, c; vm::Vec3 x; double rms; };
         std::vector<Edge> edges;
