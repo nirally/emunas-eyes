@@ -32,6 +32,7 @@
     "combat.rope_throw":          { "type": "bool",  "default": true,  "section": "Combat", "label": "MAG Rope by throwing: throw a hand up toward the point; lower the arm to let go (the grip still works)" },
     "combat.disruptor_push":      { "type": "bool",  "default": true,  "section": "Combat", "label": "Disruptor by an open-hand push (open the hand fully, then push); the button still works" },
     "body.arms":                  { "type": "bool",  "default": true,  "section": "Body", "label": "Faith's own arms follow yours (Stage 7; learns her arms from the first seconds of play)" },
+    "body.arms_game_when_hanging": { "type": "bool", "default": true, "section": "Body", "label": "While Faith hangs (ledges, pipes, ziplines) her arms show the game's animation instead of following yours" },
     "body.forearm_twist":         { "type": "float", "min": 0, "max": 1, "default": 0.5, "section": "Body", "label": "How much of your wrist's turn Faith's forearm shares (0 = all at the wrist, 1 = all in the forearm)" },
     "diagnostics.bone_poke_piece": { "type": "float", "min": 0, "max": 32, "default": 0, "section": "Diagnostics", "label": "Recon: lift this Faith body piece 30 cm (1-based draw order, 0 off; developer)" },
     "diagnostics.bone_poke_bone": { "type": "float", "min": -1, "max": 64, "default": -1, "section": "Diagnostics", "label": "Recon: only this bone of the piece (-1 all; developer)" },

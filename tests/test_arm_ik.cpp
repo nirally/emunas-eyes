@@ -2,6 +2,7 @@
 #include "tests/check.h"
 
 #include <cmath>
+#include <cstring>
 
 using namespace mecvr;
 using vm::Quat;
@@ -111,6 +112,61 @@ TEST(arm_ik_apply_to_skinning_matrix) {
     for (int i = 0; i < 2; ++i) want[i] = c.apply(S(m, xs[i]));
     arm_ik::apply(c, m);
     for (int i = 0; i < 2; ++i) CHECK(near3(S(m, xs[i]), want[i], 1e-3f));
+}
+
+TEST(arm_ik_carry_moves_a_riding_bone_with_its_partner) {
+    auto make = [](Quat q, Vec3 t, float* m) {
+        const Vec3 c0 = q.rotate({1, 0, 0}), c1 = q.rotate({0, 1, 0}), c2 = q.rotate({0, 0, 1});
+        const float r[12] = {c0.x, c1.x, c2.x, t.x, c0.y, c1.y, c2.y, t.y, c0.z, c1.z, c2.z, t.z};
+        for (int k = 0; k < 12; ++k) m[k] = r[k];
+    };
+    auto S = [](const float* a, Vec3 x) {
+        return Vec3{a[0] * x.x + a[1] * x.y + a[2] * x.z + a[3], a[4] * x.x + a[5] * x.y + a[6] * x.z + a[7],
+                    a[8] * x.x + a[9] * x.y + a[10] * x.z + a[11]};
+    };
+    float game[12], row[12], now[12], out[12];
+    make(Quat::axis_angle({0.3f, 1, -0.2f}, 0.7f), {550.f, 66.f, 22.f}, game);
+    make(Quat::axis_angle({1, 0.2f, 0.4f}, -0.5f), {550.01f, 66.02f, 21.99f}, row);  // a helper bone near it
+    memcpy(now, game, sizeof(now));
+    const arm_ik::Rigid c{Quat::axis_angle({1, 0.5f, 0}, -0.4f), {0.1f, -0.2f, 0.05f}};
+    arm_ik::apply(c, now);  // the partner moved by c
+    arm_ik::carry(game, now, row, out);
+    const Vec3 xs[2] = {{0.1f, 1.4f, 0}, {-0.3f, 0.2f, 0.5f}};
+    for (const Vec3& x : xs) CHECK(near3(S(out, x), c.apply(S(row, x)), 1e-3f));  // the helper moved by c too
+    arm_ik::carry(game, game, row, out);  // partner unmoved: helper unmoved
+    for (int k = 0; k < 12; ++k) CHECK(std::fabs(out[k] - row[k]) < 1e-3f);
+}
+
+TEST(arm_ik_blend_turns_about_the_pivot) {
+    auto S = [](const float* a, Vec3 x) {
+        return Vec3{a[0] * x.x + a[1] * x.y + a[2] * x.z + a[3], a[4] * x.x + a[5] * x.y + a[6] * x.z + a[7],
+                    a[8] * x.x + a[9] * x.y + a[10] * x.z + a[11]};
+    };
+    const Quat rq = Quat::axis_angle({0.3f, 1, -0.2f}, 0.7f);
+    const Vec3 c0 = rq.rotate({1, 0, 0}), c1 = rq.rotate({0, 1, 0}), c2 = rq.rotate({0, 0, 1});
+    const float game[12] = {c0.x, c1.x, c2.x, 550.f, c0.y, c1.y, c2.y, 66.f, c0.z, c1.z, c2.z, 22.f};
+    // The IK turned the arm 90 deg about her shoulder.
+    const Vec3 shoulder{550.2f, 67.4f, 22.1f};
+    const Quat turn = Quat::axis_angle({0, 0, 1}, 1.5707963f);
+    const arm_ik::Rigid c{turn, shoulder - turn.rotate(shoulder)};
+    float now[12];
+    memcpy(now, game, sizeof(now));
+    arm_ik::apply(c, now);
+    const Vec3 hand_bind{0.3f, 0.9f, -0.1f};  // a bind-space point on the arm
+    const float dist = (S(game, hand_bind) - shoulder).length();
+    float m[12];
+    memcpy(m, now, sizeof(m));
+    arm_ik::blend(game, m, shoulder, 1.f);
+    CHECK(near3(S(m, hand_bind), S(now, hand_bind)));
+    memcpy(m, now, sizeof(m));
+    arm_ik::blend(game, m, shoulder, 0.f);
+    CHECK(near3(S(m, hand_bind), S(game, hand_bind)));
+    memcpy(m, now, sizeof(m));
+    arm_ik::blend(game, m, shoulder, 0.5f);
+    const Vec3 half = S(m, hand_bind);
+    CHECK(std::fabs((half - shoulder).length() - dist) < 1e-3f);  // stays on the sphere about the shoulder
+    const Quat q45 = Quat::axis_angle({0, 0, 1}, 0.785398f);
+    CHECK(near3(half, q45.rotate(S(game, hand_bind) - shoulder) + shoulder));
 }
 
 TEST(arm_ik_hand_frame_from_bind_joints) {

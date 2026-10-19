@@ -146,4 +146,49 @@ inline void apply(const Rigid& c, float* m) {
     for (int k = 0; k < 12; ++k) m[k] = out[k];
 }
 
+// The world correction that took a bone from `game` to `now` (both rigid 3x4 row-major), applied to another
+// matrix `row`: out = now * game^-1 * row. For bones the arm piece doesn't have that ride with one it has (BUG-020:
+// a helper bone of her right glove, 6 mm from her hand bone, kept the game's pose and pulled the palm).
+inline void carry(const float* game, const float* now, const float* row, float* out) {
+    float a[12];  // game^-1 * row: R = Rg^T Rr, t = Rg^T (tr - tg)
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) a[i * 4 + j] = game[i] * row[j] + game[4 + i] * row[4 + j] + game[8 + i] * row[8 + j];
+        a[i * 4 + 3] = game[i] * (row[3] - game[3]) + game[4 + i] * (row[7] - game[7]) + game[8 + i] * (row[11] - game[11]);
+    }
+    for (int i = 0; i < 3; ++i) {  // now * a
+        for (int j = 0; j < 4; ++j) out[i * 4 + j] = now[i * 4] * a[j] + now[i * 4 + 1] * a[4 + j] + now[i * 4 + 2] * a[8 + j];
+        out[i * 4 + 3] += now[i * 4 + 3];
+    }
+}
+
+// Part of the way from `game` to `now` (both rigid 3x4 row-major): the correction now * game^-1 scaled by w in
+// [0, 1] - its rotation by angle, the move of `pivot` by length - so the bone turns about the pivot (her shoulder)
+// on the way. (Scaling about the world origin, 500+ m away, would swing the arm through the city.) PLAYTEST-7c:
+// in ledge hangs her arms fade to the game's pose. w = 1 leaves now, w = 0 gives game.
+inline void blend(const float* game, float* now, vm::Vec3 pivot, float w) {
+    if (w >= 1.f) return;
+    float rc[3][3];  // R_now * R_game^T
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j) rc[i][j] = now[i * 4] * game[j * 4] + now[i * 4 + 1] * game[j * 4 + 1] + now[i * 4 + 2] * game[j * 4 + 2];
+    vm::LinearTransform lt{};  // basis = rc's columns
+    for (int c = 0; c < 3; ++c) {
+        lt.right[c] = rc[c][0];
+        lt.up[c] = rc[c][1];
+        lt.back[c] = rc[c][2];
+    }
+    vm::Quat q = vm::quat_of(lt);
+    if (q.w < 0) q = {-q.x, -q.y, -q.z, -q.w};
+    const float angle = 2.f * std::acos(std::fmin(1.f, q.w));
+    const vm::Quat qw = angle > 1e-6f ? vm::Quat::axis_angle({q.x, q.y, q.z}, angle * (w > 0 ? w : 0)) : vm::Quat{};
+    // Where the full correction takes the pivot: C(p) = R_c (p - t_game) + t_now, with t_game/t_now the translations.
+    const vm::Vec3 tg{game[3], game[7], game[11]}, tn{now[3], now[7], now[11]}, rel = pivot - tg;
+    const vm::Vec3 moved{rc[0][0] * rel.x + rc[0][1] * rel.y + rc[0][2] * rel.z + tn.x,
+                         rc[1][0] * rel.x + rc[1][1] * rel.y + rc[1][2] * rel.z + tn.y,
+                         rc[2][0] * rel.x + rc[2][1] * rel.y + rc[2][2] * rel.z + tn.z};
+    const float k = w > 0 ? w : 0;
+    const Rigid cw{qw, pivot + (moved - pivot) * k - qw.rotate(pivot)};
+    for (int i = 0; i < 12; ++i) now[i] = game[i];
+    apply(cw, now);
+}
+
 }  // namespace mecvr::arm_ik

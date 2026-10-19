@@ -4,6 +4,7 @@
 #include <d3d11_1.h>
 #include <windows.h>
 
+#include <array>
 #include <atomic>
 #include <cmath>
 #include <cstring>
@@ -63,6 +64,16 @@ int g_left = -1;               // which solved arm is Faith's left (-1: still vo
 bool g_hand_ok[2] = {};        // the hand turns with the controller (its bind-space frame is known)
 vm::Quat g_hand_bind[2];
 std::atomic<float> g_forearm_twist{0.5f};
+// Hanging (PLAYTEST-7c: "I would like the arms to be on the ledge position rather than following the controllers"):
+// both of the game's wrists 10+ cm above their shoulders for kHangFrames frames in a row (~0.35 s: a jump raises
+// both hands for ~0.15 s - desktop) -> the IK fades out over kFadeFrames frames, and back in once they've been down
+// for kLetGoFrames. The stencil mark can't tell (normal play in the headset has unmarked frames too).
+std::atomic<bool> g_game_when_hanging{true};
+constexpr int kHangFrames = 30, kLetGoFrames = 6, kFadeFrames = 18;
+int g_up_run = 0, g_down_run = 0;
+bool g_hanging = false;
+float g_ik_weight = 1.f;
+int g_hang_frames = 0;  // 5 s log
 float g_twist_sum = 0;  // 5 s log: mean |twist| the hand had about the forearm, degrees       // the hand's axes in bind space, as the glove's hand space (arm_ik::hand_frame)
 float g_vote = 0;
 int g_votes = 0;
@@ -88,6 +99,7 @@ double now_ms() {
 }
 std::filesystem::path g_dir;
 FILE* g_rec = nullptr;
+FILE* g_rec_pieces = nullptr;  // pieces_rec.bin: per frame uint32 pieces, then per marked piece uint32 bones + matrices
 int g_recorded = 0;
 std::mutex g_mutex;
 // Shadows of every 1 MB dynamic buffer (Faith's bone buffers and per-draw constant rings among them; the game
@@ -179,6 +191,21 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
             return false;
         }
         ++g_ik_frames;
+        // Hanging: the game's hands both above her shoulders.
+        const bool up = w[0].y - s[0].y > 0.10f && w[1].y - s[1].y > 0.10f;
+        g_up_run = up ? g_up_run + 1 : 0;
+        g_down_run = up ? 0 : g_down_run + 1;
+        if (!g_hanging && g_up_run >= kHangFrames && g_game_when_hanging.load()) {
+            g_hanging = true;
+            LOG_I("bones", "hanging (both her game hands above the shoulders): arms go to the game's animation");
+        } else if (g_hanging && (g_down_run >= kLetGoFrames || !g_game_when_hanging.load())) {
+            g_hanging = false;
+            LOG_I("bones", "not hanging any more: arms follow yours again");
+        }
+        g_hang_frames += g_hanging;
+        const float fade_to = g_hanging ? 0.f : 1.f, step = 1.f / kFadeFrames;
+        g_ik_weight = g_ik_weight < fade_to ? std::fmin(fade_to, g_ik_weight + step) : std::fmax(fade_to, g_ik_weight - step);
+        if (g_ik_weight <= 0.f) return false;  // fully the game's: nothing to change
         bool moved = false;
         for (int hand = 0; hand < 2; ++hand) {
             if (!h.valid[hand]) continue;
@@ -220,6 +247,7 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
                 memcpy(f.game, &rows[k * 12], sizeof(f.game));
                 memcpy(f.now, f.game, sizeof(f.now));
                 arm_ik::apply(seg == arm_solve::kUpper ? r.upper : seg == arm_solve::kFore ? r.fore : r.hand, f.now);
+                arm_ik::blend(f.game, f.now, s[a], g_ik_weight);
                 g_fixes.push_back(f);
             }
             moved = true;
@@ -231,9 +259,13 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
 
 // Rows of a piece's block (bones at `off` in buf's shadow) equal to a fixed arm bone's game matrix get the new
 // one, in the real buffer. Returns how many. Takes g_mutex itself (our Map must be outside it).
+int g_carried = 0;  // 5 s log: rows that rode with a nearby arm bone (BUG-020)
+
 int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) {
     static std::vector<std::pair<int, const Fix*>> hits;  // render thread only
+    static std::vector<std::pair<int, std::array<float, 12>>> carried;
     hits.clear();
+    carried.clear();
     {
         std::lock_guard lock(g_mutex);
         const Shadow* v = contents(buf);
@@ -245,6 +277,29 @@ int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) 
                 while (j < 12 && std::fabs(rows[k * 12 + j] - f.game[j]) <= 1e-5f * (1.f + std::fabs(f.game[j]))) ++j;
                 if (j == 12) { hits.push_back({k, &f}); break; }
             }
+        // A piece that is mostly copies of arm bones (her glove, wrist wrap) can have bones of its own riding with
+        // them (her right glove: a helper 6 mm from her hand bone, rigid with it within 3 mm over 1500 frames -
+        // left in the game's pose it pulled the palm): such a row within 3 cm of a copied bone moves with it. Torso
+        // and leg pieces copy fewer than half their rows from the arms and are left alone.
+        if (!hits.empty() && int(hits.size()) * 2 >= bones) {
+            for (int k = 0; k < bones; ++k) {
+                bool hit = false;
+                for (const auto& h : hits) hit |= h.first == k;
+                if (hit) continue;
+                const float* row = rows + k * 12;
+                const Fix* best = nullptr;
+                float best_d2 = 0.03f * 0.03f;
+                for (const auto& h : hits) {
+                    const float dx = row[3] - h.second->game[3], dy = row[7] - h.second->game[7], dz = row[11] - h.second->game[11];
+                    const float d2 = dx * dx + dy * dy + dz * dz;
+                    if (d2 < best_d2) { best_d2 = d2; best = h.second; }
+                }
+                if (!best) continue;
+                std::array<float, 12> out;
+                arm_ik::carry(best->game, best->now, row, out.data());
+                carried.push_back({k, out});
+            }
+        }
     }
     if (hits.empty()) return 0;
     // Our own Map is nested in the draw hook (not shadowed): straight into the real buffer.
@@ -252,6 +307,8 @@ int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) 
     if (SUCCEEDED(ctx->Map(buf, 0, D3D11_MAP_WRITE_NO_OVERWRITE, 0, &m)) && m.pData) {
         float* rows = reinterpret_cast<float*>(static_cast<unsigned char*>(m.pData) + off);
         for (const auto& hit : hits) memcpy(rows + hit.first * 12, hit.second->now, 48);  // fixes unchanged until next frame
+        for (const auto& c : carried) memcpy(rows + c.first * 12, c.second.data(), 48);
+        g_carried += int(carried.size());
         ctx->Unmap(buf, 0);
     }
     return int(hits.size());
@@ -260,6 +317,7 @@ int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) 
 }  // namespace
 
 void set_forearm_twist(float k) { g_forearm_twist = k; }
+void set_game_when_hanging(bool on) { g_game_when_hanging = on; }
 
 void set_poke(int piece, int bone) {
     g_poke_piece = piece;
@@ -480,10 +538,28 @@ void on_present() {
                 fwrite(v->data() + from, 48, bones, g_rec);
                 ++g_recorded;
             }
+            // Every marked piece of the frame too (game pose), for which of their rows copy an arm bone (BUG-020).
+            if (!g_rec_pieces) _wfopen_s(&g_rec_pieces, (g_dir / L"pieces_rec.bin").c_str(), L"wb");
+            if (g_rec_pieces) {
+                std::vector<const Piece*> keep;
+                for (const Piece& p : g_pieces) {
+                    const auto* pv = p.marked ? contents(p.buf) : nullptr;
+                    if (pv && (size_t(p.start) + p.count) * 16 <= pv->size()) keep.push_back(&p);
+                }
+                const unsigned n = unsigned(keep.size());
+                fwrite(&n, 4, 1, g_rec_pieces);
+                for (const Piece* p : keep) {
+                    const unsigned pb = (p->count - kHeaderRows) / 3;
+                    fwrite(&pb, 4, 1, g_rec_pieces);
+                    fwrite(contents(p->buf)->data() + (size_t(p->start) + kHeaderRows) * 16, 48, pb, g_rec_pieces);
+                }
+            }
         }
         if (--g_record_left <= 0 && g_rec) {
             fclose(g_rec);
             g_rec = nullptr;
+            if (g_rec_pieces) fclose(g_rec_pieces);
+            g_rec_pieces = nullptr;
             LOG_I("bones", "bones_rec.bin written: %d frames of the %u-bone piece", g_recorded, bones);
         }
     }
@@ -592,8 +668,11 @@ void on_present() {
     if (g_ik_ready.load() && GetTickCount64() - ik_log >= 5000) {
         ik_log = GetTickCount64();
         LOG_I("bones", "IK arms in 5 s: %d frames, %d arms posed (%d out of reach, clamped), %d hands too far; hand twist about "
-              "the forearm %.0f deg avg, forearm takes %.2f; %d rows of other pieces followed", g_ik_frames, g_ik_arms, g_ik_clamped, g_ik_far,
-              g_ik_arms ? g_twist_sum / g_ik_arms : 0.f, g_forearm_twist.load(), g_patched_other);
+              "the forearm %.0f deg avg, forearm takes %.2f; %d rows of other pieces followed (%d riding with a nearby arm bone)", g_ik_frames, g_ik_arms, g_ik_clamped, g_ik_far,
+              g_ik_arms ? g_twist_sum / g_ik_arms : 0.f, g_forearm_twist.load(), g_patched_other, g_carried);
+        g_carried = 0;
+        if (g_hang_frames) LOG_I("bones", "  %d frames hanging (game's arms)", g_hang_frames);
+        g_hang_frames = 0;
         if (g_ik_far)
             LOG_I("bones", "  hands too far: %.2f-%.2f m from the shoulder (mono %d, left eye %d, right eye %d)", g_far_min,
                   g_far_max, g_far_eye[0], g_far_eye[1], g_far_eye[2]);

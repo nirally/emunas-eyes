@@ -4,7 +4,7 @@ Mode: agentic
 Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
-## Status — Mirror's Edge Catalyst VR — 2026-10-17
+## Status — Mirror's Edge Catalyst VR — 2026-10-19
 Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
@@ -30,12 +30,13 @@ Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 ✅ Stage 6 passed (D-042): combat and gadgets by body, buttons kept, comfort 5 throughout
 ✅ 7B Faith's own arms follow yours: hands at the gloves, turn with yours, elbows OK, comfort 5 (PLAYTEST-7a)
 ✅ 7C gloves gone, hands stop at walls, body stays with the head, comfort 5 (PLAYTEST-7b)
-🚧 Stage 7: fixes for two left fingers stretched (BUG-019) and the right palm glitching (BUG-020) built; ledge hangs still to check in the headset
+✅ Left hand fully learned in PLAYTEST-7c (25/26 hand bones; BUG-019 fix working in the log)
+🚧 Stage 7: arms take the game's pose while Faith hangs or climbs (your request in 7c), and a second fix for the right palm (BUG-020): built and desktop-tested
 ⬜ Not started: body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-7c
-🐞 Open bugs: BUG-019 sev-3 (left fingers stretched; fix built); BUG-020 sev-3 (right palm glitch; fix built); BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-7c (fingers, palm, ledge hangs). Me after it: 7D fingers / 7E punches with the arm you punch with
+❓ Need from you: PLAYTEST-7d
+🐞 Open bugs: BUG-019 sev-3 (left fingers stretched; fix working in the log, needs your confirmation); BUG-020 sev-3 (right palm glitch; second fix built); BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: You: PLAYTEST-7d (ledge hangs, right palm). Me after it: 7D fingers / 7E punches with the arm you punch with
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
