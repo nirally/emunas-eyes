@@ -41,8 +41,8 @@ bool arms_known();
 bool body_marked();
 // body.forearm_twist (7B): the forearm's share of the hand's twist about it (arm_ik::share_twist).
 void set_forearm_twist(float k);
-// body.arms_game_when_hanging (PLAYTEST-7c): while the game holds both her hands above her shoulders (ledge hangs,
-// pipes, ziplines) her arms fade to the game's animation, and back after.
+// body.arms_game_when_hanging (PLAYTEST-7c): while the game holds either of her hands above its shoulder (ledge hangs,
+// pipes, ladders, wall climbs, ziplines; PLAYTEST-7e - was both hands) her arms fade to the game's animation, and back after.
 void set_game_when_hanging(bool on);
 // GetTickCount64() of the last frame either of the game's hands was 10+ cm above its shoulder (hangs, pipes,
 // ladders, wall climbs; 0 = never). Room-scale holds its walking stick then (PLAYTEST-7d: it made her climb).

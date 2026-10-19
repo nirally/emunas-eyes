@@ -65,12 +65,13 @@ bool g_hand_ok[2] = {};        // the hand turns with the controller (its bind-s
 vm::Quat g_hand_bind[2];
 std::atomic<float> g_forearm_twist{0.5f};
 // Hanging (PLAYTEST-7c: "I would like the arms to be on the ledge position rather than following the controllers"):
-// both of the game's wrists 10+ cm above their shoulders for kHangFrames frames in a row (~0.35 s: a jump raises
-// both hands for ~0.15 s - desktop) -> the IK fades out over kFadeFrames frames, and back in once they've been down
+// either of the game's wrists 10+ cm above its shoulder for kHangFrames frames in a row (~0.35 s: a jump raises
+// both hands for ~0.15 s - desktop; PLAYTEST-7e: was both hands, which pipes and wall climbs rarely hold) -> the IK fades out over kFadeFrames frames, and back in once they've been down
 // for kLetGoFrames. The stencil mark can't tell (normal play in the headset has unmarked frames too).
 std::atomic<bool> g_game_when_hanging{true};
 // kLetGoFrames 30 (was 6, PLAYTEST-7d: "the arms glitch"): a hand comes down for a moment between pipe steps.
-constexpr int kHangFrames = 30, kLetGoFrames = 30, kFadeFrames = 18;
+// kGapFrames: frames with no hand up that don't break a climb's run (PLAYTEST-7e).
+constexpr int kHangFrames = 30, kLetGoFrames = 30, kFadeFrames = 18, kGapFrames = 8;
 int g_up_run = 0, g_down_run = 0;
 std::atomic<ULONGLONG> g_hand_up_at{0};  // last frame either of her game hands was above its shoulder
 int g_hand_up_frames = 0;                // 5 s log
@@ -194,18 +195,20 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
             return false;
         }
         ++g_ik_frames;
-        // Hanging: the game's hands both above her shoulders.
-        const bool up0 = w[0].y - s[0].y > 0.10f, up1 = w[1].y - s[1].y > 0.10f, up = up0 && up1;
-        // Either hand up (a pipe or ladder takes them in turn): room-scale's walking stick would climb her.
-        if (up0 || up1) {
+        // Hanging or climbing: either of the game's hands above her shoulder (a pipe or ladder takes them in turn).
+        // PLAYTEST-7e ("arms glitch, less frequently"): both-hands-up only held in ledge hangs; on pipes and wall
+        // climbs one hand was up 93-165 frames per 5 s with no hang, and the IK stretched her arms to the controllers.
+        const bool up0 = w[0].y - s[0].y > 0.10f, up1 = w[1].y - s[1].y > 0.10f, up = up0 || up1;
+        // Room-scale's walking stick would climb her.
+        if (up) {
             g_hand_up_at = GetTickCount64();
             ++g_hand_up_frames;
         }
-        g_up_run = up ? g_up_run + 1 : 0;
         g_down_run = up ? 0 : g_down_run + 1;
+        g_up_run = up ? g_up_run + 1 : g_down_run < kGapFrames ? g_up_run : 0;  // short dips between climb steps
         if (!g_hanging && g_up_run >= kHangFrames && g_game_when_hanging.load()) {
             g_hanging = true;
-            LOG_I("bones", "hanging (both her game hands above the shoulders): arms go to the game's animation");
+            LOG_I("bones", "hanging/climbing (a game hand above the shoulder): arms go to the game's animation");
         } else if (g_hanging && (g_down_run >= kLetGoFrames || !g_game_when_hanging.load())) {
             g_hanging = false;
             LOG_I("bones", "not hanging any more: arms follow yours again");
