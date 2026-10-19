@@ -101,6 +101,9 @@ public:
     }
 
     Result solve() const;
+    // The bind-space point bones i and j share over the frames so far, and the fit's rms (m). False if they don't
+    // turn against each other (no point is determined). 7D: a finger's first knuckle, from the hand bone.
+    bool joint(int i, int j, vm::Vec3& x, double& rms) const;
 
 private:
     struct Acc { double ata[3][3] = {}, atb[3] = {}, btb = 0; };
@@ -132,6 +135,22 @@ inline bool solve3(const double (&u)[3][3], const double (&b)[3], double min_piv
     return true;
 }
 }  // namespace detail
+
+inline bool Learner::joint(int i, int j, vm::Vec3& x, double& rms) const {
+    if (i == j || i < 0 || j < 0 || i >= n_ || j >= n_ || frames_ == 0) return false;
+    if (i > j) { const int t = i; i = j; j = t; }
+    const Acc& a = acc_[size_t(i) * n_ + j];
+    double p[3];
+    if (!detail::solve3(a.ata, a.atb, motion * frames_, p)) return false;
+    double r2 = a.btb;
+    for (int u = 0; u < 3; ++u) {
+        r2 -= 2 * p[u] * a.atb[u];
+        for (int v = 0; v < 3; ++v) r2 += p[u] * (u <= v ? a.ata[u][v] : a.ata[v][u]) * p[v];
+    }
+    rms = std::sqrt(std::fmax(r2, 0.0) / frames_);
+    x = {float(p[0]), float(p[1]), float(p[2])};
+    return true;
+}
 
 inline Result Learner::solve() const {
     using vm::Vec3;

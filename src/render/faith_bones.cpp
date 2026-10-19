@@ -15,6 +15,8 @@
 
 #include "core/arm_ik.h"
 #include "core/arm_solve.h"
+#include "core/finger_rig.h"
+#include "core/hand_pose.h"
 #include "diagnostics/log.h"
 #include "render/camera_override.h"
 #include "render/hand_render.h"
@@ -27,6 +29,7 @@ constexpr unsigned kHeaderRows = 9;  // lighting rows before a piece's bones
 
 std::atomic<int> g_poke_piece{0}, g_poke_bone{-1};
 std::atomic<int> g_record_left{0};
+std::atomic<bool> g_mesh_dump{false};  // MESHDUMP: the next arm piece draw's mesh to files
 
 // 7A: learning Faith's arms from the game's own motion (arm_solve), once per session.
 constexpr int kLearnFrames = 400, kLearnTries = 1000;  // retried while her arms barely move (each try ~4 s)
@@ -64,6 +67,16 @@ int g_left = -1;               // which solved arm is Faith's left (-1: still vo
 bool g_hand_ok[2] = {};        // the hand turns with the controller (its bind-space frame is known)
 vm::Quat g_hand_bind[2];
 std::atomic<float> g_forearm_twist{0.5f};
+// 7D fingers (finger_rig, docs/recon/STAGE7D-RECON.md): built once from the arm piece's mesh, read back at its draw
+// once her arms and her left are known; per arm. The fits are each bone's joint with the hand bone (first solve).
+std::atomic<bool> g_fingers_on{true};
+int g_finger_state = 0;  // 0 not yet, 1 built, -1 couldn't (logged)
+finger_rig::Hand g_rig[2];
+finger_rig::Fits g_fits[2];
+vm::Vec3 g_front;                     // her front in bind space (set with g_left)
+std::vector<signed char> g_finger_of;  // per bone: finger * 3 + joint (index 0-2 ... pinky 9-11), -1 none
+float g_curl_sum[2] = {};              // 5 s log: index, others
+int g_curl_n = 0;
 // Hanging (PLAYTEST-7c: "I would like the arms to be on the ledge position rather than following the controllers"):
 // either of the game's wrists 10+ cm above its shoulder for kHangFrames frames in a row (~0.35 s: a jump raises
 // both hands for ~0.15 s - desktop; PLAYTEST-7e: was both hands, which pipes and wall climbs rarely hold) -> the IK fades out over kFadeFrames frames, and back in once they've been down
@@ -183,6 +196,7 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
                 // Her front in bind space (y up): up x (left shoulder -> right shoulder).
                 const vm::Vec3 front =
                     vm::Vec3{0, 1, 0}.cross(g_arms.arm[1 - g_left].shoulder - g_arms.arm[g_left].shoulder).normalized();
+                g_front = front;
                 for (int a = 0; a < 2; ++a) {
                     const auto& arm = g_arms.arm[a];
                     g_hand_ok[a] = arm.hand_bone >= 0 && arm_ik::hand_frame(arm.wrist, arm.hand_joints, front, g_hand_bind[a]);
@@ -251,13 +265,30 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
             }
             g_ik_clamped += r.clamped;
             ++g_ik_arms;
+            // 7D: her fingers from yours - each finger bone = her (corrected) hand bone * the finger's pose from the
+            // bind hand, instead of riding with the hand in the game's finger pose.
+            const bool fingers = g_finger_state == 1 && g_fingers_on.load() && g_rig[a].ok && int(g_finger_of.size()) == bones;
+            arm_ik::Rigid pose[4][3];
+            float hand_now[12];
+            if (fingers) {
+                const hand_pose::Fingers fc = hand_pose::fingers(hand);
+                for (int fi = 0; fi < 4; ++fi) finger_rig::pose(g_rig[a].finger[fi], fi == 0 ? fc.index : fc.others, {}, pose[fi]);
+                memcpy(hand_now, &rows[g_arms.arm[a].hand_bone * 12], sizeof(hand_now));
+                arm_ik::apply(r.hand, hand_now);
+                g_curl_sum[0] += fc.index;
+                g_curl_sum[1] += fc.others;
+                ++g_curl_n;
+            }
             for (int k = 0; k < bones; ++k) {
                 if (g_arms.side[k] != a) continue;
                 const int seg = g_arms.segment[k];
                 Fix f;
                 memcpy(f.game, &rows[k * 12], sizeof(f.game));
                 memcpy(f.now, f.game, sizeof(f.now));
-                arm_ik::apply(seg == arm_solve::kUpper ? r.upper : seg == arm_solve::kFore ? r.fore : r.hand, f.now);
+                if (fingers && g_finger_of[k] >= 0)
+                    finger_rig::compose(hand_now, pose[g_finger_of[k] / 3][g_finger_of[k] % 3], f.now);
+                else
+                    arm_ik::apply(seg == arm_solve::kUpper ? r.upper : seg == arm_solve::kFore ? r.fore : r.hand, f.now);
                 arm_ik::blend(f.game, f.now, s[a], g_ik_weight);
                 g_fixes.push_back(f);
             }
@@ -328,6 +359,7 @@ int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) 
 }  // namespace
 
 void set_forearm_twist(float k) { g_forearm_twist = k; }
+void set_fingers(bool on) { g_fingers_on = on; }
 void set_game_when_hanging(bool on) { g_game_when_hanging = on; }
 unsigned long long hand_up_at() { return g_hand_up_at.load(); }
 
@@ -336,7 +368,7 @@ void set_poke(int piece, int bone) {
     g_poke_bone = bone;
 }
 bool active() {
-    return g_poke_piece.load() != 0 || g_record_left.load() > 0 || learning() || g_ik_ready.load(std::memory_order_relaxed);
+    return g_poke_piece.load() != 0 || g_record_left.load() > 0 || g_mesh_dump.load() || learning() || g_ik_ready.load(std::memory_order_relaxed);
 }
 
 void set_arms(bool on) {
@@ -359,6 +391,140 @@ void request_record(const std::filesystem::path& dir, int frames) {
     g_recorded = 0;
     g_record_left = frames;
 }
+
+void request_mesh_dump(const std::filesystem::path& dir) {
+    std::lock_guard lock(g_mutex);
+    g_dir = dir;
+    g_mesh_dump = true;
+}
+
+namespace {
+// A GPU buffer's contents through a staging copy (stalls; a one-off diagnostic). Empty on failure.
+std::vector<unsigned char> read_back(ID3D11DeviceContext* ctx, ID3D11Buffer* b) {
+    std::vector<unsigned char> out;
+    D3D11_BUFFER_DESC d;
+    b->GetDesc(&d);
+    ID3D11Device* dev = nullptr;
+    ctx->GetDevice(&dev);
+    if (!dev) return out;
+    D3D11_BUFFER_DESC sd{};
+    sd.ByteWidth = d.ByteWidth;
+    sd.Usage = D3D11_USAGE_STAGING;
+    sd.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    ID3D11Buffer* st = nullptr;
+    if (SUCCEEDED(dev->CreateBuffer(&sd, nullptr, &st)) && st) {
+        ctx->CopyResource(st, b);
+        D3D11_MAPPED_SUBRESOURCE m{};
+        if (SUCCEEDED(ctx->Map(st, 0, D3D11_MAP_READ, 0, &m)) && m.pData) {
+            out.assign(static_cast<unsigned char*>(m.pData), static_cast<unsigned char*>(m.pData) + d.ByteWidth);
+            ctx->Unmap(st, 0);
+        }
+        st->Release();
+    }
+    dev->Release();
+    return out;
+}
+
+void dump_mesh(ID3D11DeviceContext* ctx, unsigned index_count, unsigned start_index, int base_vertex, unsigned bones) {
+    const std::filesystem::path dir = g_dir;
+    FILE* txt = nullptr;
+    if (_wfopen_s(&txt, (dir / L"mesh_dump.txt").c_str(), L"w") || !txt) return;
+    fprintf(txt, "bones %u\nindex_count %u\nstart_index %u\nbase_vertex %d\n", bones, index_count, start_index, base_vertex);
+    ID3D11Buffer* vbs[8] = {};
+    UINT strides[8] = {}, offsets[8] = {};
+    ctx->IAGetVertexBuffers(0, 8, vbs, strides, offsets);
+    for (int s = 0; s < 8; ++s) {
+        if (!vbs[s]) continue;
+        const auto data = read_back(ctx, vbs[s]);
+        fprintf(txt, "vb %d stride %u offset %u bytes %zu\n", s, strides[s], offsets[s], data.size());
+        FILE* f = nullptr;
+        if (!_wfopen_s(&f, (dir / (L"mesh_vb" + std::to_wstring(s) + L".bin")).c_str(), L"wb") && f) {
+            fwrite(data.data(), 1, data.size(), f);
+            fclose(f);
+        }
+        vbs[s]->Release();
+    }
+    ID3D11Buffer* ib = nullptr;
+    DXGI_FORMAT fmt{};
+    UINT ib_off = 0;
+    ctx->IAGetIndexBuffer(&ib, &fmt, &ib_off);
+    if (ib) {
+        const auto data = read_back(ctx, ib);
+        fprintf(txt, "ib format %d offset %u bytes %zu\n", int(fmt), ib_off, data.size());
+        FILE* f = nullptr;
+        if (!_wfopen_s(&f, (dir / L"mesh_ib.bin").c_str(), L"wb") && f) {
+            fwrite(data.data(), 1, data.size(), f);
+            fclose(f);
+        }
+        ib->Release();
+    }
+    D3D11_PRIMITIVE_TOPOLOGY topo{};
+    ctx->IAGetPrimitiveTopology(&topo);
+    fprintf(txt, "topology %d\n", int(topo));
+    fclose(txt);
+    LOG_I("bones", "mesh dump: arm piece (%u bones), %u indices from %u, base vertex %d -> mesh_dump.txt", bones, index_count, start_index, base_vertex);
+}
+
+// 7D: her fingers from the arm piece's mesh (finger_rig), at its draw, once. The read-back stalls once (~1 MB).
+// Our Map isn't under g_mutex (cb_capture's hook takes it).
+void build_fingers(ID3D11DeviceContext* ctx, unsigned index_count, unsigned start_index, int base_vertex, int bones) {
+    g_finger_state = -1;  // one try
+    const double t0 = now_ms();
+    ID3D11Buffer* vb = nullptr;
+    UINT stride = 0, offset = 0;
+    ctx->IAGetVertexBuffers(0, 1, &vb, &stride, &offset);
+    ID3D11Buffer* ib = nullptr;
+    DXGI_FORMAT fmt{};
+    UINT ib_off = 0;
+    ctx->IAGetIndexBuffer(&ib, &fmt, &ib_off);
+    std::vector<unsigned char> vdata, idata;
+    if (vb && ib) {
+        vdata = read_back(ctx, vb);
+        idata = read_back(ctx, ib);
+    }
+    if (vb) vb->Release();
+    if (ib) ib->Release();
+    // The draw's vertices: the range its indices span.
+    const unsigned isz = fmt == DXGI_FORMAT_R16_UINT ? 2 : fmt == DXGI_FORMAT_R32_UINT ? 4 : 0;
+    unsigned lo = ~0u, hi = 0;
+    for (unsigned i = 0; isz && i < index_count; ++i) {
+        const size_t at = ib_off + size_t(start_index + i) * isz;
+        if (at + isz > idata.size()) break;
+        unsigned v = 0;
+        memcpy(&v, &idata[at], isz);
+        lo = v < lo ? v : lo;
+        hi = v > hi ? v : hi;
+    }
+    std::vector<finger_rig::Vertex> verts;
+    const long long first = (long long)base_vertex + lo;
+    const bool parsed = lo <= hi && first >= 0 && offset < vdata.size() &&
+                        finger_rig::parse(vdata.data() + offset, vdata.size() - offset, stride, unsigned(first), hi - lo + 1, bones, verts);
+    std::lock_guard lock(g_mutex);
+    if (!parsed) {
+        LOG_W("bones", "fingers: the arm mesh isn't laid out as known (stride %u, %zu bytes, index format %d, vertices %u-%u): her "
+              "fingers keep the game's pose", stride, vdata.size(), int(fmt), lo, hi);
+        return;
+    }
+    g_finger_of.assign(bones, -1);
+    int built = 0;
+    static const char* names[4] = {"index", "middle", "ring", "pinky"};
+    for (int a = 0; a < 2; ++a) {
+        g_rig[a] = finger_rig::build(verts, g_arms, a, g_front, &g_fits[a]);
+        LOG_I("bones", "fingers of arm %d (her %s hand) from %zu vertices: %s", a, a == g_left ? "left" : "right", verts.size(), g_rig[a].why);
+        if (!g_rig[a].ok) continue;
+        ++built;
+        const vm::Vec3 w = g_arms.arm[a].wrist;
+        for (int f = 0; f < 4; ++f) {
+            const auto& fg = g_rig[a].finger[f];
+            for (int j = 0; j < 3; ++j) g_finger_of[fg.bone[j]] = static_cast<signed char>(f * 3 + j);
+            LOG_I("bones", "  %-6s bones %d %d %d, knuckles from the wrist %.3f %.3f %.3f m", names[f], fg.bone[0], fg.bone[1],
+                  fg.bone[2], (fg.pivot[0] - w).length(), (fg.pivot[1] - w).length(), (fg.pivot[2] - w).length());
+        }
+    }
+    g_finger_state = built ? 1 : -1;
+    LOG_I("bones", "fingers: %d of 2 hands (%.1f ms)", built, now_ms() - t0);
+}
+}  // namespace
 
 void* on_map(ID3D11Resource* res, void* mapped, unsigned size, bool constant_buffer) {
     if (!active() || size != kRingBytes || !mapped) return mapped;
@@ -404,7 +570,7 @@ void on_unmap(ID3D11Resource* res) {
     s.real = nullptr;
 }
 
-void before_draw(ID3D11DeviceContext* ctx) {
+void before_draw(ID3D11DeviceContext* ctx, unsigned index_count, unsigned start_index, int base_vertex) {
     if (!active()) return;
     ID3D11DepthStencilState* dss = nullptr;
     UINT ref = 0;
@@ -437,6 +603,10 @@ void before_draw(ID3D11DeviceContext* ctx) {
     cb->Release();
     if (count <= kHeaderRows || (count - kHeaderRows) % 3) return;
     if (!marked && count < kHeaderRows + 9) return;  // props drawn with one or two bones come by the hundred
+    if (marked && count == kHeaderRows + 81 * 3 && g_mesh_dump.exchange(false))
+        dump_mesh(ctx, index_count, start_index, base_vertex, (count - kHeaderRows) / 3);
+    if (marked && g_finger_state == 0 && g_fingers_on.load() && g_ik_ready.load() && g_left >= 0 && count == g_arm_count)
+        build_fingers(ctx, index_count, start_index, base_vertex, int(count - kHeaderRows) / 3);
 
     ID3D11ShaderResourceView* srv = nullptr;
     ctx->VSGetShaderResources(0, 1, &srv);
@@ -622,6 +792,13 @@ void on_present() {
                             if (g_arms.side[k] == a) ++n[g_arms.segment[k]];
                         LOG_I("bones", "  arm %d: upper arm %.3f m, forearm %.3f m; bones upper %d, forearm %d, hand %d", a,
                               (s - e).length(), (e - w).length(), n[0], n[1], n[2]);
+                        // 7D: each bone's joint with the hand bone, for the fingers' first knuckles (finger_rig).
+                        g_fits[a].at.assign(bones, {});
+                        g_fits[a].rms.assign(bones, -1);
+                        for (int k = 0; k < bones; ++k) {
+                            double rms;
+                            if (arm.hand_bone >= 0 && g_learner.joint(arm.hand_bone, k, g_fits[a].at[k], rms)) g_fits[a].rms[k] = rms;
+                        }
                     }
                 g_learning = !g_arms.ok && g_tries < kLearnTries;
                 g_arm_count = big->count;
@@ -683,6 +860,11 @@ void on_present() {
               "the forearm %.0f deg avg, forearm takes %.2f; %d rows of other pieces followed (%d riding with a nearby arm bone)", g_ik_frames, g_ik_arms, g_ik_clamped, g_ik_far,
               g_ik_arms ? g_twist_sum / g_ik_arms : 0.f, g_forearm_twist.load(), g_patched_other, g_carried);
         g_carried = 0;
+        if (g_curl_n)
+            LOG_I("bones", "  fingers posed on %d arms: index curl %.2f avg, the others %.2f", g_curl_n, g_curl_sum[0] / g_curl_n,
+                  g_curl_sum[1] / g_curl_n);
+        g_curl_sum[0] = g_curl_sum[1] = 0;
+        g_curl_n = 0;
         if (g_hang_frames) LOG_I("bones", "  %d frames hanging (game's arms)", g_hang_frames);
         if (g_hand_up_frames) LOG_I("bones", "  %d frames a game hand above the shoulder (no room-scale walking)", g_hand_up_frames);
         g_hang_frames = g_hand_up_frames = 0;

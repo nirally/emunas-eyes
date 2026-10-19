@@ -18,8 +18,8 @@ namespace mecvr::faith_bones {
 void* on_map(ID3D11Resource* res, void* mapped, unsigned size, bool constant_buffer);
 // cb_capture, before the game's Unmap: a shadowed buffer is copied to the real mapping.
 void on_unmap(ID3D11Resource* res);
-// ctx_hooks, before an indexed instanced draw (inside the hook guard).
-void before_draw(ID3D11DeviceContext* ctx);
+// ctx_hooks, before an indexed instanced draw (inside the hook guard), with the draw's index range.
+void before_draw(ID3D11DeviceContext* ctx, unsigned index_count, unsigned start_index, int base_vertex);
 // Once per Present: frame boundary, 1 s log of Faith's pieces.
 void on_present();
 
@@ -30,6 +30,10 @@ void set_poke(int piece, int bone);
 // to bones_rec.bin: per frame uint32 bone count, then 12 floats (3x4 world matrix) per bone. For the skeleton
 // solver (tools/bone_solve).
 void request_record(const std::filesystem::path& dir, int frames);
+// MESHDUMP trigger file (7D recon): the next draw of the 81-bone arm piece writes its vertex buffers (every bound
+// slot), index buffer and draw arguments to mesh_dump.txt / mesh_vb<slot>.bin / mesh_ib.bin (tools/finger_recon:
+// each bone's skin centroid in bind space).
+void request_mesh_dump(const std::filesystem::path& dir);
 bool active();
 
 // body.arms (7A): learn Faith's arms (arm_solve) from the first ~400 frames she is drawn, retried up to 5 times;
@@ -41,6 +45,9 @@ bool arms_known();
 bool body_marked();
 // body.forearm_twist (7B): the forearm's share of the hand's twist about it (arm_ik::share_twist).
 void set_forearm_twist(float k);
+// body.fingers (7D): her fingers curl with yours (index from the trigger, the others from the grip; the thumb stays
+// with the hand). Found from the arm piece's mesh once her arms are known ([bones] "fingers of arm ...").
+void set_fingers(bool on);
 // body.arms_game_when_hanging (PLAYTEST-7c): while the game holds either of her hands above its shoulder (ledge hangs,
 // pipes, ladders, wall climbs, ziplines; PLAYTEST-7e - was both hands) her arms fade to the game's animation, and back after.
 void set_game_when_hanging(bool on);

@@ -328,7 +328,7 @@ void STDMETHODCALLTYPE d_draw_idx_inst(ID3D11DeviceContext* c, UINT a, UINT b, U
     const Inside in;
     if (!in.nested) {
         taa_eyes::on_other_draw(c, "indexed inst");
-        faith_bones::before_draw(c);
+        faith_bones::before_draw(c, a, d, e);
     }
     if (on()) emit(c, "drawidxi", false);
     o_draw_idx_inst[V](c, a, b, d, e, f);
@@ -663,6 +663,10 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
     if (std::filesystem::remove(dir / L"BONEREC", ec)) {  // Stage 7 recon: record Faith's arm bones
         if (!g_installed) install(chain);
         faith_bones::request_record(dir, 1500);
+    }
+    if (std::filesystem::remove(dir / L"MESHDUMP", ec)) {  // Stage 7D recon: the arm piece's mesh
+        if (!g_installed) install(chain);
+        faith_bones::request_mesh_dump(dir);
     }
     const bool asked = g_trace_request.exchange(false);
     if (!std::filesystem::remove(dir / L"TRACE", ec) && !asked) return;
