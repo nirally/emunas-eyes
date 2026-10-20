@@ -59,6 +59,20 @@ inline vm::Vec3 elbow_pole(vm::Vec3 shoulder, vm::Vec3 other, vm::Vec3 target) {
     return (vm::Vec3{0, -1.f + 0.75f * k, 0} + out.normalized() * (0.7f + 0.5f * k)).normalized();
 }
 
+// Where the elbow should point (unit, world) from the way the controller is held: with a straight wrist the forearm
+// runs back from the hand along the fingers, so the elbow sits near target - fingers * forearm. A guard (controller
+// up) tucks it under the hand, a punch puts it behind, a hook out to the side. `body` (elbow_pole) breaks the tie
+// when that point is on the shoulder-hand line; k blends from body (0) to hand (1).
+// PLAYTEST-7i: with elbow_pole alone "the elbows in both arms bend in to the body like an 'L' shape".
+inline vm::Vec3 elbow_from_hand(vm::Vec3 shoulder, vm::Vec3 target, vm::Vec3 fingers, float forearm, vm::Vec3 body, float k) {
+    const vm::Vec3 to = target - shoulder;
+    if (to.length() < 1e-4f || k <= 0.f) return body;
+    const vm::Vec3 n = to.normalized(), v = target - fingers.normalized() * forearm - shoulder;
+    const vm::Vec3 hand = v - n * v.dot(n), side = body - n * body.dot(n);
+    const vm::Vec3 b = hand * (k > 1.f ? 1.f : k) + side * 0.04f;  // the body's side counts as 4 cm off the line
+    return b.length() < 1e-5f ? body : b.normalized();
+}
+
 // pole: preferred elbow direction (unit, world), e.g. down and out from the body.
 inline Result solve(vm::Vec3 s, vm::Vec3 e0, vm::Vec3 w0, vm::Vec3 target, vm::Vec3 pole) {
     using vm::Vec3;

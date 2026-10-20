@@ -67,6 +67,7 @@ int g_left = -1;               // which solved arm is Faith's left (-1: still vo
 bool g_hand_ok[2] = {};        // the hand turns with the controller (its bind-space frame is known)
 vm::Quat g_hand_bind[2];
 std::atomic<float> g_forearm_twist{0.5f};
+std::atomic<float> g_elbow_follow_hand{1.f};
 // 7D fingers (finger_rig, docs/recon/STAGE7D-RECON.md): built once from the arm piece's mesh, read back at its draw
 // once her arms and her left are known; per arm. The fits are each bone's joint with the hand bone (first solve).
 std::atomic<bool> g_fingers_on{true};
@@ -103,6 +104,10 @@ int g_no_faith = 0;  // 5 s log: frames with no Faith piece at all
   // 5 s log: piece sizes seen in frames without the arm piece
 int g_far_eye[3] = {};  // too-far hands by the rendered eye (mono/unknown, left, right)
 float g_far_min = 1e9f, g_far_max = 0, g_near_max = 0;  // shoulder -> target (m)
+// 5 s log (PLAYTEST-7i: "sometimes when punching it punches with the other hand"): her shoulders' turn from the
+// view (the game's attacks twist her torso), and posed elbows inside her chest (a box below and between the shoulders).
+float g_torso_turn_max = 0;
+int g_torso_turned = 0, g_elbow_in_chest = 0;
 double g_copy_ms = 0, g_copy_max_ms = 0;  // shadow -> real copies at Unmap
 unsigned g_copies = 0;
 bool learning() { return g_learning.load(std::memory_order_relaxed); }
@@ -209,6 +214,15 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
             return false;
         }
         ++g_ik_frames;
+        vm::Vec3 chest_right = s[1 - g_left] - s[g_left], view_right = h.view_right;
+        chest_right.y = view_right.y = 0;
+        chest_right = chest_right.normalized();
+        const vm::Vec3 chest_mid = (s[0] + s[1]) * 0.5f, chest_front = vm::Vec3{0, 1, 0}.cross(chest_right);
+        if (view_right.length() > 0.5f) {
+            const float turn = std::fabs(std::atan2(view_right.normalized().cross(chest_right).y, view_right.normalized().dot(chest_right))) * 57.29578f;
+            g_torso_turn_max = turn > g_torso_turn_max ? turn : g_torso_turn_max;
+            g_torso_turned += turn > 20.f;
+        }
         // Hanging or climbing: either of the game's hands above her shoulder (a pipe or ladder takes them in turn).
         // PLAYTEST-7e ("arms glitch, less frequently"): both-hands-up only held in ledge hangs; on pipes and wall
         // climbs one hand was up 93-165 frames per 5 s with no hang, and the IK stretched her arms to the controllers.
@@ -247,7 +261,8 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
                 continue;
             }
             g_near_max = dist > g_near_max ? dist : g_near_max;
-            const vm::Vec3 pole = arm_ik::elbow_pole(s[a], s[1 - a], target);  // down and out; out as the hand rises
+            const vm::Vec3 pole = arm_ik::elbow_from_hand(s[a], target, grip.rotate({0, 0, -1}), (w[a] - e[a]).length(),
+                                                          arm_ik::elbow_pole(s[a], s[1 - a], target), g_elbow_follow_hand.load());
             arm_ik::Result r = arm_ik::solve(s[a], e[a], w[a], target, pole);
             if (g_hand_ok[a]) {  // the hand takes the controller's turn (the glove's hand space)
                 const float* m = &rows[g_arms.arm[a].hand_bone * 12];
@@ -262,6 +277,9 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
                 arm_ik::share_twist(r, e[a], w[a], g_forearm_twist.load());
             }
             g_ik_clamped += r.clamped;
+            const vm::Vec3 el = r.elbow - chest_mid;
+            g_elbow_in_chest += std::fabs(el.dot(chest_right)) < 0.16f && el.dot(chest_front) > -0.10f && el.dot(chest_front) < 0.15f &&
+                                el.y < -0.05f && el.y > -0.45f;
             ++g_ik_arms;
             // 7D: her fingers from yours - each finger bone = her (corrected) hand bone * the finger's pose from the
             // bind hand, instead of riding with the hand in the game's finger pose.
@@ -357,6 +375,7 @@ int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) 
 }  // namespace
 
 void set_forearm_twist(float k) { g_forearm_twist = k; }
+void set_elbow_follow_hand(float k) { g_elbow_follow_hand = k; }
 void set_fingers(bool on) { g_fingers_on = on; }
 void set_game_when_hanging(bool on) { g_game_when_hanging = on; }
 unsigned long long hand_up_at() { return g_hand_up_at.load(); }
@@ -876,6 +895,11 @@ void on_present() {
             LOG_I("bones", "  hands too far: %.2f-%.2f m from the shoulder (mono %d, left eye %d, right eye %d)", g_far_min,
                   g_far_max, g_far_eye[0], g_far_eye[1], g_far_eye[2]);
         if (g_ik_arms) LOG_I("bones", "  posed hands up to %.2f m from the shoulder", g_near_max);
+        if (g_ik_frames)
+            LOG_I("bones", "  her shoulders turned from the view up to %.0f deg (%d frames past 20); %d posed elbows inside her chest (elbows follow the hand %.2f)",
+                  g_torso_turn_max, g_torso_turned, g_elbow_in_chest, g_elbow_follow_hand.load());
+        g_torso_turn_max = 0;
+        g_torso_turned = g_elbow_in_chest = 0;
         if (g_not_arms) LOG_I("bones", "  %d blocks looked for the arms weren't them", g_not_arms);
         if (g_no_hands || g_stale || g_no_arm_piece) {
             char sizes[96] = "";

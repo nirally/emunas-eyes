@@ -45,6 +45,8 @@ bool arms_known();
 bool body_marked();
 // body.forearm_twist (7B): the forearm's share of the hand's twist about it (arm_ik::share_twist).
 void set_forearm_twist(float k);
+// body.elbow_follow_hand (PLAYTEST-7i): the elbow's side from the controller's angle (1) or the body rule (0).
+void set_elbow_follow_hand(float k);
 // body.fingers (7D): her fingers curl with yours (index from the trigger, the others from the grip; the thumb stays
 // with the hand). Found from the arm piece's mesh once her arms are known ([bones] "fingers of arm ...").
 void set_fingers(bool on);

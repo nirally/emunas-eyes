@@ -240,3 +240,29 @@ TEST(arm_ik_punching_elbow_rises_clear_of_her_chest) {
     const Vec3 p = arm_ik::elbow_pole(kS, {-0.18f, 1.45f, 0}, {0.25f, 1.0f, -0.10f});
     CHECK(near3(p, old_pole, 1e-4f));
 }
+
+TEST(arm_ik_elbow_follows_the_controller) {
+    // Her right arm, facing -z (PLAYTEST-7i: "the elbows in both arms bend in to the body like an 'L' shape"). The
+    // elbow takes its side from the way the controller points: the forearm runs back from the hand along the fingers.
+    const Vec3 other{-0.18f, 1.45f, 0};
+    const float l2 = (kW - kE).length();
+    auto elbow = [&](Vec3 t, Vec3 fingers) {
+        return arm_ik::solve(kS, kE, kW, t, arm_ik::elbow_from_hand(kS, t, fingers, l2, arm_ik::elbow_pole(kS, other, t), 1.f)).elbow;
+    };
+    // Guard: hand by the chin, controller pointing up - the elbow tucks under the hand, not out to the side.
+    const Vec3 chin{0.08f, 1.50f, -0.25f};
+    const Vec3 g = elbow(chin, {0, 1, 0});
+    CHECK(g.y < chin.y - 0.15f);
+    CHECK(std::fabs(g.x - chin.x) < 0.10f);
+    CHECK(g.z < -0.05f);  // in front of her chest
+    // Hook: hand in front, controller pointing in across her - the elbow goes out to the side.
+    const Vec3 hook{0.05f, 1.42f, -0.35f};
+    CHECK(elbow(hook, {-1, 0, 0}).x > kS.x + 0.05f);
+    // Hand low by her side, controller pointing forward: the elbow back and down by her side.
+    const Vec3 low{0.22f, 1.05f, -0.25f}, e = elbow(low, {0, 0, -1});
+    CHECK(e.z > low.z + 0.15f);
+    CHECK(e.x > 0.10f);
+    // k = 0 is the body rule.
+    const Vec3 body = arm_ik::elbow_pole(kS, other, chin);
+    CHECK(near3(arm_ik::elbow_from_hand(kS, chin, {0, 1, 0}, l2, body, 0.f), body, 1e-5f));
+}

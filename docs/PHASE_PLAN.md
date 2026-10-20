@@ -4,7 +4,7 @@ Mode: agentic
 Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
-## Status — Mirror's Edge Catalyst VR — 2026-10-19
+## Status — Mirror's Edge Catalyst VR — 2026-10-20
 Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
@@ -35,12 +35,12 @@ Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 ✅ Arms take the game's pose on pipes, ladders, wall climbs and ledges, follow yours on the ground; comfort 5 (PLAYTEST-7f, BUG-022 closed)
 ✅ 7D Faith's fingers follow yours, look right, fist about right, comfort 5 (PLAYTEST-7g retry, D-046); whole-body glitch fixed (BUG-023 closed); her thumb (the game's) a little odd
 ✅ 7E Faith punches with the arm you punch with (PLAYTEST-7h: yes; true since 7B)
-🚧 Stage 7: arms sank a little into her body when punching (BUG-024: the game's attack twists her torso): elbows now rise with the hand; fix built, desktop-tested
+🚧 Stage 7: elbows folded into an "L" against her body (PLAYTEST-7i, BUG-024): elbows now follow your controllers' angle; fix built, desktop-tested. "Punches with the other hand" (BUG-025): the game's attacks swing her torso up to 86°
 ⬜ Not started: body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-7i (short fight test)
-🐞 Open bugs: BUG-024 sev-3 (arm into her body when punching; fix built, partial); BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-7i. Me after it: Stage 7 wrap-up (calibration: arm length / grip offset), then Stage 8 HUD
+❓ Need from you: PLAYTEST-7j (short fight test)
+🐞 Open bugs: BUG-024 sev-3 (elbows into her body; fix 2 built); BUG-025 sev-3 (punches with the other hand); BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: You: PLAYTEST-7j. Me after it: BUG-025 (torso or glove, by your answer), then Stage 7 wrap-up (calibration: arm length / grip offset), then Stage 8 HUD
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

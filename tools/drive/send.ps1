@@ -1,4 +1,4 @@
-# Usage: send.ps1 key <scancode-hex, e0 prefix = extended e.g. e050 = Down> [holdMs]   |   send.ps1 mouse <dx> <dy> [steps]   |   send.ps1 click <left|right> [holdMs]   |   send.ps1 shot <name>
+# Usage: send.ps1 key <scancode-hex, e0 prefix = extended e.g. e050 = Down> [holdMs]   |   send.ps1 mouse <dx> <dy> [steps]   |   send.ps1 click <left|right> [holdMs]   |   send.ps1 shot <name>   |   send.ps1 altf4 (quit the game cleanly)
 param([string]$cmd, [string]$a, [string]$b, [string]$c)
 Add-Type @"
 using System;
@@ -30,5 +30,6 @@ if ($p) { [Inj]::SetForegroundWindow($p.MainWindowHandle) | Out-Null; Start-Slee
 switch ($cmd) {
   'key'   { $ext = $a.StartsWith('e0'); $s = [Convert]::ToUInt16($a.Substring($(if ($ext) { 2 } else { 0 })), 16); $hold = if ($b) { [int]$b } else { 80 }; [Inj]::Key($s, $false, $ext); Start-Sleep -Milliseconds $hold; [Inj]::Key($s, $true, $ext) }
   'click' { $r = $a -eq 'right'; $hold = if ($b) { [int]$b } else { 80 }; [Inj]::Button($(if ($r) { 0x8 } else { 0x2 })); Start-Sleep -Milliseconds $hold; [Inj]::Button($(if ($r) { 0x10 } else { 0x4 })) }
+  'altf4' { [Inj]::Key(0x38, $false, $false); Start-Sleep -Milliseconds 50; [Inj]::Key(0x3E, $false, $false); Start-Sleep -Milliseconds 100; [Inj]::Key(0x3E, $true, $false); [Inj]::Key(0x38, $true, $false) }
   'mouse' { $steps = if ($c) { [int]$c } else { 10 }; for ($n = 0; $n -lt $steps; $n++) { [Inj]::Move([int]$a / $steps, [int]$b / $steps); Start-Sleep -Milliseconds 16 } }
 }
