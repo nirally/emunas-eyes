@@ -4,6 +4,7 @@
 #include <d3d11_1.h>
 #include <d3dcompiler.h>
 #include <windows.h>
+#include <intrin.h>
 
 #include <atomic>
 #include <cmath>
@@ -625,8 +626,13 @@ void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_co
                     float pushed[2];
                     memcpy(pushed, m.pData, sizeof(pushed));
                     ctx->Unmap(t, 0);
+                    // A wall is there in 3+ of the last 6 read-backs (the eyes alternate, so a real one flickers);
+                    // a lone hit is most often her own body in a frame it wasn't stencil-marked (PLAYTEST-7j:
+                    // "I would the arms to not have collision on the body"; 1-frame 70 mm pushes in fights).
+                    static unsigned seen[2] = {0, 0};
                     for (int h = 0; h < 2; ++h) {
-                        g_push[h] = hands.valid[h] ? pushed[h] : 0.f;
+                        seen[h] = ((seen[h] << 1) | (pushed[h] > 0.004f ? 1u : 0u)) & 0x3Fu;
+                        g_push[h] = hands.valid[h] && __popcnt(seen[h]) >= 3 ? pushed[h] : 0.f;
                         note_contact(h, g_push[h]);
                     }
                 }

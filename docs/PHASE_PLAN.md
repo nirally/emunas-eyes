@@ -35,12 +35,12 @@ Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 ✅ Arms take the game's pose on pipes, ladders, wall climbs and ledges, follow yours on the ground; comfort 5 (PLAYTEST-7f, BUG-022 closed)
 ✅ 7D Faith's fingers follow yours, look right, fist about right, comfort 5 (PLAYTEST-7g retry, D-046); whole-body glitch fixed (BUG-023 closed); her thumb (the game's) a little odd
 ✅ 7E Faith punches with the arm you punch with (PLAYTEST-7h: yes; true since 7B)
-🚧 Stage 7: elbows folded into an "L" against her body (PLAYTEST-7i, BUG-024): elbows now follow your controllers' angle; fix built, desktop-tested. "Punches with the other hand" (BUG-025): the game's attacks swing her torso up to 86°
+🚧 Stage 7: elbows from the controller looked worse (PLAYTEST-7j) → back to the old rule; the real problem is her torso: the game's attacks swing her shoulders up to 97° (BUG-024/025). One-frame body "collisions" ignored (BUG-026, fix built)
 ⬜ Not started: body, HUD, settings menu, packaging
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-7j (short fight test)
-🐞 Open bugs: BUG-024 sev-3 (elbows into her body; fix 2 built); BUG-025 sev-3 (punches with the other hand); BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-▶ Next: You: PLAYTEST-7j. Me after it: BUG-025 (torso or glove, by your answer), then Stage 7 wrap-up (calibration: arm length / grip offset), then Stage 8 HUD
+❓ Need from you: nothing right now (next test after the torso fix)
+🐞 Open bugs: BUG-024 sev-3 (elbows into her body; fix 2 built); BUG-025 sev-3 (punch doesn't look right: torso swing); BUG-026 sev-3 (arms collide with her body; fix built); BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
+▶ Next: Me: turn her upper body back to your facing during attacks (torso recon, then fix), then PLAYTEST-7k, then Stage 7 wrap-up (calibration: arm length / grip offset), then Stage 8 HUD
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

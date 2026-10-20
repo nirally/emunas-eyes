@@ -67,7 +67,7 @@ int g_left = -1;               // which solved arm is Faith's left (-1: still vo
 bool g_hand_ok[2] = {};        // the hand turns with the controller (its bind-space frame is known)
 vm::Quat g_hand_bind[2];
 std::atomic<float> g_forearm_twist{0.5f};
-std::atomic<float> g_elbow_follow_hand{1.f};
+std::atomic<float> g_elbow_follow_hand{0.f};  // PLAYTEST-7j: 1 looked "worse"
 // 7D fingers (finger_rig, docs/recon/STAGE7D-RECON.md): built once from the arm piece's mesh, read back at its draw
 // once her arms and her left are known; per arm. The fits are each bone's joint with the hand bone (first solve).
 std::atomic<bool> g_fingers_on{true};
