@@ -214,6 +214,7 @@ DWORD WINAPI main_thread(LPVOID) {
                 faith_bones::set_arms(g_config.get_bool("body.arms"));
                 faith_bones::set_forearm_twist(static_cast<float>(g_config.get_number("body.forearm_twist")));
                 faith_bones::set_elbow_follow_hand(static_cast<float>(g_config.get_number("body.elbow_follow_hand")));
+                faith_bones::set_turn_back(g_config.get_bool("body.turn_back_in_attacks"));
                 faith_bones::set_game_when_hanging(g_config.get_bool("body.arms_game_when_hanging"));
                 faith_bones::set_fingers(g_config.get_bool("body.fingers"));
                 hand_pose::set_sim_closeup(g_config.get_bool("diagnostics.hand_sim_closeup"));
@@ -301,6 +302,8 @@ DWORD WINAPI main_thread(LPVOID) {
             faith_bones::set_forearm_twist(new_v["body.forearm_twist"].get<float>());
         if (old_v["body.elbow_follow_hand"] != new_v["body.elbow_follow_hand"])
             faith_bones::set_elbow_follow_hand(new_v["body.elbow_follow_hand"].get<float>());
+        if (old_v["body.turn_back_in_attacks"] != new_v["body.turn_back_in_attacks"])
+            faith_bones::set_turn_back(new_v["body.turn_back_in_attacks"].get<bool>());
         if (old_v["body.fingers"] != new_v["body.fingers"]) faith_bones::set_fingers(new_v["body.fingers"].get<bool>());
         if (old_v["diagnostics.bone_poke_piece"] != new_v["diagnostics.bone_poke_piece"] || old_v["diagnostics.bone_poke_bone"] != new_v["diagnostics.bone_poke_bone"])
             faith_bones::set_poke(new_v["diagnostics.bone_poke_piece"].get<int>(), new_v["diagnostics.bone_poke_bone"].get<int>());

@@ -266,3 +266,22 @@ TEST(arm_ik_elbow_follows_the_controller) {
     const Vec3 body = arm_ik::elbow_pole(kS, other, chin);
     CHECK(near3(arm_ik::elbow_from_hand(kS, chin, {0, 1, 0}, l2, body, 0.f), body, 1e-5f));
 }
+
+TEST(arm_ik_body_turns_back_about_the_head) {
+    // An attack swung her shoulders 70 deg from the view; turning by yaw_between(now, before) about the head puts
+    // them back, keeps heights, and leaves the head's vertical line where it was.
+    const Vec3 head{550.f, 68.6f, 23.f}, before{1, 0, 0};
+    const Quat swing = Quat::axis_angle({0, 1, 0}, 70.f * 0.01745329f);
+    const Vec3 l = head + swing.rotate(Vec3{-0.18f, -0.25f, 0.05f}), r = head + swing.rotate(Vec3{0.18f, -0.25f, 0.05f});
+    const float a = arm_ik::yaw_between(r - l, before);
+    CHECK(std::fabs(a + 70.f * 0.01745329f) < 1e-3f);
+    const arm_ik::Rigid c = arm_ik::yaw_about(head, a);
+    const Vec3 l2 = c.apply(l), r2 = c.apply(r);
+    CHECK(near3(l2, head + Vec3{-0.18f, -0.25f, 0.05f}));
+    CHECK(near3(r2, head + Vec3{0.18f, -0.25f, 0.05f}));
+    CHECK(near3(c.apply(head + Vec3{0, -1.5f, 0}), head + Vec3{0, -1.5f, 0}));
+    // Applied to a skinning matrix like any correction: the bone's point moves the same way.
+    float m[12] = {1, 0, 0, l.x, 0, 1, 0, l.y, 0, 0, 1, l.z};
+    arm_ik::apply(c, m);
+    CHECK(near3(Vec3{m[3], m[7], m[11]}, l2));
+}

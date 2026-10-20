@@ -66,6 +66,7 @@ head_pose::Pose get(int hand) {
 }
 
 void set_sim(bool on) { g_sim = on; }
+bool simulated() { return g_sim.load(); }
 void set_sim_closeup(bool on) { g_closeup = on; }
 
 namespace {

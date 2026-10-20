@@ -73,6 +73,19 @@ inline vm::Vec3 elbow_from_hand(vm::Vec3 shoulder, vm::Vec3 target, vm::Vec3 fin
     return b.length() < 1e-5f ? body : b.normalized();
 }
 
+// Signed turn (radians) about world +y taking direction `from` to `to`, both flattened to the ground.
+inline float yaw_between(vm::Vec3 from, vm::Vec3 to) {
+    from.y = to.y = 0;
+    return std::atan2(from.cross(to).y, from.dot(to));
+}
+
+// Her whole body turned about the vertical line through `pivot` (BUG-024/025: the game's attacks swing her body
+// 60-160 deg; turned back as one piece there's no seam at the waist).
+inline Rigid yaw_about(vm::Vec3 pivot, float angle) {
+    const vm::Quat q = vm::Quat::axis_angle({0, 1, 0}, angle);
+    return {q, pivot - q.rotate(pivot)};
+}
+
 // pole: preferred elbow direction (unit, world), e.g. down and out from the body.
 inline Result solve(vm::Vec3 s, vm::Vec3 e0, vm::Vec3 w0, vm::Vec3 target, vm::Vec3 pole) {
     using vm::Vec3;

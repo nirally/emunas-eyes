@@ -912,4 +912,5 @@ Hands rendered_hands() {
 
 namespace mecvr::camera_override {
 void note_attack() { g_last_attack = GetTickCount64(); }
+unsigned long long last_attack() { return g_last_attack.load(); }
 }  // namespace mecvr::camera_override

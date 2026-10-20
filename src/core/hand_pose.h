@@ -11,6 +11,7 @@ void set(int hand, const head_pose::Pose& relative);
 // Latest pose; without a headset and with diagnostics.hand_sim, hands held in front of the head.
 head_pose::Pose get(int hand);
 void set_sim(bool on);
+bool simulated();
 // diagnostics.hand_sim_closeup: simulated hands raised close in front of the eyes and turned inwards (screenshots).
 void set_sim_closeup(bool on);
 

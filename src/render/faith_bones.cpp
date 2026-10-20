@@ -108,6 +108,19 @@ float g_far_min = 1e9f, g_far_max = 0, g_near_max = 0;  // shoulder -> target (m
 // view (the game's attacks twist her torso), and posed elbows inside her chest (a box below and between the shoulders).
 float g_torso_turn_max = 0;
 int g_torso_turned = 0, g_elbow_in_chest = 0;
+// BUG-024/025 (PLAYTEST-7j: "still does not look right"): the game's attacks swing her whole body 60-160 deg
+// (desktop recording: legs, torso and arms alike), so her shoulders leave your arms. From the attack button until
+// kTurnBackMs after the last one, her whole body turns back about the vertical line through your head to the turn
+// from the view it had when the attack began, then eases out (body.turn_back_in_attacks).
+constexpr unsigned long long kTurnBackMs = 1200;
+constexpr int kTurnFadeFrames = 36;
+std::atomic<bool> g_turn_back{true};
+arm_ik::Rigid g_body;    // this frame's turn (render thread)
+bool g_body_on = false;  // g_body is applied to every bone of her this frame
+float g_turn0 = 0, g_turn_prev = 0, g_turn_w = 0;
+bool g_in_attack = false;
+float g_body_max = 0;  // 5 s log
+int g_body_frames = 0, g_turned_rows = 0;
 double g_copy_ms = 0, g_copy_max_ms = 0;  // shadow -> real copies at Unmap
 unsigned g_copies = 0;
 bool learning() { return g_learning.load(std::memory_order_relaxed); }
@@ -145,7 +158,8 @@ const Shadow* contents(ID3D11Resource* r) {  // written this frame, else null
     return it == g_shadow.end() || !it->second.mem || it->second.frame != g_frame ? nullptr : &it->second;
 }
 
-struct Piece { ID3D11Resource* buf; unsigned start, count; unsigned long long vb; bool marked; };
+struct Piece { ID3D11Resource* buf; unsigned start, count; unsigned long long vb; bool marked; bool patched = false; };
+int g_late_patched = 0;  // 5 s log: pieces patched at a later draw (their first came before the solve)
 std::vector<Piece> g_pieces;      // this frame's Faith pieces, in draw order
 std::vector<Piece> g_last_pieces;  // the previous frame's (log)
 
@@ -161,7 +175,13 @@ int piece_index(ID3D11Resource* buf, unsigned start) {
 // piece, drawn before the arms: live, a gap at her right wrist), so each piece's rows that equal an arm bone's are
 // replaced, right before the piece's first draw this frame (later draws of it - shadow passes - read the same
 // rows). The shadows keep the game's own pose. Hands: the grip pose's wrist point (the glove's wrist band).
-struct Fix { float game[12], now[12]; };
+struct Fix { float game[12], now[12]; bool arm = true; };  // arm = false: only her body's turn (g_body)
+bool is_identity(const float* m) {
+    static const float kI[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
+    for (int i = 0; i < 12; ++i)
+        if (std::fabs(m[i] - kI[i]) > 1e-6f) return false;
+    return true;
+}
 std::vector<Fix> g_fixes;  // this frame's (render thread)
 unsigned g_fix_frame = 0;
 // Where the arm piece was last frame, in rows after the frame's first Faith piece: the bone buffers rotate and
@@ -217,11 +237,39 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
         vm::Vec3 chest_right = s[1 - g_left] - s[g_left], view_right = h.view_right;
         chest_right.y = view_right.y = 0;
         chest_right = chest_right.normalized();
-        const vm::Vec3 chest_mid = (s[0] + s[1]) * 0.5f, chest_front = vm::Vec3{0, 1, 0}.cross(chest_right);
+        vm::Vec3 chest_mid = (s[0] + s[1]) * 0.5f, chest_front = vm::Vec3{0, 1, 0}.cross(chest_right);
         if (view_right.length() > 0.5f) {
             const float turn = std::fabs(std::atan2(view_right.normalized().cross(chest_right).y, view_right.normalized().dot(chest_right))) * 57.29578f;
             g_torso_turn_max = turn > g_torso_turn_max ? turn : g_torso_turn_max;
             g_torso_turned += turn > 20.f;
+        }
+        g_body_on = false;
+        if (view_right.length() > 0.5f) {
+            const float turn = arm_ik::yaw_between(view_right, chest_right);
+            if (hand_pose::simulated() && ((GetAsyncKeyState(VK_LBUTTON) | GetAsyncKeyState(VK_RBUTTON)) & 0x8000))
+                camera_override::note_attack();  // desktop tests: the mouse attacks
+            const bool attack = g_turn_back.load() && GetTickCount64() - camera_override::last_attack() < kTurnBackMs;
+            if (attack && !g_in_attack && g_turn_w <= 0.f) g_turn0 = g_turn_prev;  // a new fight move: its starting turn
+            g_in_attack = attack;
+            g_turn_prev = turn;
+            g_turn_w = attack ? 1.f : std::fmax(0.f, g_turn_w - 1.f / kTurnFadeFrames);
+            if (g_turn_w > 0.f) {
+                const float d = g_turn0 - turn, a = std::atan2(std::sin(d), std::cos(d)) * g_turn_w;
+                g_body_on = std::fabs(a) > 0.002f;
+                if (g_body_on) {
+                    g_body = arm_ik::yaw_about(h.view_pos, a);
+                    for (int k = 0; k < 2; ++k) {
+                        s[k] = g_body.apply(s[k]);
+                        e[k] = g_body.apply(e[k]);
+                        w[k] = g_body.apply(w[k]);
+                    }
+                    chest_mid = g_body.apply(chest_mid);  // the chest box of the log turns with her
+                    chest_right = g_body.q.rotate(chest_right);
+                    chest_front = g_body.q.rotate(chest_front);
+                    g_body_max = std::fmax(g_body_max, std::fabs(a) * 57.29578f);
+                    ++g_body_frames;
+                }
+            }
         }
         // Hanging or climbing: either of the game's hands above her shoulder (a pipe or ladder takes them in turn).
         // PLAYTEST-7e ("arms glitch, less frequently"): both-hands-up only held in ledge hangs; on pipes and wall
@@ -245,7 +293,7 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
         const float fade_to = g_hanging ? 0.f : 1.f, step = 1.f / kFadeFrames;
         g_ik_weight = g_ik_weight < fade_to ? std::fmin(fade_to, g_ik_weight + step) : std::fmax(fade_to, g_ik_weight - step);
         if (g_ik_weight <= 0.f) return false;  // fully the game's: nothing to change
-        bool moved = false;
+        bool moved = false, posed[2] = {false, false};
         for (int hand = 0; hand < 2; ++hand) {
             if (!h.valid[hand]) continue;
             const int a = hand == 0 ? g_left : 1 - g_left;
@@ -272,7 +320,9 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
                     lt.up[c] = m[c * 4 + 1];
                     lt.back[c] = m[c * 4 + 2];
                 }
-                r.hand = arm_ik::hand_to((vm::quat_of(lt) * g_hand_bind[a]).normalized(), grip, w[a], r.wrist);
+                vm::Quat now = vm::quat_of(lt) * g_hand_bind[a];
+                if (g_body_on) now = g_body.q * now;
+                r.hand = arm_ik::hand_to(now.normalized(), grip, w[a], r.wrist);
                 g_twist_sum += std::fabs(arm_ik::twist_angle(r.fore.q.conjugate() * r.hand.q, (w[a] - e[a]).normalized())) * 57.29578f;
                 arm_ik::share_twist(r, e[a], w[a], g_forearm_twist.load());
             }
@@ -290,6 +340,7 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
                 const hand_pose::Fingers fc = hand_pose::fingers(hand);
                 for (int fi = 0; fi < 4; ++fi) finger_rig::pose(g_rig[a].finger[fi], fi == 0 ? fc.index : fc.others, {}, pose[fi]);
                 memcpy(hand_now, &rows[g_arms.arm[a].hand_bone * 12], sizeof(hand_now));
+                if (g_body_on) arm_ik::apply(g_body, hand_now);
                 arm_ik::apply(r.hand, hand_now);
                 g_curl_sum[0] += fc.index;
                 g_curl_sum[1] += fc.others;
@@ -301,11 +352,25 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
                 Fix f;
                 memcpy(f.game, &rows[k * 12], sizeof(f.game));
                 memcpy(f.now, f.game, sizeof(f.now));
+                if (g_body_on) arm_ik::apply(g_body, f.now);
                 if (fingers && g_finger_of[k] >= 0)
                     finger_rig::compose(hand_now, pose[g_finger_of[k] / 3][g_finger_of[k] % 3], f.now);
                 else
                     arm_ik::apply(seg == arm_solve::kUpper ? r.upper : seg == arm_solve::kFore ? r.fore : r.hand, f.now);
                 arm_ik::blend(f.game, f.now, s[a], g_ik_weight);
+                g_fixes.push_back(f);
+            }
+            moved = posed[a] = true;
+        }
+        if (g_body_on) {  // the rest of the piece (and an arm not posed) only turns with her body
+            for (int k = 0; k < bones; ++k) {
+                if (g_arms.side[k] >= 0 && posed[g_arms.side[k]]) continue;
+                Fix f;
+                f.arm = false;
+                memcpy(f.game, &rows[k * 12], sizeof(f.game));
+                if (is_identity(f.game)) continue;  // every skinned draw's first row (other people's too)
+                memcpy(f.now, f.game, sizeof(f.now));
+                arm_ik::apply(g_body, f.now);
                 g_fixes.push_back(f);
             }
             moved = true;
@@ -321,9 +386,11 @@ int g_carried = 0;  // 5 s log: rows that rode with a nearby arm bone (BUG-020)
 
 int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) {
     static std::vector<std::pair<int, const Fix*>> hits;  // render thread only
-    static std::vector<std::pair<int, std::array<float, 12>>> carried;
+    static std::vector<std::pair<int, std::array<float, 12>>> carried;  // and her body's own turned rows (last)
+    static std::vector<Fix> turned;
     hits.clear();
     carried.clear();
+    turned.clear();
     {
         std::lock_guard lock(g_mutex);
         const Shadow* v = contents(buf);
@@ -339,7 +406,9 @@ int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) 
         // them (her right glove: a helper 6 mm from her hand bone, rigid with it within 3 mm over 1500 frames -
         // left in the game's pose it pulled the palm): such a row within 3 cm of a copied bone moves with it. Torso
         // and leg pieces copy fewer than half their rows from the arms and are left alone.
-        if (!hits.empty() && int(hits.size()) * 2 >= bones) {
+        int arm_hits = 0;
+        for (const auto& h : hits) arm_hits += h.second->arm;
+        if (arm_hits && arm_hits * 2 >= bones) {
             for (int k = 0; k < bones; ++k) {
                 bool hit = false;
                 for (const auto& h : hits) hit |= h.first == k;
@@ -348,6 +417,7 @@ int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) 
                 const Fix* best = nullptr;
                 float best_d2 = 0.03f * 0.03f;
                 for (const auto& h : hits) {
+                    if (!h.second->arm) continue;
                     const float dx = row[3] - h.second->game[3], dy = row[7] - h.second->game[7], dz = row[11] - h.second->game[11];
                     const float d2 = dx * dx + dy * dy + dz * dz;
                     if (d2 < best_d2) { best_d2 = d2; best = h.second; }
@@ -358,6 +428,26 @@ int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) 
                 carried.push_back({k, out});
             }
         }
+        // Her body turning back (BUG-024/025): a piece sharing a bone with her arm piece (or with a piece of hers
+        // drawn earlier this frame: her shoes only share the legs') is hers, and its own rows turn with her too.
+        // Those rows join the fixes for the pieces after it.
+        if (g_body_on && !hits.empty()) {
+            for (int k = 0; k < bones; ++k) {
+                bool done = false;
+                for (const auto& h : hits) done |= h.first == k;
+                for (const auto& c : carried) done |= c.first == k;
+                const float* row = rows + k * 12;
+                if (done || is_identity(row)) continue;
+                Fix f;
+                f.arm = false;
+                memcpy(f.game, row, sizeof(f.game));
+                memcpy(f.now, row, sizeof(f.now));
+                arm_ik::apply(g_body, f.now);
+                turned.push_back(f);
+                carried.push_back({k, {}});
+                memcpy(carried.back().second.data(), f.now, 48);
+            }
+        }
     }
     if (hits.empty()) return 0;
     // Our own Map is nested in the draw hook (not shadowed): straight into the real buffer.
@@ -366,8 +456,13 @@ int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) 
         float* rows = reinterpret_cast<float*>(static_cast<unsigned char*>(m.pData) + off);
         for (const auto& hit : hits) memcpy(rows + hit.first * 12, hit.second->now, 48);  // fixes unchanged until next frame
         for (const auto& c : carried) memcpy(rows + c.first * 12, c.second.data(), 48);
-        g_carried += int(carried.size());
+        g_carried += int(carried.size() - turned.size());
         ctx->Unmap(buf, 0);
+    }
+    if (!turned.empty()) {  // after the writes: `hits` points into g_fixes
+        std::lock_guard lock(g_mutex);
+        g_turned_rows += int(turned.size());
+        g_fixes.insert(g_fixes.end(), turned.begin(), turned.end());
     }
     return int(hits.size());
 }
@@ -376,6 +471,7 @@ int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) 
 
 void set_forearm_twist(float k) { g_forearm_twist = k; }
 void set_elbow_follow_hand(float k) { g_elbow_follow_hand = k; }
+void set_turn_back(bool on) { g_turn_back = on; }
 void set_fingers(bool on) { g_fingers_on = on; }
 void set_game_when_hanging(bool on) { g_game_when_hanging = on; }
 unsigned long long hand_up_at() { return g_hand_up_at.load(); }
@@ -645,13 +741,20 @@ void before_draw(ID3D11DeviceContext* ctx, unsigned index_count, unsigned start_
         std::lock_guard lock(g_mutex);
 
         idx = piece_index(buf, start);
-        if (idx >= 0) {  // already handled this frame (the same piece drawn again: shadows, other passes)
+        // Already handled this frame (the same piece drawn again: shadows, other passes) - unless its first draw
+        // came before her arms were solved (desktop, mid-attack: her glove and wrist wrap floated off in the
+        // game's pose while the rest of her had turned): patch it now, for its later draws.
+        if (idx >= 0 && (g_pieces[idx].patched || g_fixes.empty() || g_fix_frame != g_frame)) {
             buf->Release();
             return;
         }
-        g_pieces.push_back({buf, start, count, vb_id, marked});
-        g_marked_now |= marked;
-        idx = int(g_pieces.size()) - 1;
+        if (idx < 0) {
+            g_pieces.push_back({buf, start, count, vb_id, marked});
+            g_marked_now |= marked;
+            idx = int(g_pieces.size()) - 1;
+        } else {
+            ++g_late_patched;
+        }
     }
     if (g_ik_ready.load()) {
         const size_t fe = vd.Buffer.FirstElement;
@@ -688,6 +791,7 @@ void before_draw(ID3D11DeviceContext* ctx, unsigned index_count, unsigned start_
             }
             if (arm && marked && g_first_start != ~0u) g_arm_rel = int(start - g_first_start);
             have = !g_fixes.empty();
+            g_pieces[idx].patched = have;
         }
         if (have) {
             const int n = patch(ctx, buf, (fe + start + kHeaderRows) * 16, int(count - kHeaderRows) / 3);
@@ -900,6 +1004,13 @@ void on_present() {
                   g_torso_turn_max, g_torso_turned, g_elbow_in_chest, g_elbow_follow_hand.load());
         g_torso_turn_max = 0;
         g_torso_turned = g_elbow_in_chest = 0;
+        if (g_body_frames)
+            LOG_I("bones", "  attacks: her body turned back in %d frames, up to %.0f deg; %d rows of her other pieces turned with it",
+                  g_body_frames, g_body_max, g_turned_rows);
+        g_body_frames = g_turned_rows = 0;
+        if (g_late_patched) LOG_I("bones", "  %d pieces drawn before the solve were patched at a later draw", g_late_patched);
+        g_late_patched = 0;
+        g_body_max = 0;
         if (g_not_arms) LOG_I("bones", "  %d blocks looked for the arms weren't them", g_not_arms);
         if (g_no_hands || g_stale || g_no_arm_piece) {
             char sizes[96] = "";
