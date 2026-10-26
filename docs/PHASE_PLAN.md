@@ -38,10 +38,11 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
 ⬜ Not started: HUD/menus/cutscenes (Stage 8), settings menu (9), packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-8a
-🐞 Open bugs: BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
-🔧 8A HUD and menus pulled in from the edges your eyes can't see (D-049, ui.scale 0.4); desktop-checked
-▶ Next: You: PLAYTEST-8a (~5 min). Me after it: menus as a floating panel if the text is too small; cutscene virtual-screen setting (Q-803)
+❓ Need from you: PLAYTEST-8b
+🐞 Open bugs: BUG-027 sev-3 (hands at rest look bent/twisted); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
+⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
+🔧 8B pause/menus/map/mission select on a big flat screen in front of you, game camera (D-050); Y + B = headset screenshot; desktop-checked
+▶ Next: You: PLAYTEST-8b (~5 min, with screenshots of the hands). Me after it: BUG-027 from the screenshots; cutscene big-screen setting (Q-803)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

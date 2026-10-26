@@ -18,6 +18,7 @@
 #include "core/head_pose.h"
 #include "diagnostics/log.h"
 #include "input/xr_input.h"
+#include "render/screen_mode.h"
 
 namespace mecvr::xr_session {
 namespace {
@@ -361,6 +362,20 @@ void frame(IDXGISwapChain* chain) {
                                                  {XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW}};
     const XrCompositionLayerBaseHeader* layers[1] = {reinterpret_cast<XrCompositionLayerBaseHeader*>(&layer)};
     uint32_t layer_count = 0;
+    // 8B: menus and the map on one flat screen, fixed in the room where you looked when it opened.
+    XrCompositionLayerQuad quad{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    static bool screen_was = false;
+    static XrPosef screen_pose{{0, 0, 0, 1}, {0, 0, -2}};
+    const bool screen = screen_mode::active();
+    if (screen && !screen_was && pose_ok) {
+        vm::Vec3 f = to_quat(loc.pose.orientation).rotate({0, 0, -1});
+        f.y = 0;
+        f = f.length() > 0.1f ? f.normalized() : vm::Vec3{0, 0, -1};
+        const float d = screen_mode::distance();
+        screen_pose.orientation = to_xr(vm::Quat::axis_angle({0, 1, 0}, std::atan2(-f.x, -f.z)));
+        screen_pose.position = {loc.pose.position.x + f.x * d, loc.pose.position.y, loc.pose.position.z + f.z * d};
+    }
+    screen_was = screen;
 
     if (fs.shouldRender) {
         // Which eye this frame was rendered for (-1 = mono) and with which pose.
@@ -408,7 +423,17 @@ void frame(IDXGISwapChain* chain) {
 
         // Mono: both eyes show swapchain 0. Stereo: the latest complete pair, each eye at its own pose.
         bool ready = mono ? g_has_image[0] : (g_has_image[0] && g_has_image[1]);
-        if (ready) {
+        if (screen && g_has_image[0]) {
+            const float w = screen_mode::width();
+            quad.space = g_local;
+            quad.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+            quad.subImage.swapchain = g_swapchain[0];
+            quad.subImage.imageRect = {{0, 0}, {static_cast<int32_t>(g_width), static_cast<int32_t>(g_height)}};
+            quad.pose = screen_pose;
+            quad.size = {w, w * float(g_height) / float(g_width)};
+            layers[0] = reinterpret_cast<XrCompositionLayerBaseHeader*>(&quad);
+            layer_count = 1;
+        } else if (ready) {
             float half_x = std::atan(1.f / g_sx.load()), half_y = std::atan(1.f / g_sy.load());
             for (int e = 0; e < 2; ++e) {
                 int src = mono ? 0 : e;

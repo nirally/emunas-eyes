@@ -28,6 +28,7 @@
 #include "render/hand_render.h"
 #include "render/hook_guard.h"
 #include "render/taa_eyes.h"
+#include "render/screen_mode.h"
 #include "render/ui_shrink.h"
 
 namespace mecvr::ctx_hooks {
@@ -628,6 +629,7 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
     if (!g_installed && (taa_eyes::enabled() || hand_render::enabled() || faith_bones::active())) install(chain);
     taa_eyes::on_present(chain);
     ui_shrink::on_present(chain);
+    screen_mode::on_present();
     faith_bones::on_present();
     if (g_tracing.load()) {
         std::lock_guard lock(g_mutex);

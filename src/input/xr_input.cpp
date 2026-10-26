@@ -18,6 +18,7 @@
 #include "core/gadget_model.h"
 #include "input/xinput_hook.h"
 #include "render/camera_override.h"
+#include "render/screenshot.h"
 #include "render/time_sync.h"
 
 namespace mecvr::xr_input {
@@ -45,6 +46,8 @@ bool g_pad_on = false;
 pad_map::TapHold g_stick_click;  // move-hand stick click: Pause / Map
 pad_map::TapHold g_turn_click{1.0, 0.15};  // turn-hand stick click: Runner's Vision / recentre (hold 1 s)
 bool g_recentred = false;
+ULONGLONG g_shot_since = 0;  // both top buttons (Y + B) held since; 0 = not held
+bool g_shot_taken = false;
 pad_map::Crouch g_crouch;          // physical crouch (comfort.physical_crouch / crouch_depth)
 std::atomic<bool> g_crouch_on{true};
 ULONGLONG g_hello_until = 0;     // short buzz on both hands when the virtual pad comes on
@@ -448,6 +451,21 @@ void sync(XrTime time, bool focused) {
                 pad.buttons |= punches();  // 6C: physical punching
                 if (pad.buttons & (pad_map::kX | pad_map::kY)) camera_override::note_attack();
                 apply_dodge(pad);  // Shift by a quick lean or step (D-040)
+                // Y + B held together 0.5 s = a screenshot from the headset (PLAYTEST-8a); neither goes to the game then.
+                if (hand[0].secondary && hand[1].secondary) {
+                    pad.buttons &= ~(pad_map::kB | pad_map::kY);
+                    const ULONGLONG now = GetTickCount64();
+                    if (!g_shot_since) g_shot_since = now;
+                    if (!g_shot_taken && now - g_shot_since >= 500) {
+                        screenshot::request();
+                        g_shot_taken = true;
+                        g_hello_until = now + 150;
+                        LOG_I("input", "screenshot (held Y + B)");
+                    }
+                } else {
+                    g_shot_since = 0;
+                    g_shot_taken = false;
+                }
                 xinput_hook::set_pad(pad);
 
                 // The game's rumble: low-frequency motor -> move hand, high-frequency -> turn hand.

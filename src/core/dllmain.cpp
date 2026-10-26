@@ -22,7 +22,6 @@ namespace mecvr::recon { void probe_strings(); }
 namespace mecvr::code_dump { void poll(const std::filesystem::path& dir); }
 namespace mecvr::view_recon { void poll(const std::filesystem::path& dir); }
 struct IDXGISwapChain;
-namespace mecvr::screenshot { void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir); }
 namespace mecvr::bug_report { void poll(const std::filesystem::path& mod_dir, const std::string& settings_json); }
 #include "render/camera_override.h"
 #include "render/cb_capture.h"
@@ -37,6 +36,8 @@ namespace mecvr::bug_report { void poll(const std::filesystem::path& mod_dir, co
 #include "input/yaw_drive.h"
 #include "render/motion_fix.h"
 #include "render/faith_bones.h"
+#include "render/screen_mode.h"
+#include "render/screenshot.h"
 #include "render/ui_shrink.h"
 #include "render/xr_session.h"
 
@@ -213,6 +214,9 @@ DWORD WINAPI main_thread(LPVOID) {
                 hand_pose::set_sim(g_config.get_bool("diagnostics.hand_sim"));
                 ui_shrink::set_scale(static_cast<float>(g_config.get_number("ui.scale")));
                 ui_shrink::set_flat(g_config.get_bool("diagnostics.ui_scale_flat"));
+                screen_mode::set_enabled(g_config.get_bool("ui.menu_screen"));
+                screen_mode::set_flat(g_config.get_bool("diagnostics.screen_flat"));
+                screen_mode::set_size(static_cast<float>(g_config.get_number("ui.screen_width")), static_cast<float>(g_config.get_number("ui.screen_distance")));
                 faith_bones::set_poke(int(g_config.get_number("diagnostics.bone_poke_piece")), int(g_config.get_number("diagnostics.bone_poke_bone")));
                 faith_bones::set_arms(g_config.get_bool("body.arms"));
                 faith_bones::set_forearm_twist(static_cast<float>(g_config.get_number("body.forearm_twist")));
@@ -284,6 +288,10 @@ DWORD WINAPI main_thread(LPVOID) {
         if (old_v["ui.scale"] != new_v["ui.scale"]) ui_shrink::set_scale(new_v["ui.scale"].get<float>());
         if (old_v["diagnostics.ui_scale_flat"] != new_v["diagnostics.ui_scale_flat"])
             ui_shrink::set_flat(new_v["diagnostics.ui_scale_flat"].get<bool>());
+        if (old_v["ui.menu_screen"] != new_v["ui.menu_screen"]) screen_mode::set_enabled(new_v["ui.menu_screen"].get<bool>());
+        if (old_v["diagnostics.screen_flat"] != new_v["diagnostics.screen_flat"]) screen_mode::set_flat(new_v["diagnostics.screen_flat"].get<bool>());
+        if (old_v["ui.screen_width"] != new_v["ui.screen_width"] || old_v["ui.screen_distance"] != new_v["ui.screen_distance"])
+            screen_mode::set_size(new_v["ui.screen_width"].get<float>(), new_v["ui.screen_distance"].get<float>());
         if (old_v["diagnostics.hand_sim_closeup"] != new_v["diagnostics.hand_sim_closeup"])
             hand_pose::set_sim_closeup(new_v["diagnostics.hand_sim_closeup"].get<bool>());
         if (old_v["comfort.roomscale"] != new_v["comfort.roomscale"])

@@ -13,6 +13,7 @@
 
 #include "core/ui_fit.h"
 #include "diagnostics/log.h"
+#include "render/screen_mode.h"
 #include "render/xr_session.h"
 
 namespace mecvr::ui_shrink {
@@ -49,7 +50,7 @@ Slot* slot(ID3D11DeviceContext* ctx, bool add) {
 }
 
 bool active() {
-    return g_scale.load() < 0.999f && g_back && (xr_session::running() || g_flat.load());
+    return g_scale.load() < 0.999f && g_back && (xr_session::running() || g_flat.load()) && !screen_mode::active();
 }
 
 }  // namespace

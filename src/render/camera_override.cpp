@@ -23,6 +23,7 @@
 #include "input/xinput_hook.h"
 #include "input/yaw_drive.h"
 #include "render/faith_bones.h"
+#include "render/screen_mode.h"
 #include "render/time_sync.h"
 #include "diagnostics/log.h"
 #include "diagnostics/time_recon.h"
@@ -469,6 +470,7 @@ void apply(uint8_t* data) {
         g_game_fwd = (a->b() * -1.f).normalized();
         g_final_tick = GetTickCount64();
     }
+    if (screen_mode::active()) return;  // menus on the big screen: the game's own camera (8B)
     compose(data, g_main_state);
 }
 
@@ -484,6 +486,7 @@ void reapply_at_view_site(uint8_t* data) {
     float blend = angle_deg(raw_fwd, (a->b() * -1.f).normalized());
     if (blend > g_vs_max_angle.load()) g_vs_max_angle = blend;
     if (blend < 1.f) ++g_vs_from_game; else ++g_vs_from_ours;  // "same as raw" / "blended"
+    if (screen_mode::active()) return;
     compose(data, g_view_state);
 }
 
@@ -491,7 +494,8 @@ void reapply_at_view_site(uint8_t* data) {
 // comes from the viewport (16:9), so covering max(tan_x, tan_y) vertically covers both.
 // False when the game's own FOV should stand (no headset, setting off, override off).
 bool fov_target(float& tan_v) {
-    if (!g_full_fov.load() || !g_enabled.load() || !(head_pose::current().headset || g_fov_test.load())) return false;
+    if (!g_full_fov.load() || !g_enabled.load() || !(head_pose::current().headset || g_fov_test.load()) || screen_mode::active())
+        return false;
     float tan_x = 0, tan_y = 0;
     for (int i = 0; i < 2; ++i) {
         head_pose::Eye e = head_pose::eye(i);

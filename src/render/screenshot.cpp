@@ -4,11 +4,14 @@
 //          half size as pair_<n>_a.bmp / _b.bmp, plus pair_<n>_diff.bmp (white where they differ), and
 //          the difference is logged. With diagnostics.zero_ipd both eyes share one viewpoint, so any
 //          difference is something that changed between the two eyes (eye-sync checks, D-021).
+#include "render/screenshot.h"
+
 #include <d3d11.h>
 #include <dxgi.h>
 #include <windows.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -142,7 +145,11 @@ void write_pair(const std::filesystem::path& dir, int index, const Image& a, con
         LOG_I("shot", "pair %d: frames identical (mean diff %.2f) at %ux%u", index, sum / total, a.w, a.h);
 }
 
+std::atomic<bool> g_request{false};
+
 }  // namespace
+
+void request() { g_request = true; }
 
 void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
     // A PAIR request grabs 4 consecutive frames and diffs each neighbouring two (3 results), so
@@ -162,6 +169,17 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
             }
             pair_stage = 0;
         }
+        return;
+    }
+    if (g_request.exchange(false)) {
+        Image img;
+        if (!grab(chain, 1, img)) return;
+        SYSTEMTIME t;
+        GetLocalTime(&t);
+        wchar_t name[48];
+        swprintf_s(name, L"vrshot_%04u%02u%02u_%02u%02u%02u.bmp", t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond);
+        save_bmp(dir / name, img);
+        LOG_I("shot", "headset screenshot saved: %ls (%ux%u)", name, img.w, img.h);
         return;
     }
     if (++poll % 30) return;

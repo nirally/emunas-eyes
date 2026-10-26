@@ -53,6 +53,7 @@ add_library(mecvr SHARED
     src/render/ctx_hooks.cpp
     src/render/faith_bones.cpp
     src/render/ui_shrink.cpp
+    src/render/screen_mode.cpp
     src/render/taa_eyes.cpp
     src/diagnostics/mem_find.cpp
     src/render/motion_fix.cpp
