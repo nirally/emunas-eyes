@@ -65,6 +65,7 @@ uintptr_t g_view_site_return = 0;  // return address of the render-view build ca
 std::atomic<float> g_height_offset{0};  // meters added to camera height (comfort.height_offset)
 std::atomic<bool> g_steady_motion{true};    // comfort.steady_game_motion: the game camera's shake smoothed out of it (BUG-030)
 std::atomic<float> g_steady_max{0};         // 10 s log: the most it took off
+std::atomic<int> g_shaking_ticks{0};        // 10 s log: updates with the game motion faded out (shaking)
 std::atomic<bool> g_game_motion{false};     // comfort.game_camera_motion: add the game's own camera rotation (D-014)
 std::atomic<bool> g_motion_dirty{false};
 std::atomic<bool> g_stereo{false};          // stereo.mode = alternate: one eye per frame (D-017, H2 step 1)
@@ -179,6 +180,8 @@ struct ComposeState {
     ULONGLONG prev_tick = 0;
     bool primed = false;
     shake_filter::Filter shake;  // game motion, steadied (BUG-030)
+    shake_filter::Detector shaking;  // and faded out while it shakes back and forth (PLAYTEST-8g)
+    vm::Quat shake_prev_raw;
     LONGLONG shake_qpc = 0;
     // Stereo pairs (PLAYTEST-2a): the right-eye frame reuses the left-eye frame's head pose and
     // game camera, so the two eyes of a pair differ only by the eye offset.
@@ -292,10 +295,16 @@ void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, v
         const float sdt = st.shake_qpc ? float(double(q.QuadPart - st.shake_qpc) / double(f.QuadPart)) : 0.f;
         st.shake_qpc = q.QuadPart;
         if (g_steady_motion.load()) {
-            motion = st.shake.update(motion, sdt);
+            const vm::Vec3 step = shake_filter::log_q((st.shake_prev_raw.conjugate() * motion).normalized());
+            st.shake_prev_raw = motion;
+            const float w = st.shaking.update(step, sdt);
+            const vm::Quat look = vm::Quat::axis_angle({1, 0, 0}, game_pitch - baseline);  // its look pitch only
+            motion = shake_filter::blend(look, st.shake.update(motion, sdt), w);
             if (st.shake.last_diff_deg > g_steady_max.load()) g_steady_max = st.shake.last_diff_deg;
+            if (w < 0.5f && &st == &g_main_state) g_shaking_ticks.fetch_add(1);
         } else {
             st.shake.primed = false;
+            st.shaking = {};
         }
         final_rot = (body * motion * head.rotation).normalized();
     }
@@ -681,8 +690,9 @@ void report_view_site() {
               (unsigned long long)g_vs_far.exchange(0), (unsigned long long)mains);
     if (g_shake.n) {  // game thread writes; a torn 10 s figure is harmless
         LOG_I("camera", "game camera shake over %d ticks: rotation change %.2f deg avg, %.1f max; position change %.0f mm avg, %.0f max (game motion %s, "
-              "steadied %s: up to %.1f deg taken off)", g_shake.n, g_shake.rot_sum / g_shake.n, g_shake.rot_max, g_shake.pos_sum / g_shake.n, g_shake.pos_max,
-              g_game_motion.load() ? "on" : "off", g_steady_motion.load() ? "on" : "off", g_steady_max.exchange(0));
+              "steadied %s: up to %.1f deg taken off, faded out for shaking in %d updates)", g_shake.n, g_shake.rot_sum / g_shake.n, g_shake.rot_max,
+              g_shake.pos_sum / g_shake.n, g_shake.pos_max, g_game_motion.load() ? "on" : "off", g_steady_motion.load() ? "on" : "off",
+              g_steady_max.exchange(0), g_shaking_ticks.exchange(0));
         g_shake.rot_sum = g_shake.rot_max = g_shake.pos_sum = g_shake.pos_max = 0;
         g_shake.n = 0;
     }
@@ -803,12 +813,24 @@ void on_present(float dt) {
     bool stereo_key = key(VK_F4) && !key(VK_SHIFT) && !key(VK_MENU);
     static ULONGLONG last_toggle = 0;  // F4/F9: ignore a second press within 0.7 s (key bounce flipped F9 back, PLAYTEST-2b)
     const bool can_toggle = GetTickCount64() - last_toggle > 700;
+    // PLAYTEST-8g: F5 on a 60% keyboard (Fn+5) also caught F4 46 ms earlier and stereo went off for the rest of the
+    // session. F4 acts 0.4 s after its press, and not at all if F5 was pressed within 0.4 s of it.
+    static ULONGLONG stereo_pending = 0, last_f5 = 0;
+    const ULONGLONG now_ms = GetTickCount64();
     if (stereo_key && !stereo_was && can_toggle) {
-        last_toggle = GetTickCount64();
+        last_toggle = now_ms;
+        stereo_pending = now_ms;
+    }
+    stereo_was = stereo_key;
+    if (stereo_pending && last_f5 + 400 > stereo_pending && last_f5 < stereo_pending + 400) {
+        stereo_pending = 0;
+        LOG_I("camera", "F4 with F5 (keys next to each other): stereo left as it is");
+    }
+    if (stereo_pending && now_ms - stereo_pending >= 400) {
+        stereo_pending = 0;
         set_stereo(!g_stereo.load());
         g_stereo_dirty = true;
     }
-    stereo_was = stereo_key;
     static bool fov_was = false;
     bool fov_key = key(VK_F9) && !key(VK_SHIFT);  // Shift+F9 is per-eye anti-aliasing (taa_eyes)
     if (fov_key && !fov_was && can_toggle) {
@@ -820,6 +842,7 @@ void on_present(float dt) {
     static bool motion_was = false;
     bool motion = key(VK_F5);
     if (motion && !motion_was) {
+        last_f5 = now_ms;
         set_game_motion(!g_game_motion.load());
         g_motion_dirty = true;
     }

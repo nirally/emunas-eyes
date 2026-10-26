@@ -63,4 +63,50 @@ struct Filter {
     }
 };
 
+// PLAYTEST-8g: the filter took up to 5.7 deg off and the train roof still shook; F5 (game motion off) fixed it.
+// A shake goes back and forth; a roll, a wall-run tilt or the stick goes one way. Steps that reverse direction
+// (each past min_step_deg) are counted over the last window_s: from on_reversals of them the game motion fades out
+// (to its look pitch only) over fade_s, and back in once fewer than off_reversals happen in a window.
+struct Detector {
+    float min_step_deg = 0.15f;
+    float window_s = 1.0f;
+    int on_reversals = 6, off_reversals = 2;
+    float fade_s = 0.3f;
+    static constexpr int kMax = 64;
+    float times[kMax] = {};  // reversal times, ring
+    int head = 0, count = 0;
+    float now = 0;
+    vm::Vec3 last_step;
+    bool shaking = false;
+    float weight = 1.f;  // of the game motion: 1 = all of it, 0 = look pitch only
+
+    // step = this update's rotation vector of the game motion (radians); returns the weight to use.
+    float update(vm::Vec3 step, float dt) {
+        if (dt <= 0.f || dt > 0.25f) return weight;
+        now += dt;
+        const float mag = std::sqrt(step.dot(step)) * 57.29578f;
+        if (mag > min_step_deg) {
+            if (std::sqrt(last_step.dot(last_step)) * 57.29578f > min_step_deg && step.dot(last_step) < 0.f) {
+                times[head] = now;
+                head = (head + 1) % kMax;
+                if (count < kMax) ++count;
+            }
+            last_step = step;
+        }
+        int recent = 0;
+        for (int i = 0; i < count; ++i) recent += now - times[i] <= window_s;
+        if (!shaking && recent >= on_reversals) shaking = true;
+        if (shaking && recent < off_reversals) shaking = false;
+        const float target = shaking ? 0.f : 1.f, d = dt / fade_s;
+        weight = weight < target ? std::fmin(target, weight + d) : std::fmax(target, weight - d);
+        return weight;
+    }
+};
+
+// `calm` * the share w of the way from calm to `full` (w = 1: full).
+inline vm::Quat blend(vm::Quat calm, vm::Quat full, float w) {
+    if (w >= 1.f) return full;
+    return (calm * exp_q(log_q((calm.conjugate() * full).normalized()) * w)).normalized();
+}
+
 }  // namespace mecvr::shake_filter

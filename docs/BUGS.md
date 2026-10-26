@@ -216,17 +216,24 @@ Cause: on the menu screen the camera override steps aside, so the game's frames 
 Fix: on the menu screen every frame goes straight to the screen (as in mono). Not checkable on the desktop (no headset frames).
 
 ### BUG-030 — On the train in The Shard the whole picture shakes
-Status: fixed, to confirm (PLAYTEST-8g) | Severity: 2 (comfort) | Stage: 8 | Reported: PLAYTEST-8e ("when standing on the train the whole screen shaked a lot which was not comfortable")
+Status: fixed again, to confirm (PLAYTEST-8h) | Severity: 2 (comfort) | Stage: 8 | Reported: PLAYTEST-8e ("when standing on the train the whole screen shaked a lot which was not comfortable")
 Evidence: PLAYTEST-8e log: the train part is 21:18:44-21:19:23 (camera height 51.7 m held, then off the train at 61 m); across a tick the camera moved 1.39 m (~60 m/s) during the opening cutscene, 63 mm (still) at 21:19:04. Nothing in that log measured shake.
 Suspects: (a) the game shakes its camera on the train and comfort.game_camera_motion (on, the user's choice) passes the rotation straight into the view; (b) the camera's position jitters (not affected by game motion); (c) the train and the camera out of step with eye sync.
 Next: the 10 s camera log now gives "game camera shake" (rotation and position change per tick; desktop baseline running: 0.00 deg avg / 0.1 max, 8 mm avg / 41 max). PLAYTEST-8f: F5 (game motion off) on the train - does the shake stop?
 Cause (PLAYTEST-8f log, F5 not tried): on the train roof the game camera's rotation shakes (2.2-3.0 deg per-tick change avg, 6.5 max; position steady), and game camera motion puts it on the view.
 Fix (D-053): comfort.steady_game_motion (on): a One Euro filter on the game motion (shake_filter, 4 tests) - a +-2 deg 10 Hz shake keeps under 40%, a 150 deg/s look or a 90 deg roll in 0.3 s lags under 2-2.5 deg, a camera cut passes at once. Desktop (desktop-8f-steady.log): standing 0.1 deg taken off, a scripted drop up to 6.3 deg; the train itself not reachable from the desktop save.
+PLAYTEST-8g: "1 yes but pressing F5 fixed it" - the filter took up to 5.7 deg off and it still shook (roof: 2.85 deg per-tick change avg). Rolls etc. unchanged ("3 yes").
+Fix 2 (D-054): a shake detector (shake_filter::Detector, 2 tests): rotation steps that reverse direction, 6+ in 1 s, fade the game motion out to its look pitch over 0.3 s; back in under 2 per second. A roll, wall-run tilt, landing dip and stick look never trigger it (test). Desktop (desktop-8g-shake-keys.log): run and jump 0 updates faded; a fall to her death 185.
 
 ### BUG-031 — Faith's body and hands glitch without stopping after the cutscene on the train
-Status: fixed, to confirm (PLAYTEST-8g) | Severity: 3 | Stage: 8 | Reported: PLAYTEST-8e ("after the cutscene ended by going in into faith head and making the transition to gameplay faith body and hands glitched without stopping")
+Status: closed 2026-10-26 (PLAYTEST-8g: "2 no") | Severity: 3 | Stage: 8 | Reported: PLAYTEST-8e ("after the cutscene ended by going in into faith head and making the transition to gameplay faith body and hands glitched without stopping")
 Evidence: PLAYTEST-8e log 21:19:05-21:19:23 (gameplay on the train, view pitched down 75-87 deg: the user looking at her): arms posed every frame, shoulders within 7 deg of the view, hands 0.28-0.41 m from her shoulders - nothing out of range. Her "chest off your hands' direction" read 172-180 deg, but that is the measure's blind spot (hands hanging at your sides while looking straight down sit behind the eyes), not a cause. Up to 1467 arm solves per 5 s are retries after failed solves, not two poses in one frame. After the second cutscene (21:20:30-21:20:35): 302 of 688 arms out of reach, 184 hands too far, hand twist 134 deg avg, back to normal by 21:20:40.
 Next: the 5 s bones log now gives her shoulders' jumps against the view between frames and posed <-> game-pose flips. PLAYTEST-8f: a headset screenshot (Y + B) while it glitches.
 PLAYTEST-8f: "arms jump back and front ... body is not glitching". Log: hand twist about the forearm 90-138 deg avg on the train (elsewhere 38-66); shoulders steady against the view.
 Cause: the forearm takes half the hand's twist about it (body.forearm_twist 0.5); arm_ik::twist_angle wraps at 180 deg, so a twist going 170 -> 190 read -170 and the forearm's share flipped from +85 to -85 deg in one frame.
 Fix: the twist is unwrapped against the arm's last posed frame (arm_ik::unwrap_near, share_twist(prev); 2 tests). Log: "forearm twist kept from flipping past 180 deg in N frames".
+
+### BUG-032 — F5 on a 60% keyboard also hits F4 and turns stereo off
+Status: fixed, to confirm (PLAYTEST-8h) | Severity: 3 | Stage: 8 | Reported: agent, PLAYTEST-8g log
+Evidence: 22:02:58.216 "stereo OFF (mono)", 22:02:58.262 "game camera motion ON (F5)"; the session went on in mono and the saved config kept stereo.mode mono. On the user's keyboard F4/F5 are Fn+4/Fn+5, side by side.
+Fix: F4 acts 0.4 s after its press and not at all if F5 was pressed within 0.4 s of it (log: "F4 with F5 ... stereo left as it is"). Desktop: F4 alone toggles both ways; F4 + F5 50 ms apart leaves stereo on.
