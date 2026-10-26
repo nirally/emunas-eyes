@@ -121,6 +121,10 @@ float g_turn0 = 0, g_turn_prev = 0, g_turn_w = 0;
 bool g_in_attack = false;
 float g_body_max = 0;  // 5 s log
 int g_body_frames = 0, g_turned_rows = 0;
+// 5 s log (PLAYTEST-7k, air punches only: "less"): her chest's front after the turn-back vs your hands' direction
+// (head -> midpoint of the controllers, level; both hands out 15+ cm), so head-looks don't count. [0] attacks, [1] not.
+float g_off_hands_max[2] = {};
+int g_off_hands_n[2] = {}, g_off_hands_30[2] = {};
 double g_copy_ms = 0, g_copy_max_ms = 0;  // shadow -> real copies at Unmap
 unsigned g_copies = 0;
 bool learning() { return g_learning.load(std::memory_order_relaxed); }
@@ -269,6 +273,17 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
                     g_body_max = std::fmax(g_body_max, std::fabs(a) * 57.29578f);
                     ++g_body_frames;
                 }
+            }
+        }
+        if (h.valid[0] && h.valid[1]) {
+            vm::Vec3 to_hands = (h.pos[0] + h.pos[1]) * 0.5f - h.view_pos;
+            to_hands.y = 0;
+            if (to_hands.length() > 0.15f) {
+                const float deg = std::acos(std::fmax(-1.f, std::fmin(1.f, to_hands.normalized().dot(chest_front)))) * 57.29578f;
+                const int k = g_turn_w > 0.f ? 0 : 1;
+                g_off_hands_max[k] = std::fmax(g_off_hands_max[k], deg);
+                ++g_off_hands_n[k];
+                g_off_hands_30[k] += deg > 30.f;
             }
         }
         // Hanging or climbing: either of the game's hands above her shoulder (a pipe or ladder takes them in turn).
@@ -1008,6 +1023,12 @@ void on_present() {
             LOG_I("bones", "  attacks: her body turned back in %d frames, up to %.0f deg; %d rows of her other pieces turned with it",
                   g_body_frames, g_body_max, g_turned_rows);
         g_body_frames = g_turned_rows = 0;
+        for (int k = 0; k < 2; ++k)
+            if (g_off_hands_n[k])
+                LOG_I("bones", "  %s: her chest off your hands' direction up to %.0f deg (%d of %d frames past 30)",
+                      k == 0 ? "attacks" : "no attack", g_off_hands_max[k], g_off_hands_30[k], g_off_hands_n[k]);
+        g_off_hands_max[0] = g_off_hands_max[1] = 0;
+        g_off_hands_n[0] = g_off_hands_n[1] = g_off_hands_30[0] = g_off_hands_30[1] = 0;
         if (g_late_patched) LOG_I("bones", "  %d pieces drawn before the solve were patched at a later draw", g_late_patched);
         g_late_patched = 0;
         g_body_max = 0;
