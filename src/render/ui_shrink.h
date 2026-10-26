@@ -16,6 +16,9 @@ void set_flat(bool on);        // diagnostics.ui_scale_flat
 // 8C (PLAYTEST-8b: health bar "I can only see the end of it I need it to be bigger and you can even put it in the
 // center"): UI draws in the bar's corner (bottom left) go to the bottom middle at their own size instead.
 void set_hud(bool centre, float scale, float y);  // ui.hud_centre, ui.hud_scale, ui.hud_height
+// 8D (PLAYTEST-8c: the "KSEC Responding" window "is to much to the upper right so I can't see it clearly"): UI draws
+// in the top-right corner go in towards the middle at their own size.
+void set_alert(bool on, float scale, float x, float y);  // ui.alert_move, ui.alert_scale, ui.alert_x, ui.alert_y
 
 // From ctx_hooks (render thread).
 void on_present(IDXGISwapChain* chain);

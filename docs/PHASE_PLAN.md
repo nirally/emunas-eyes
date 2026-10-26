@@ -38,12 +38,13 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
 ⬜ Not started: HUD/menus/cutscenes (Stage 8), settings menu (9), packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-8c
-🐞 Open bugs: BUG-029 sev-2 (menu screen a still image - fixed, to confirm); BUG-028 sev-3 (kicks glitch the body - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
+❓ Need from you: PLAYTEST-8d
+🐞 Open bugs: BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
 ⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
 ⚠ 8B menus on a big flat screen (D-050): PLAYTEST-8b - showed a still image (BUG-029, fixed); hands at rest "much better" (BUG-027 closed); kicks glitch (BUG-028, fixed); comfort 5
-🔧 8C health bar moved to the bottom middle, bigger (D-051, ui.hud_scale 0.7, ui.hud_height -0.35); desktop-checked
-▶ Next: You: PLAYTEST-8c (~5 min). Me after it: cutscene big-screen setting (Q-803, 8D)
+✅ 8C menu screen live, Options/map/mission select usable (BUG-029 closed); kicks fine (BUG-028 closed); health bar whole and readable (D-051); comfort 5 (PLAYTEST-8c)
+🔧 8D top-right alerts ("KSEC Responding") moved in towards the middle (D-052, ui.alert_scale 0.5, ui.alert_x 0.12, ui.alert_y 0.18); desktop-checked that normal play is unchanged (the alert itself not seen on the desktop)
+▶ Next: You: PLAYTEST-8d (~5 min). Me after it: cutscene big-screen setting (Q-803, 8E)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -236,7 +237,7 @@ Goal: every UI element at a comfortable depth with the treatment for its type; m
 Known: today the HUD, menus and cutscenes go through as the game draws them, into each eye's frame (alternate-frame stereo). Helix (3D Vision fix) found the HUD is one shader/texture that can't be split by element. No playtest so far has complained about the HUD, menus or cutscenes (cutscenes/takedowns "nothing wrong", PLAYTEST-4h).
 Unknowns: Q-801-Q-804 (what bothers the user now); where the HUD pass is in the frame (one draw? a separate render target?); at what depth it shows now (same screen spot in both eyes = at infinity); whether menus and the map are the same pass; how cutscene cameras reach the view (Stage 1 owns gameplay cameras); whether the audio listener follows the game camera or our head pose.
 Hypotheses: H1 the HUD is drawn last into the back buffer with its own shader (Helix) - findable by shader in our draw hooks and redirectable to an offscreen texture shown as a panel at a set depth. H2 Runner Vision and objective markers are world-space draws already (right in stereo); only the flat HUD layer needs moving. H3 the listener is set from the camera the game thinks it has (our head is applied at render time), so sound may not turn with the head.
-Plan: Q-801-Q-804 -> desktop recon (HUD draw and its depth now, menus/map, cutscene camera path, listener) -> 8A HUD panel at depth -> 8B menus/map panel -> 8C health bar to the bottom middle (PLAYTEST-8b) -> 8D cutscenes (per Q-803) -> 8E audio listener -> 8F prompts showing the Touch buttons (text substitution).
+Plan: Q-801-Q-804 -> desktop recon (HUD draw and its depth now, menus/map, cutscene camera path, listener) -> 8A HUD panel at depth -> 8B menus/map panel -> 8C health bar to the bottom middle (PLAYTEST-8b) -> 8D top-right alerts in (PLAYTEST-8c) -> 8E cutscenes (per Q-803) -> 8F audio listener -> 8G prompts showing the Touch buttons (text substitution).
 Verify: PLAYTEST-8x per sub-stage; comfort.
 Risk: one HUD shader = all-or-nothing, no per-element anchoring (wrist health) without finding each element's draws; menus may share the HUD pass.
 - [ ] UI inventory in manifest; every element typed

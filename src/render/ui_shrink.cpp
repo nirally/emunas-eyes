@@ -32,6 +32,8 @@ std::atomic<float> g_scale{0.4f};
 std::atomic<bool> g_flat{false};
 std::atomic<bool> g_hud_centre{true};
 std::atomic<float> g_hud_scale{0.7f}, g_hud_y{-0.35f};
+std::atomic<bool> g_alert_on{true};
+std::atomic<float> g_alert_scale{0.5f}, g_alert_x{0.12f}, g_alert_y{0.18f};
 ID3D11Resource* g_back = nullptr;  // this Present's back buffer (compared only, not held)
 float g_fw = 0, g_fh = 0;
 
@@ -39,6 +41,10 @@ float g_fw = 0, g_fh = 0;
 // it moves on its own: kAnchor (the bar and its icon, x -0.98..-0.77 y -0.95..-0.86 on the desktop) lands on (0, ui.hud_y) at ui.hud_scale.
 constexpr float kCornerX = -0.45f, kCornerY = -0.45f;
 constexpr float kAnchorX = -0.77f, kAnchorY = -0.90f;  // x: the middle of its track, which runs on to the right
+// 8D: the top-right corner (the "KSEC Responding" alert window). Not seen on the desktop yet: kAlert is a guess at
+// its middle, landing on (ui.alert_x, ui.alert_y) at ui.alert_scale; the 10 s log gives the corner's first vertices.
+constexpr float kAlertCornerX = 0.45f, kAlertCornerY = 0.45f;
+constexpr float kAlertX = 0.75f, kAlertY = 0.80f;
 
 // Contexts whose render target 0 is the back buffer (the game draws on the immediate context; a few slots in case).
 struct Slot {
@@ -51,8 +57,9 @@ Slot g_slots[8] = {};
 D3D11_VIEWPORT g_vp[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
 D3D11_RECT g_sc[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
 UINT g_vp_n = 0, g_sc_n = 0;
-unsigned g_shrunk = 0, g_cornered = 0, g_frames = 0;  // 10 s log
-float g_box[4] = {1, 1, -1, -1};                        // corner draws' first vertices, 10 s (x0, y0, x1, y1)
+unsigned g_shrunk = 0, g_cornered = 0, g_alerted = 0, g_frames = 0;  // 10 s log
+float g_box[4] = {1, 1, -1, -1};        // corner draws' first vertices, 10 s (x0, y0, x1, y1)
+float g_alert_box[4] = {1, 1, -1, -1};  // the same for the top-right corner
 
 // The UI vertex buffer, written into a shadow while the HUD corner moves (render thread).
 constexpr unsigned kVbBytes = 2560000;
@@ -77,7 +84,15 @@ Slot* slot(ID3D11DeviceContext* ctx, bool add) {
 }
 
 bool shown() { return g_back && (xr_session::running() || g_flat.load()) && !screen_mode::active(); }
-bool active() { return (g_scale.load() < 0.999f || g_hud_centre.load()) && shown(); }
+bool moving() { return g_hud_centre.load() || g_alert_on.load(); }  // some corner moves on its own: the vertex shadow is needed
+bool active() { return (g_scale.load() < 0.999f || moving()) && shown(); }
+
+void grow(float* box, float fx, float fy) {
+    if (fx < box[0]) box[0] = fx;
+    if (fy < box[1]) box[1] = fy;
+    if (fx > box[2]) box[2] = fx;
+    if (fy > box[3]) box[3] = fy;
+}
 
 // The draw's vertex shader constants c0 (12 float4) if readable.
 const float* draw_constants(ID3D11DeviceContext* ctx, UINT* first_out = nullptr, UINT* num_out = nullptr) {
@@ -126,7 +141,7 @@ bool first_vertex(ID3D11DeviceContext* ctx, int base_vertex, float* fx, float* f
 }  // namespace
 
 void* on_vb_map(ID3D11Resource* res, void* mapped) {
-    if (!mapped || !g_hud_centre.load() || !shown()) {
+    if (!mapped || !moving() || !shown()) {
         if (res == g_vb) g_vb = nullptr;
         return mapped;
     }
@@ -155,6 +170,12 @@ void set_hud(bool centre, float scale, float y) {
     g_hud_scale = scale < 0.2f ? 0.2f : scale > 1.5f ? 1.5f : scale;
     g_hud_y = y < -0.9f ? -0.9f : y > 0.9f ? 0.9f : y;
 }
+void set_alert(bool on, float scale, float x, float y) {
+    g_alert_on = on;
+    g_alert_scale = scale < 0.2f ? 0.2f : scale > 1.5f ? 1.5f : scale;
+    g_alert_x = x < -0.9f ? -0.9f : x > 0.9f ? 0.9f : x;
+    g_alert_y = y < -0.9f ? -0.9f : y > 0.9f ? 0.9f : y;
+}
 
 void on_present(IDXGISwapChain* chain) {
     ID3D11Texture2D* t = nullptr;
@@ -174,13 +195,13 @@ void on_present(IDXGISwapChain* chain) {
             LARGE_INTEGER f;
             QueryPerformanceFrequency(&f);
             LOG_I("ui", "UI draws pulled in (scale %.2f): %u in %u frames; HUD corner %u (first vertices x %.2f..%.2f y %.2f..%.2f), "
-                  "vertex copies %u, %.3f ms each", g_scale.load(), g_shrunk, g_frames, g_cornered, g_box[0], g_box[2], g_box[1], g_box[3],
-                  g_copies, g_copies ? 1000.0 * double(g_copy_ticks) / double(f.QuadPart) / g_copies : 0.0);
+                  "alert corner %u (x %.2f..%.2f y %.2f..%.2f), vertex copies %u, %.3f ms each", g_scale.load(), g_shrunk, g_frames, g_cornered,
+                  g_box[0], g_box[2], g_box[1], g_box[3], g_alerted, g_alert_box[0], g_alert_box[2], g_alert_box[1], g_alert_box[3], g_copies, g_copies ? 1000.0 * double(g_copy_ticks) / double(f.QuadPart) / g_copies : 0.0);
         }
-        g_shrunk = g_cornered = g_frames = g_copies = 0;
+        g_shrunk = g_cornered = g_alerted = g_frames = g_copies = 0;
         g_copy_ticks = 0;
-        g_box[0] = g_box[1] = 1.f;
-        g_box[2] = g_box[3] = -1.f;
+        g_box[0] = g_box[1] = g_alert_box[0] = g_alert_box[1] = 1.f;
+        g_box[2] = g_box[3] = g_alert_box[2] = g_alert_box[3] = -1.f;
     }
 }
 
@@ -199,17 +220,23 @@ bool before_draw(ID3D11DeviceContext* ctx, int base_vertex) {
     if (!active()) return false;
     const Slot* s = slot(ctx, false);
     if (!s || !s->on) return false;
-    // Everything scales by ui.scale about the centre; the health bar's corner goes to the bottom middle on its own.
+    // Everything scales by ui.scale about the centre; the health bar's corner goes to the bottom middle on its own,
+    // the top-right alerts in towards the middle.
     float k = g_scale.load(), ox = 0.f, oy = 0.f, fx = 0.f, fy = 0.f;
-    if (g_hud_centre.load() && first_vertex(ctx, base_vertex, &fx, &fy) && fx < kCornerX && fy < kCornerY) {
-        k = g_hud_scale.load();
-        ox = -k * kAnchorX;
-        oy = g_hud_y.load() - k * kAnchorY;
-        ++g_cornered;
-        if (fx < g_box[0]) g_box[0] = fx;
-        if (fy < g_box[1]) g_box[1] = fy;
-        if (fx > g_box[2]) g_box[2] = fx;
-        if (fy > g_box[3]) g_box[3] = fy;
+    if (moving() && first_vertex(ctx, base_vertex, &fx, &fy)) {
+        if (g_hud_centre.load() && fx < kCornerX && fy < kCornerY) {
+            k = g_hud_scale.load();
+            ox = -k * kAnchorX;
+            oy = g_hud_y.load() - k * kAnchorY;
+            ++g_cornered;
+            grow(g_box, fx, fy);
+        } else if (g_alert_on.load() && fx > kAlertCornerX && fy > kAlertCornerY) {
+            k = g_alert_scale.load();
+            ox = g_alert_x.load() - k * kAlertX;
+            oy = g_alert_y.load() - k * kAlertY;
+            ++g_alerted;
+            grow(g_alert_box, fx, fy);
+        }
     }
     if (k > 0.999f && ox == 0.f && oy == 0.f) return false;
     g_vp_n = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;

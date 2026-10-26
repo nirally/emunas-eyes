@@ -216,6 +216,8 @@ DWORD WINAPI main_thread(LPVOID) {
                 ui_shrink::set_flat(g_config.get_bool("diagnostics.ui_scale_flat"));
                 ui_shrink::set_hud(g_config.get_bool("ui.hud_centre"), static_cast<float>(g_config.get_number("ui.hud_scale")),
                                    static_cast<float>(g_config.get_number("ui.hud_height")));
+                ui_shrink::set_alert(g_config.get_bool("ui.alert_move"), static_cast<float>(g_config.get_number("ui.alert_scale")),
+                                     static_cast<float>(g_config.get_number("ui.alert_x")), static_cast<float>(g_config.get_number("ui.alert_y")));
                 screen_mode::set_enabled(g_config.get_bool("ui.menu_screen"));
                 screen_mode::set_flat(g_config.get_bool("diagnostics.screen_flat"));
                 screen_mode::set_size(static_cast<float>(g_config.get_number("ui.screen_width")), static_cast<float>(g_config.get_number("ui.screen_distance")));
@@ -293,6 +295,10 @@ DWORD WINAPI main_thread(LPVOID) {
         if (old_v["ui.hud_centre"] != new_v["ui.hud_centre"] || old_v["ui.hud_scale"] != new_v["ui.hud_scale"] ||
             old_v["ui.hud_height"] != new_v["ui.hud_height"])
             ui_shrink::set_hud(new_v["ui.hud_centre"].get<bool>(), new_v["ui.hud_scale"].get<float>(), new_v["ui.hud_height"].get<float>());
+        if (old_v["ui.alert_move"] != new_v["ui.alert_move"] || old_v["ui.alert_scale"] != new_v["ui.alert_scale"] ||
+            old_v["ui.alert_x"] != new_v["ui.alert_x"] || old_v["ui.alert_y"] != new_v["ui.alert_y"])
+            ui_shrink::set_alert(new_v["ui.alert_move"].get<bool>(), new_v["ui.alert_scale"].get<float>(), new_v["ui.alert_x"].get<float>(),
+                                 new_v["ui.alert_y"].get<float>());
         if (old_v["ui.menu_screen"] != new_v["ui.menu_screen"]) screen_mode::set_enabled(new_v["ui.menu_screen"].get<bool>());
         if (old_v["diagnostics.screen_flat"] != new_v["diagnostics.screen_flat"]) screen_mode::set_flat(new_v["diagnostics.screen_flat"].get<bool>());
         if (old_v["ui.screen_width"] != new_v["ui.screen_width"] || old_v["ui.screen_distance"] != new_v["ui.screen_distance"])
