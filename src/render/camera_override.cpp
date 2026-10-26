@@ -19,6 +19,7 @@
 #include "core/sigscan.h"
 #include "core/vmath.h"
 #include "core/room_model.h"
+#include "core/shake_filter.h"
 #include "core/yaw_model.h"
 #include "input/xinput_hook.h"
 #include "input/yaw_drive.h"
@@ -62,6 +63,8 @@ void* g_setter = nullptr;
 uintptr_t g_site_return = 0;  // return address of the gameplay call
 uintptr_t g_view_site_return = 0;  // return address of the render-view build call (0 if not found)
 std::atomic<float> g_height_offset{0};  // meters added to camera height (comfort.height_offset)
+std::atomic<bool> g_steady_motion{true};    // comfort.steady_game_motion: the game camera's shake smoothed out of it (BUG-030)
+std::atomic<float> g_steady_max{0};         // 10 s log: the most it took off
 std::atomic<bool> g_game_motion{false};     // comfort.game_camera_motion: add the game's own camera rotation (D-014)
 std::atomic<bool> g_motion_dirty{false};
 std::atomic<bool> g_stereo{false};          // stereo.mode = alternate: one eye per frame (D-017, H2 step 1)
@@ -175,6 +178,8 @@ struct ComposeState {
     float prev_pitch = 0;
     ULONGLONG prev_tick = 0;
     bool primed = false;
+    shake_filter::Filter shake;  // game motion, steadied (BUG-030)
+    LONGLONG shake_qpc = 0;
     // Stereo pairs (PLAYTEST-2a): the right-eye frame reuses the left-eye frame's head pose and
     // game camera, so the two eyes of a pair differ only by the eye offset.
     bool pair_valid = false;
@@ -281,6 +286,17 @@ void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, v
         float baseline = game_pitch_on ? 0.f : st.baseline;  // simulator keeps the game pitch
         vm::Quat game_rel = vm::yaw_quat(-game_yaw) * vm::quat_of(*a);
         vm::Quat motion = vm::Quat::axis_angle({1, 0, 0}, -baseline) * game_rel;
+        LARGE_INTEGER q, f;
+        QueryPerformanceCounter(&q);
+        QueryPerformanceFrequency(&f);
+        const float sdt = st.shake_qpc ? float(double(q.QuadPart - st.shake_qpc) / double(f.QuadPart)) : 0.f;
+        st.shake_qpc = q.QuadPart;
+        if (g_steady_motion.load()) {
+            motion = st.shake.update(motion, sdt);
+            if (st.shake.last_diff_deg > g_steady_max.load()) g_steady_max = st.shake.last_diff_deg;
+        } else {
+            st.shake.primed = false;
+        }
         final_rot = (body * motion * head.rotation).normalized();
     }
     out_rot = final_rot;
@@ -664,8 +680,9 @@ void report_view_site() {
               (unsigned long long)(g + o + p), (unsigned long long)g, (unsigned long long)o, g_vs_max_angle.exchange(0), g_vs_max_pos.exchange(0),
               (unsigned long long)g_vs_far.exchange(0), (unsigned long long)mains);
     if (g_shake.n) {  // game thread writes; a torn 10 s figure is harmless
-        LOG_I("camera", "game camera shake over %d ticks: rotation change %.2f deg avg, %.1f max; position change %.0f mm avg, %.0f max (game motion %s)",
-              g_shake.n, g_shake.rot_sum / g_shake.n, g_shake.rot_max, g_shake.pos_sum / g_shake.n, g_shake.pos_max, g_game_motion.load() ? "on" : "off");
+        LOG_I("camera", "game camera shake over %d ticks: rotation change %.2f deg avg, %.1f max; position change %.0f mm avg, %.0f max (game motion %s, "
+              "steadied %s: up to %.1f deg taken off)", g_shake.n, g_shake.rot_sum / g_shake.n, g_shake.rot_max, g_shake.pos_sum / g_shake.n, g_shake.pos_max,
+              g_game_motion.load() ? "on" : "off", g_steady_motion.load() ? "on" : "off", g_steady_max.exchange(0));
         g_shake.rot_sum = g_shake.rot_max = g_shake.pos_sum = g_shake.pos_max = 0;
         g_shake.n = 0;
     }
@@ -887,6 +904,7 @@ void set_game_motion(bool on) {
 }
 
 bool game_motion() { return g_game_motion.load(); }
+void set_steady_motion(bool on) { g_steady_motion = on; }
 
 bool take_motion_changed() { return g_motion_dirty.exchange(false); }
 

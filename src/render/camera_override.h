@@ -35,6 +35,9 @@ bool take_height_changed();
 // landing dips) is added on top of the head pose; look pitch is excluded. F5 toggles; saved.
 void set_game_motion(bool on);
 bool game_motion();
+// comfort.steady_game_motion (BUG-030): the game camera's small fast shake smoothed out of the game motion; rolls,
+// tilts and the stick's look pitch pass (shake_filter).
+void set_steady_motion(bool on);
 bool take_motion_changed();
 
 // stereo.mode: alternate = the game renders one eye per frame (left, right, left...).

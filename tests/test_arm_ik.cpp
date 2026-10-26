@@ -208,6 +208,33 @@ TEST(arm_ik_share_twist_moves_twist_into_forearm) {
     CHECK(std::fabs(arm_ik::twist_angle(r.fore.q.conjugate() * r.hand.q, u0)) < 0.01f);
 }
 
+TEST(arm_ik_unwrap_near_keeps_a_twist_on_its_side) {
+    // 170 deg last frame, -175 deg (= 185) now: stays 185, not -175.
+    CHECK(std::fabs(arm_ik::unwrap_near(-3.054f, 2.967f) - 3.229f) < 1e-3f);
+    CHECK(std::fabs(arm_ik::unwrap_near(3.054f, -2.967f) + 3.229f) < 1e-3f);
+    CHECK(std::fabs(arm_ik::unwrap_near(0.5f, 0.f) - 0.5f) < 1e-6f);   // fresh start: unchanged
+    CHECK(std::fabs(arm_ik::unwrap_near(-0.5f, 9.f) - 5.783f) < 1e-3f);  // 12.07 is past 1.5 turns: wraps once
+}
+
+TEST(arm_ik_share_twist_stays_continuous_past_half_a_turn) {
+    // PLAYTEST-8f: the hand turned 170 -> 190 deg from the game's about the forearm. Without the previous frame the
+    // forearm's share flips (+85 -> -85 deg); with it, it goes on to 95.
+    const Vec3 u0 = (kW - kE).normalized();
+    float prev = 0.f;
+    float share[2] = {};
+    for (int i = 0; i < 2; ++i) {
+        auto r = arm_ik::solve(kS, kE, kW, {0.30f, 1.30f, -0.35f}, kPole);
+        const Quat fore0 = r.fore.q;
+        r.hand.q = (r.fore.q * Quat::axis_angle(u0, i == 0 ? 2.967f : 3.316f)).normalized();
+        r.hand.t = r.wrist - r.hand.q.rotate(kW);
+        arm_ik::share_twist(r, kE, kW, 0.5f, &prev);
+        share[i] = arm_ik::twist_angle(fore0.conjugate() * r.fore.q, u0);
+    }
+    CHECK(std::fabs(share[0] - 1.484f) < 0.01f);
+    CHECK(std::fabs(share[1] - 1.658f) < 0.01f);
+    CHECK(std::fabs(prev - 3.316f) < 0.01f);
+}
+
 TEST(arm_ik_punching_elbow_rises_clear_of_her_chest) {
     // An attack twists her torso (the game's animation) while her hands stay on yours: her right arm, facing -z,
     // shoulders turned 30 deg either way, hands where a punch or guard put them. Her upper arm (past the shoulder

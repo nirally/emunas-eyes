@@ -176,9 +176,25 @@ inline float twist_angle(vm::Quat q, vm::Vec3 axis) {
 // The forearm takes the share k (0..1) of the hand's twist about it, so the wrist skin (weighted between forearm and
 // hand) isn't wrung when the controller turns far from the game's hand (live: a gap at the wrist). The forearm
 // still runs elbow -> wrist; the hand is unchanged.
-inline void share_twist(Result& r, vm::Vec3 e0, vm::Vec3 w0, float k) {
+// `a` moved by whole turns to within half a turn of `prev`: a twist that keeps going past +-180 deg stays continuous
+// instead of jumping to the other side. Kept within +-1.5 turns (past that it wraps once).
+inline float unwrap_near(float a, float prev) {
+    const float pi = 3.14159265f, two_pi = 6.2831853f;
+    while (a - prev > pi) a -= two_pi;
+    while (a - prev < -pi) a += two_pi;
+    if (a > 1.5f * two_pi) a -= two_pi;
+    if (a < -1.5f * two_pi) a += two_pi;
+    return a;
+}
+
+// prev (optional): last frame's twist of this arm, in/out. PLAYTEST-8f (on the train in The Shard: "arms jump back
+// and front"): the hand was turned 100-140 deg from the game's hand about the forearm; past 180 the angle wrapped
+// and the forearm's share flipped side (k = 0.5: +90 -> -90 deg in one frame).
+inline void share_twist(Result& r, vm::Vec3 e0, vm::Vec3 w0, float k, float* prev = nullptr) {
     const vm::Vec3 u0 = (w0 - e0).normalized();
-    const float a = twist_angle(r.fore.q.conjugate() * r.hand.q, u0) * k;
+    float t = twist_angle(r.fore.q.conjugate() * r.hand.q, u0);
+    if (prev) t = *prev = unwrap_near(t, *prev);
+    const float a = t * k;
     r.fore.q = (r.fore.q * vm::Quat::axis_angle(u0, a)).normalized();  // turn about the game's forearm first
     r.fore.t = r.elbow - r.fore.q.rotate(e0);
 }

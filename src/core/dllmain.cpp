@@ -194,6 +194,7 @@ DWORD WINAPI main_thread(LPVOID) {
                 camera_override::set_pitch_source(pitch_source_from(g_config.get_string("camera.pitch_source")));
                 camera_override::set_height_offset(static_cast<float>(g_config.get_number("comfort.height_offset")));
                 camera_override::set_game_motion(g_config.get_bool("comfort.game_camera_motion"));
+                camera_override::set_steady_motion(g_config.get_bool("comfort.steady_game_motion"));
                 camera_override::set_stereo(g_config.get_string("stereo.mode") == "alternate");
                 camera_override::set_full_fov(g_config.get_bool("rendering.full_fov"));
                 camera_override::set_fov_test(g_config.get_bool("diagnostics.fov_test"));
@@ -353,6 +354,8 @@ DWORD WINAPI main_thread(LPVOID) {
             camera_override::set_zero_ipd(new_v["diagnostics.zero_ipd"].get<bool>());
         if (old_v["stereo.mode"] != new_v["stereo.mode"])
             camera_override::set_stereo(new_v["stereo.mode"].get<std::string>() == "alternate");
+        if (old_v["comfort.steady_game_motion"] != new_v["comfort.steady_game_motion"])
+            camera_override::set_steady_motion(new_v["comfort.steady_game_motion"].get<bool>());
         if (old_v["comfort.game_camera_motion"] != new_v["comfort.game_camera_motion"])
             camera_override::set_game_motion(new_v["comfort.game_camera_motion"].get<bool>());
         if (old_v["rendering.full_fov"] != new_v["rendering.full_fov"])

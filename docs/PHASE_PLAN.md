@@ -38,14 +38,16 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
 ⬜ Not started: HUD/menus/cutscenes (Stage 8), settings menu (9), packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-8f (The Shard again: train shake, glitch after the cutscene)
-🐞 Open bugs: BUG-030 sev-2 (train in The Shard: the picture shakes); BUG-031 sev-3 (body and hands glitch after the train cutscene); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
+❓ Need from you: PLAYTEST-8g (The Shard's train: shake and arms)
+🐞 Open bugs: BUG-030 sev-2 (train shakes - fixed, to confirm); BUG-031 sev-3 (arms jump on the train - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
 ⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
 ⚠ 8B menus on a big flat screen (D-050): PLAYTEST-8b - showed a still image (BUG-029, fixed); hands at rest "much better" (BUG-027 closed); kicks glitch (BUG-028, fixed); comfort 5
 ✅ 8C menu screen live, Options/map/mission select usable (BUG-029 closed); kicks fine (BUG-028 closed); health bar whole and readable (D-051); comfort 5 (PLAYTEST-8c)
 ✅ 8D "KSEC Responding" window readable, nothing else in the top right odd, comfort 5 (PLAYTEST-8d, D-052)
 ⚠ 8E cutscenes in 3D: "great", "really immersive" (PLAYTEST-8e, The Shard); the train shakes (BUG-030) and her body glitches after the cutscene (BUG-031). Recon: the cutscene camera comes through the gameplay camera site (render view = raw camera in every frame), so a detector for the big-screen setting (Q-803) needs another signal - parked behind the two bugs
-▶ Next: You: PLAYTEST-8f (~5 min). Me after it: fix BUG-030/031 from its log
+⚠ PLAYTEST-8f: shake as before (F5 not tried), arms jump back and front (body fine), comfort 4. Log: the game camera shakes on the train roof; the forearm's twist flipped past 180 deg
+🔧 D-053: game camera shake smoothed out of game motion (comfort.steady_game_motion); forearm twist kept continuous; desktop-checked (not on the train - not reachable from the desktop save)
+▶ Next: You: PLAYTEST-8g (~5 min). Me after it: cutscene big-screen setting (Q-803) or audio (8F), as you prefer
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

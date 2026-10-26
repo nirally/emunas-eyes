@@ -80,6 +80,7 @@
     "comfort.vignette_strength":  { "type": "float", "min": 0, "max": 1, "default": 0.3, "section": "Comfort", "label": "Vignette strength" },
     "comfort.play_mode":          { "type": "enum",  "values": ["standing", "seated"], "default": "standing", "section": "Comfort", "label": "Play mode" },
     "comfort.game_camera_motion": { "type": "bool",  "default": false, "section": "Comfort", "label": "Feel the game's camera motion: rolls, wall-run tilt, landing dips (F5). Intense" },
+    "comfort.steady_game_motion": { "type": "bool",  "default": true,  "section": "Comfort", "label": "With game camera motion on: smooth out the game's small fast camera shake (a train), keep its rolls and tilts" },
     "comfort.height_offset":      { "type": "float", "min": -0.5, "max": 0.8, "default": 0.0, "unit": "m", "section": "Calibration", "label": "Extra eye height (F3 up / F2 down)" },
     "rendering.full_fov":         { "type": "bool",  "default": true, "section": "Rendering", "label": "Fill the headset's whole field of view (off = the game's own FOV in a window)" },
     "rendering.render_scale":     { "type": "float", "min": 0.5, "max": 1.5, "default": 1.0, "section": "Rendering", "label": "Render scale" },
