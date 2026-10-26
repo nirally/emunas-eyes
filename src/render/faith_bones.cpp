@@ -20,6 +20,7 @@
 #include "diagnostics/log.h"
 #include "render/camera_override.h"
 #include "render/hand_render.h"
+#include "render/screenshot.h"
 
 namespace mecvr::faith_bones {
 namespace {
@@ -130,6 +131,13 @@ float g_off_hands_max[2] = {};
 // 5 s log (PLAYTEST-8e: on a train, "faith body and hands glitched without stopping"): her shoulders' middle against
 // the view from one posed frame to the next (a jump = her body and the camera out of step), and posed <-> game pose flips.
 vm::Vec3 g_rel_prev;
+// PLAYTEST-8i/8j (after the train cutscene: "the hands are moving on their own towards the headset while
+// flickering"; the 5 s figures: up to 481 of 654 arms clamped out of reach, the view at her head): when her arms come
+// back to the IK after 0.5 s without it, 4 s of her shoulders and hands in the view's frame are logged, and a second
+// with most arms clamped takes a headset screenshot (3 a session, 20 s apart).
+unsigned g_last_ik_frame = 0, g_trace_until = 0;
+int g_sec_arms = 0, g_sec_clamped = 0, g_auto_shots = 0;
+ULONGLONG g_sec_start = 0, g_last_auto_shot = 0;
 unsigned g_rel_frame = 0;
 float g_rel_jump_max = 0;
 int g_rel_jumps = 0, g_pose_flips = 0;
@@ -256,6 +264,11 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
             return false;
         }
         ++g_ik_frames;
+        if (g_last_ik_frame + 45 < g_frame) {
+            g_trace_until = g_frame + 360;
+            LOG_I("bones", "arms back to yours after %u frames without: tracing 4 s (x right, y up, z ahead of the view, m)", g_frame - g_last_ik_frame);
+        }
+        g_last_ik_frame = g_frame;
         vm::Vec3 chest_right = s[1 - g_left] - s[g_left], view_right = h.view_right;
         chest_right.y = view_right.y = 0;
         chest_right = chest_right.normalized();
@@ -372,6 +385,32 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
             const vm::Vec3 pole = arm_ik::elbow_from_hand(s[a], target, grip.rotate({0, 0, -1}), (w[a] - e[a]).length(),
                                                           arm_ik::elbow_pole(s[a], s[1 - a], target), g_elbow_follow_hand.load());
             arm_ik::Result r = arm_ik::solve(s[a], e[a], w[a], target, pole);
+            if (g_frame <= g_trace_until && g_frame % 12 == 0) {
+                vm::Vec3 vr = h.view_right;
+                vr.y = 0;
+                vr = vr.length() > 0.1f ? vr.normalized() : vm::Vec3{1, 0, 0};
+                const vm::Vec3 vf = vm::Vec3{0, 1, 0}.cross(vr);
+                auto in_view = [&](vm::Vec3 p) { const vm::Vec3 d = p - h.view_pos; return vm::Vec3{d.dot(vr), d.y, d.dot(vf)}; };
+                const vm::Vec3 sv = in_view(s[a]), tv = in_view(target), wv = in_view(r.wrist), gv = in_view(w[a]);
+                LOG_I("bones", "  trace %s hand: shoulder %+.2f %+.2f %+.2f, your hand %+.2f %+.2f %+.2f (%.2f m away), posed %+.2f %+.2f %+.2f, "
+                      "game's %+.2f %+.2f %+.2f%s", hand == 0 ? "left" : "right", sv.x, sv.y, sv.z, tv.x, tv.y, tv.z, dist, wv.x, wv.y, wv.z,
+                      gv.x, gv.y, gv.z, r.clamped ? " CLAMPED" : "");
+            }
+            {
+                const ULONGLONG now = GetTickCount64();
+                if (now - g_sec_start >= 1000) {
+                    if (g_sec_arms > 60 && g_sec_clamped * 10 > g_sec_arms * 6 && g_auto_shots < 3 && now - g_last_auto_shot > 20000) {
+                        ++g_auto_shots;
+                        g_last_auto_shot = now;
+                        screenshot::request();
+                        LOG_W("bones", "%d of %d arms clamped out of reach in 1 s: headset screenshot %d of 3", g_sec_clamped, g_sec_arms, g_auto_shots);
+                    }
+                    g_sec_start = now;
+                    g_sec_arms = g_sec_clamped = 0;
+                }
+                ++g_sec_arms;
+                g_sec_clamped += r.clamped;
+            }
             if (g_hand_ok[a]) {  // the hand takes the controller's turn (the glove's hand space)
                 const float* m = &rows[g_arms.arm[a].hand_bone * 12];
                 vm::LinearTransform lt{};  // basis = the matrix's columns

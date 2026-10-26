@@ -38,8 +38,8 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
 ⬜ Not started: HUD/menus/cutscenes (Stage 8), settings menu (9), packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-8j (the train: shake, hands)
-🐞 Open bugs: BUG-030 sev-2 (train shakes, comfort 3 - fourth fix, to confirm); BUG-031 sev-3 (hands glitch after the train cutscene - thought to follow the shake); BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
+❓ Need from you: PLAYTEST-8k (the hands after the train cutscene, for the log)
+🐞 Open bugs: BUG-031 sev-3 (hands move towards the headset, flickering, after the train cutscene - measuring); BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
 ⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
 ⚠ 8B menus on a big flat screen (D-050): PLAYTEST-8b - showed a still image (BUG-029, fixed); hands at rest "much better" (BUG-027 closed); kicks glitch (BUG-028, fixed); comfort 5
 ✅ 8C menu screen live, Options/map/mission select usable (BUG-029 closed); kicks fine (BUG-028 closed); health bar whole and readable (D-051); comfort 5 (PLAYTEST-8c)
@@ -53,7 +53,9 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 🔧 D-055: shake detector per axis (desktop fake shake faded to 0.00); forearm twist held while ill-conditioned; desktop-checked
 ⚠ PLAYTEST-8i: shake the same, hands "trying to go inside the headset", comfort 3. Log: faded fully and the view still shook - the heading and look pitch shake too (mod turning off: raw heading)
 🔧 D-056: while shaking, the view's heading and look pitch are smoothed too; desktop fake shake on all axes -91%
-▶ Next: You: PLAYTEST-8j (~5 min). If it still shakes: a per-train fallback (game motion off while shaking) or a different approach
+✅ PLAYTEST-8j: the train no longer shakes (BUG-030 closed, D-056), comfort 5; the hands still glitch after the cutscene
+🔧 BUG-031 recon: a 4 s trace of her shoulders and hands when the arms come back after the cutscene, and an automatic headset screenshot when most arms are clamped
+▶ Next: You: PLAYTEST-8k (~3 min). Me after it: fix BUG-031 from the trace and screenshot
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
