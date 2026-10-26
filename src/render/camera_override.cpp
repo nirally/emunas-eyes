@@ -83,6 +83,14 @@ std::atomic<float> g_turn_speed{3.14159f}; // rad/s at full stick (input.turn_sp
 std::atomic<bool> g_snap{false};
 std::atomic<float> g_snap_angle{0.785f};
 std::atomic<float> g_world_yaw{0};          // W, for both camera sites
+// PLAYTEST-8i: with the game motion faded out on the train roof the shown view still shook (3.5 deg per update) -
+// the rest is in the heading and the look pitch. While the camera site's detector says shaking, the game's own
+// turns are taken out of the view's heading and let back in over ~0.4 s (the player's turns pass at once), and the
+// look pitch is smoothed (0.3 s). Faith's body still steers to W.
+std::atomic<float> g_view_yaw{0};
+std::atomic<bool> g_shaking_now{false};
+std::atomic<float> g_faded_yaw_sum{0}, g_faded_pitch_sum{0};  // 10 s log: raw heading / look pitch change while faded
+std::atomic<int> g_faded_n{0};
 std::atomic<bool> g_turning_sim{false};    // diagnostics.mod_turning_sim: also without a headset (tests)
 std::atomic<bool> g_body_follows_head{false}; // input.body_follows_head: steer the game to where the head looks
 std::atomic<bool> g_crouch_slide{false};      // physical crouch started a slide: drop the real crouch from the view
@@ -183,6 +191,10 @@ struct ComposeState {
     shake_filter::Filter shake;  // game motion, steadied (BUG-030)
     shake_filter::Detector shaking;  // and faded out while it shakes back and forth (PLAYTEST-8g)
     vm::Quat shake_prev_raw;
+    float pitch_lp = 0;  // the look pitch, smoothed while shaking (PLAYTEST-8i)
+    float yaw_lp = 0;    // the game's heading, the same (when the game owns turning: input.mod_turning off, the user's)
+    LONGLONG yaw_qpc = 0;
+    float yaw_prev = 0, yaw_step_prev = 0, pitch_prev = 0, pitch_step_prev = 0;  // raw, for the faded log
     // 10 s log (PLAYTEST-8h: faded, and the roof still shook): the shown view's shake without the head, and fades.
     vm::Quat out_prev, out_step_prev;
     float out_sum = 0, out_max = 0;
@@ -271,7 +283,20 @@ void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, v
     PitchSource ps = g_pitch_source.load();
     bool game_pitch_on = ps == PitchSource::Game || (ps == PitchSource::Auto && !s.headset);
     // Body frame: the mod's heading when it owns turning (D-028), else the game's.
-    vm::Quat body = vm::yaw_quat(g_turning_active.load() ? g_world_yaw.load() : game_yaw);
+    float body_yaw = g_turning_active.load() ? g_view_yaw.load() : game_yaw;
+    if (!g_turning_active.load() && g_steady_motion.load() && g_game_motion.load()) {
+        LARGE_INTEGER q, f;
+        QueryPerformanceCounter(&q);
+        QueryPerformanceFrequency(&f);
+        const float dt = st.yaw_qpc ? float(double(q.QuadPart - st.yaw_qpc) / double(f.QuadPart)) : 0.f;
+        st.yaw_qpc = q.QuadPart;
+        if (st.shaking.shaking && dt > 0.f && dt < 0.25f)
+            st.yaw_lp = yaw_model::wrap(st.yaw_lp + yaw_model::wrap(game_yaw - st.yaw_lp) * (1.f - std::exp(-dt / 0.3f)));
+        else
+            st.yaw_lp = game_yaw;
+        body_yaw = yaw_model::wrap(game_yaw + (1.f - st.shaking.weight) * yaw_model::wrap(st.yaw_lp - game_yaw));
+    }
+    vm::Quat body = vm::yaw_quat(body_yaw);
     vm::Quat view = game_pitch_on ? body * vm::Quat::axis_angle({1, 0, 0}, game_pitch) : body;
 
     vm::Quat final_rot = (view * head.rotation).normalized();
@@ -293,11 +318,6 @@ void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, v
         st.prev_tick = now;
         float baseline = game_pitch_on ? 0.f : st.baseline;  // simulator keeps the game pitch
         vm::Quat game_rel = vm::yaw_quat(-game_yaw) * vm::quat_of(*a);
-        if (const float fake = g_fake_shake.load(); fake > 0.f) {  // roll at 4 Hz, pitch at 5 Hz, like the train roof
-            const double t = double(GetTickCount64()) / 1000.0;
-            game_rel = game_rel * vm::Quat::axis_angle({0, 0, 1}, fake / 57.29578f * float(std::sin(6.2831853 * 4.0 * t))) *
-                       vm::Quat::axis_angle({1, 0, 0}, fake / 57.29578f * float(std::sin(6.2831853 * 5.0 * t)));
-        }
         vm::Quat motion = vm::Quat::axis_angle({1, 0, 0}, -baseline) * game_rel;
         LARGE_INTEGER q, f;
         QueryPerformanceCounter(&q);
@@ -308,7 +328,23 @@ void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, v
             const vm::Vec3 step = shake_filter::log_q((st.shake_prev_raw.conjugate() * motion).normalized());
             st.shake_prev_raw = motion;
             const float w = st.shaking.update(step, sdt);
-            const vm::Quat look = vm::Quat::axis_angle({1, 0, 0}, game_pitch - baseline);  // its look pitch only
+            if (&st == &g_main_state) g_shaking_now = st.shaking.shaking;
+            if (st.shaking.shaking && sdt > 0.f && sdt < 0.25f) st.pitch_lp += (game_pitch - st.pitch_lp) * (1.f - std::exp(-sdt / 0.3f));
+            else st.pitch_lp = game_pitch;
+            const float pitch_used = w * game_pitch + (1.f - w) * st.pitch_lp;
+            if (&st == &g_main_state) {
+                const float ystep = yaw_model::wrap(game_yaw - st.yaw_prev), pstep = game_pitch - st.pitch_prev;
+                if (w < 0.5f && std::fabs(ystep) < 0.35f && std::fabs(pstep) < 0.35f) {
+                    g_faded_yaw_sum = g_faded_yaw_sum.load() + std::fabs(ystep - st.yaw_step_prev) * 57.29578f;
+                    g_faded_pitch_sum = g_faded_pitch_sum.load() + std::fabs(pstep - st.pitch_step_prev) * 57.29578f;
+                    g_faded_n.fetch_add(1);
+                }
+                st.yaw_prev = game_yaw;
+                st.pitch_prev = game_pitch;
+                st.yaw_step_prev = ystep;
+                st.pitch_step_prev = pstep;
+            }
+            const vm::Quat look = vm::Quat::axis_angle({1, 0, 0}, pitch_used - baseline);  // its look pitch only
             motion = shake_filter::blend(look, st.shake.update(motion, sdt), w);
             if (st.shake.last_diff_deg > g_steady_max.load()) g_steady_max = st.shake.last_diff_deg;
             if (w < 0.5f && &st == &g_main_state) g_shaking_ticks.fetch_add(1);
@@ -316,6 +352,7 @@ void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, v
         } else {
             st.shake.primed = false;
             st.shaking = {};
+            if (&st == &g_main_state) g_shaking_now = false;
         }
         final_rot = (body * motion * head.rotation).normalized();
     }
@@ -509,6 +546,12 @@ void update_turning(const vm::LinearTransform& game_cam) {
     if (std::fabs(yaw_model::wrap(g_yaw.world - before - turn)) > 0.01f) ++g_game_turns_seen;
     if (counts && yaw_drive::inject(counts)) g_inject_counts += uint64_t(counts < 0 ? -counts : counts);
     g_world_yaw = g_yaw.world;
+    {
+        static float off = 0;  // the game's own turns held out of the view's heading while shaking
+        if (g_shaking_now.load()) off = yaw_model::wrap(off + yaw_model::wrap(g_yaw.world - before - turn));
+        off *= std::exp(-(dt < 0.1f ? dt : 0.1f) / 0.4f);
+        g_view_yaw = yaw_model::wrap(g_yaw.world - off);
+    }
 }
 
 // 10 s log (PLAYTEST-8e: on a train "the whole screen shaked a lot"): the game camera's own shake - its rotation
@@ -538,11 +581,27 @@ void measure_shake(const vm::LinearTransform& a) {
     k.pos_prev = pos;
 }
 
+// diagnostics.fake_shake: the raw camera shaken like the train roof (PLAYTEST-8i: the heading and the look pitch
+// shook too) - heading 3 Hz, pitch 5 Hz, roll 4 Hz - for desktop tests of the shake handling. Both sites.
+void fake_shake(vm::LinearTransform* a) {
+    const float fake = g_fake_shake.load() / 57.29578f;
+    if (fake <= 0.f) return;
+    LARGE_INTEGER q, f;
+    QueryPerformanceCounter(&q);
+    QueryPerformanceFrequency(&f);
+    const double t = double(q.QuadPart) / double(f.QuadPart);
+    const vm::Quat j = vm::Quat::axis_angle({0, 1, 0}, fake * float(std::sin(6.2831853 * 3.0 * t))) *
+                       vm::Quat::axis_angle({1, 0, 0}, fake * float(std::sin(6.2831853 * 5.0 * t))) *
+                       vm::Quat::axis_angle({0, 0, 1}, fake * float(std::sin(6.2831853 * 4.0 * t)));
+    a->set((vm::quat_of(*a) * j).normalized(), a->t());
+}
+
 // Main site: raw camera from the camera manager.
 void apply(uint8_t* data) {
     if (g_stereo.load()) g_frame_eye = g_frame_eye.load() ^ 1;
     ++g_main_count;
     auto* a = reinterpret_cast<vm::LinearTransform*>(data);
+    fake_shake(a);
     measure_shake(*a);
     update_turning(*a);
     update_room(*a);
@@ -574,6 +633,7 @@ void reapply_at_view_site(uint8_t* data) {
     if (blend > 20.f || off > 1.f) ++g_vs_far;
     if (blend < 1.f) ++g_vs_from_game; else ++g_vs_from_ours;  // "same as raw" / "blended"
     if (screen_mode::active()) return;
+    fake_shake(a);
     compose(data, g_view_state);
 }
 
@@ -730,6 +790,9 @@ void report_view_site() {
             sts[i]->out_sum = sts[i]->out_max = 0;
             sts[i]->out_n = sts[i]->faded = 0;
         }
+        if (const int fn = g_faded_n.exchange(0))
+            LOG_I("camera", "while faded: the game's heading change %.2f deg avg, look pitch change %.2f deg avg (%d updates; both now smoothed in the view)",
+                  g_faded_yaw_sum.exchange(0) / fn, g_faded_pitch_sum.exchange(0) / fn, fn);
         if (n[0] || n[1])
             LOG_I("camera", "shown view's shake without your head: camera site %.2f deg avg, %.1f max (%d updates, %d faded); render view %.2f "
                   "avg, %.1f max (%d, %d faded)%s", avg[0], mx[0], n[0], fd[0], avg[1], mx[1], n[1], fd[1], g_fake_shake.load() > 0.f ? " - FAKE SHAKE ON" : "");
