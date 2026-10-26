@@ -100,10 +100,13 @@ std::atomic<bool> g_stereo_dirty{false};
 // Last result of the main override, for re-applying at the render-view build.
 std::mutex g_final_mutex;
 vm::Vec3 g_game_fwd;      // the game's own camera forward this frame, before our override
+vm::Vec3 g_game_pos;      // and its position
 ULONGLONG g_final_tick = 0;
 // Render-view build stats (reported every 10 s).
 std::atomic<uint64_t> g_vs_from_game{0}, g_vs_from_ours{0}, g_vs_passed{0};
 std::atomic<float> g_vs_max_angle{0}, g_vs_max_pos{0};
+// 8E recon (cutscenes): render views far from the gameplay camera (> 20 deg or > 1 m), and gameplay-camera frames.
+std::atomic<uint64_t> g_vs_far{0}, g_main_reported{0};
 uintptr_t g_exe = 0;
 
 std::atomic<bool> g_enabled{true};
@@ -469,6 +472,7 @@ void apply(uint8_t* data) {
     {
         std::lock_guard lock(g_final_mutex);
         g_game_fwd = (a->b() * -1.f).normalized();
+        g_game_pos = a->t();
         g_final_tick = GetTickCount64();
     }
     if (screen_mode::active()) return;  // menus on the big screen: the game's own camera (8B)
@@ -479,13 +483,18 @@ void apply(uint8_t* data) {
 // count how far it is from the raw camera (size of the game's blending) for diagnostics.
 void reapply_at_view_site(uint8_t* data) {
     auto* a = reinterpret_cast<vm::LinearTransform*>(data);
-    vm::Vec3 raw_fwd;
+    vm::Vec3 raw_fwd, raw_pos;
     {
         std::lock_guard lock(g_final_mutex);
         raw_fwd = g_game_fwd;
+        raw_pos = g_game_pos;
     }
     float blend = angle_deg(raw_fwd, (a->b() * -1.f).normalized());
     if (blend > g_vs_max_angle.load()) g_vs_max_angle = blend;
+    const vm::Vec3 d = a->t() - raw_pos;
+    const float off = std::sqrt(d.dot(d));
+    if (off > g_vs_max_pos.load()) g_vs_max_pos = off;
+    if (blend > 20.f || off > 1.f) ++g_vs_far;
     if (blend < 1.f) ++g_vs_from_game; else ++g_vs_from_ours;  // "same as raw" / "blended"
     if (screen_mode::active()) return;
     compose(data, g_view_state);
@@ -620,10 +629,12 @@ std::atomic<bool> g_height_dirty{false};
 
 void report_view_site() {
     uint64_t g = g_vs_from_game.exchange(0), o = g_vs_from_ours.exchange(0), p = g_vs_passed.exchange(0);
+    const uint64_t main = g_main_count.load(), mains = main - g_main_reported.exchange(main);
     if (g || o || p)
-        LOG_I("camera", "render-view build: composed %llu frames (%llu equal to the raw camera, %llu blended by the game; max blend %.1f deg)",
-              (unsigned long long)(g + o + p), (unsigned long long)g, (unsigned long long)o, g_vs_max_angle.exchange(0));
-        g_vs_max_pos = 0;
+        LOG_I("camera", "render-view build: composed %llu frames (%llu equal to the raw camera, %llu blended by the game; max blend %.1f deg, "
+              "max offset %.2f m, %llu far); gameplay camera %llu frames",
+              (unsigned long long)(g + o + p), (unsigned long long)g, (unsigned long long)o, g_vs_max_angle.exchange(0), g_vs_max_pos.exchange(0),
+              (unsigned long long)g_vs_far.exchange(0), (unsigned long long)mains);
 }
 
 void report_callers() {
