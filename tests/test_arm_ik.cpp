@@ -235,6 +235,29 @@ TEST(arm_ik_share_twist_stays_continuous_past_half_a_turn) {
     CHECK(std::fabs(prev - 3.316f) < 0.01f);
 }
 
+TEST(arm_ik_share_twist_holds_when_her_hand_is_half_a_turn_off) {
+    // PLAYTEST-8h: the controller's hand ~180 deg from hers about an axis across the forearm - the twist is noise
+    // there. With a previous twist the forearm keeps its share of it; without one it is computed as before.
+    const Vec3 u0 = (kW - kE).normalized();
+    const Vec3 across = u0.cross({0, 1, 0}).normalized();
+    auto r = arm_ik::solve(kS, kE, kW, {0.30f, 1.30f, -0.35f}, kPole);
+    const Quat fore0 = r.fore.q;
+    r.hand.q = (r.fore.q * Quat::axis_angle(across, 3.10f) * Quat::axis_angle(u0, 0.05f)).normalized();
+    r.hand.t = r.wrist - r.hand.q.rotate(kW);
+    CHECK(arm_ik::twist_reliability((r.fore.q.conjugate() * r.hand.q).normalized(), u0) < arm_ik::kTwistReliable);
+    float prev = 0.8f;
+    CHECK(arm_ik::share_twist(r, kE, kW, 0.5f, &prev));
+    CHECK(std::fabs(prev - 0.8f) < 1e-6f);
+    CHECK(std::fabs(arm_ik::twist_angle(fore0.conjugate() * r.fore.q, u0) - 0.4f) < 0.01f);
+    CHECK(near3(r.fore.apply(kE), r.elbow));
+    // A plain twist is reliable: not held.
+    auto r2 = arm_ik::solve(kS, kE, kW, {0.30f, 1.30f, -0.35f}, kPole);
+    r2.hand.q = (r2.fore.q * Quat::axis_angle(u0, 1.0f)).normalized();
+    float prev2 = 0.9f;
+    CHECK(!arm_ik::share_twist(r2, kE, kW, 0.5f, &prev2));
+    CHECK(std::fabs(prev2 - 1.0f) < 0.01f);
+}
+
 TEST(arm_ik_punching_elbow_rises_clear_of_her_chest) {
     // An attack twists her torso (the game's animation) while her hands stay on yours: her right arm, facing -z,
     // shoulders turned 30 deg either way, hands where a punch or guard put them. Her upper arm (past the shoulder

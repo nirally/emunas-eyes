@@ -76,6 +76,20 @@ TEST(shake_detector_fades_out_a_back_and_forth_shake_and_back_in) {
     CHECK(!d.shaking);
 }
 
+TEST(shake_detector_catches_a_shake_on_two_axes) {
+    // The desktop fake shake: +-3 deg roll at 4 Hz with +-3 deg pitch at 5 Hz - the step's direction turns smoothly.
+    shake_filter::Detector d;
+    float w = 1.f;
+    for (int i = 1; i <= int(1.5f / kDt); ++i) {
+        const float t = i * kDt, tp = t - kDt;
+        const float r = 3.f * (std::sin(6.2831853f * 4.f * t) - std::sin(6.2831853f * 4.f * tp)) / 57.29578f;
+        const float q = 3.f * (std::sin(6.2831853f * 5.f * t) - std::sin(6.2831853f * 5.f * tp)) / 57.29578f;
+        w = d.update(Vec3{q, 0, r}, kDt);
+    }
+    CHECK(d.shaking);
+    CHECK(w < 0.01f);
+}
+
 TEST(shake_detector_leaves_rolls_turns_and_dips_alone) {
     shake_filter::Detector d;
     // A 360 deg roll in 0.7 s, a 30 deg wall-run tilt and back over 1.2 s, a landing dip, a 150 deg/s stick look.

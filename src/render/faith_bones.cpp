@@ -94,7 +94,7 @@ float g_ik_weight = 1.f;
 int g_hang_frames = 0;  // 5 s log
 float g_twist_prev[2] = {};      // last posed frame's twist per arm (arm_ik::share_twist), for continuity
 unsigned g_twist_at[2] = {};
-int g_twist_kept = 0;            // 5 s log: frames a twist past 180 deg stayed on its side (would have flipped)
+int g_twist_kept = 0, g_twist_held = 0;            // 5 s log: frames a twist past 180 deg stayed on its side (would have flipped)
 float g_twist_sum = 0;  // 5 s log: mean |twist| the hand had about the forearm, degrees       // the hand's axes in bind space, as the glove's hand space (arm_ik::hand_frame)
 float g_vote = 0;
 int g_votes = 0;
@@ -387,8 +387,9 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
                 if (g_twist_at[a] + 1 < g_frame) g_twist_prev[a] = 0.f;  // not posed last frame: start fresh
                 const float before = g_twist_prev[a];
                 const float raw = arm_ik::twist_angle(r.fore.q.conjugate() * r.hand.q, (w[a] - e[a]).normalized());
-                arm_ik::share_twist(r, e[a], w[a], g_forearm_twist.load(), &g_twist_prev[a]);
-                g_twist_kept += std::fabs(g_twist_prev[a] - raw) > 1.f && std::fabs(raw - before) > 3.14159265f;
+                const bool twist_held = arm_ik::share_twist(r, e[a], w[a], g_forearm_twist.load(), &g_twist_prev[a]);
+                g_twist_held += twist_held;
+                g_twist_kept += !twist_held && std::fabs(g_twist_prev[a] - raw) > 1.f && std::fabs(raw - before) > 3.14159265f;
                 g_twist_at[a] = g_frame;
             }
             g_ik_clamped += r.clamped;
@@ -1094,8 +1095,9 @@ void on_present() {
                       k == 0 ? "attacks" : "no attack", g_off_hands_max[k], g_off_hands_30[k], g_off_hands_n[k]);
         g_off_hands_max[0] = g_off_hands_max[1] = 0;
         LOG_I("bones", "  her shoulders against the view: %d jumps past 5 cm between frames (largest %.2f m); posed <-> game pose %d times; "
-              "forearm twist kept from flipping past 180 deg in %d frames", g_rel_jumps, g_rel_jump_max, g_pose_flips, g_twist_kept);
-        g_rel_jumps = g_pose_flips = g_twist_kept = 0;
+              "forearm twist kept from flipping past 180 deg in %d frames, held (her hand ~180 deg off yours) in %d",
+              g_rel_jumps, g_rel_jump_max, g_pose_flips, g_twist_kept, g_twist_held);
+        g_rel_jumps = g_pose_flips = g_twist_kept = g_twist_held = 0;
         g_rel_jump_max = 0;
         g_off_hands_n[0] = g_off_hands_n[1] = g_off_hands_30[0] = g_off_hands_30[1] = 0;
         if (g_late_patched) LOG_I("bones", "  %d pieces drawn before the solve were patched at a later draw", g_late_patched);

@@ -38,6 +38,7 @@ bool game_motion();
 // comfort.steady_game_motion (BUG-030): the game camera's small fast shake smoothed out of the game motion; rolls,
 // tilts and the stick's look pitch pass (shake_filter).
 void set_steady_motion(bool on);
+void set_fake_shake(float deg);  // diagnostics.fake_shake (desktop tests)
 bool take_motion_changed();
 
 // stereo.mode: alternate = the game renders one eye per frame (left, right, left...).

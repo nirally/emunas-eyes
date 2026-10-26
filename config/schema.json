@@ -51,6 +51,7 @@
     "ui.menu_screen":             { "type": "bool",  "default": true,  "section": "UI", "label": "Menus, the map and mission select on a big flat screen in front of you (the game's own camera while it's paused)" },
     "ui.screen_width":            { "type": "float", "min": 0.8, "max": 6.0, "default": 2.6, "section": "UI", "label": "Width of the menu screen (metres)" },
     "ui.screen_distance":         { "type": "float", "min": 0.8, "max": 6.0, "default": 2.0, "section": "UI", "label": "Distance of the menu screen (metres)" },
+    "diagnostics.fake_shake":     { "type": "float", "min": 0, "max": 10, "default": 0, "section": "Diagnostics", "label": "Made-up camera shake in degrees (desktop tests of the shake fade; developer)" },
     "diagnostics.screen_flat":    { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Menu screen mode also without a headset (developer tests)" },
     "diagnostics.ui_scale_flat":  { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Apply the UI size without a headset (developer tests)" },
     "diagnostics.hand_sim":       { "type": "bool",  "default": false, "section": "Diagnostics", "label": "Simulated hands in front of you without a headset (developer tests)" },

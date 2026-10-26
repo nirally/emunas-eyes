@@ -66,6 +66,7 @@ std::atomic<float> g_height_offset{0};  // meters added to camera height (comfor
 std::atomic<bool> g_steady_motion{true};    // comfort.steady_game_motion: the game camera's shake smoothed out of it (BUG-030)
 std::atomic<float> g_steady_max{0};         // 10 s log: the most it took off
 std::atomic<int> g_shaking_ticks{0};        // 10 s log: updates with the game motion faded out (shaking)
+std::atomic<float> g_fake_shake{0};         // diagnostics.fake_shake: deg of made-up camera shake (desktop tests of the fade)
 std::atomic<bool> g_game_motion{false};     // comfort.game_camera_motion: add the game's own camera rotation (D-014)
 std::atomic<bool> g_motion_dirty{false};
 std::atomic<bool> g_stereo{false};          // stereo.mode = alternate: one eye per frame (D-017, H2 step 1)
@@ -182,6 +183,10 @@ struct ComposeState {
     shake_filter::Filter shake;  // game motion, steadied (BUG-030)
     shake_filter::Detector shaking;  // and faded out while it shakes back and forth (PLAYTEST-8g)
     vm::Quat shake_prev_raw;
+    // 10 s log (PLAYTEST-8h: faded, and the roof still shook): the shown view's shake without the head, and fades.
+    vm::Quat out_prev, out_step_prev;
+    float out_sum = 0, out_max = 0;
+    int out_n = 0, faded = 0;
     LONGLONG shake_qpc = 0;
     // Stereo pairs (PLAYTEST-2a): the right-eye frame reuses the left-eye frame's head pose and
     // game camera, so the two eyes of a pair differ only by the eye offset.
@@ -288,6 +293,11 @@ void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, v
         st.prev_tick = now;
         float baseline = game_pitch_on ? 0.f : st.baseline;  // simulator keeps the game pitch
         vm::Quat game_rel = vm::yaw_quat(-game_yaw) * vm::quat_of(*a);
+        if (const float fake = g_fake_shake.load(); fake > 0.f) {  // roll at 4 Hz, pitch at 5 Hz, like the train roof
+            const double t = double(GetTickCount64()) / 1000.0;
+            game_rel = game_rel * vm::Quat::axis_angle({0, 0, 1}, fake / 57.29578f * float(std::sin(6.2831853 * 4.0 * t))) *
+                       vm::Quat::axis_angle({1, 0, 0}, fake / 57.29578f * float(std::sin(6.2831853 * 5.0 * t)));
+        }
         vm::Quat motion = vm::Quat::axis_angle({1, 0, 0}, -baseline) * game_rel;
         LARGE_INTEGER q, f;
         QueryPerformanceCounter(&q);
@@ -302,6 +312,7 @@ void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, v
             motion = shake_filter::blend(look, st.shake.update(motion, sdt), w);
             if (st.shake.last_diff_deg > g_steady_max.load()) g_steady_max = st.shake.last_diff_deg;
             if (w < 0.5f && &st == &g_main_state) g_shaking_ticks.fetch_add(1);
+            st.faded += w < 0.5f;
         } else {
             st.shake.primed = false;
             st.shaking = {};
@@ -309,6 +320,19 @@ void compose_head(vm::LinearTransform* a, ComposeState& st, vm::Quat& out_rot, v
         final_rot = (body * motion * head.rotation).normalized();
     }
     out_rot = final_rot;
+    {  // the view without the head: its change of step per update (a still or smooth view gives ~0)
+        const vm::Quat v = (final_rot * head.rotation.conjugate()).normalized();
+        const vm::Quat step = (st.out_prev.conjugate() * v).normalized();
+        const vm::Vec3 dd = shake_filter::log_q((st.out_step_prev.conjugate() * step).normalized());
+        const float deg = std::sqrt(dd.dot(dd)) * 57.29578f;
+        if (deg < 20.f) {  // not a cut
+            st.out_sum += deg;
+            st.out_max = std::fmax(st.out_max, deg);
+            ++st.out_n;
+        }
+        st.out_prev = v;
+        st.out_step_prev = step;
+    }
     // While a crouch-slide runs, the game's camera already holds Faith's low head: blend the real head's
     // downward offset out (0.25 s each way), or the view would drop twice and clip the floor (PLAYTEST-4c).
     vm::Vec3 head_pos = head.position;
@@ -693,6 +717,22 @@ void report_view_site() {
               "steadied %s: up to %.1f deg taken off, faded out for shaking in %d updates)", g_shake.n, g_shake.rot_sum / g_shake.n, g_shake.rot_max,
               g_shake.pos_sum / g_shake.n, g_shake.pos_max, g_game_motion.load() ? "on" : "off", g_steady_motion.load() ? "on" : "off",
               g_steady_max.exchange(0), g_shaking_ticks.exchange(0));
+    }
+    {
+        ComposeState* sts[2] = {&g_main_state, &g_view_state};
+        float avg[2], mx[2];
+        int n[2], fd[2];
+        for (int i = 0; i < 2; ++i) {  // game thread writes; a torn 10 s figure is harmless
+            n[i] = sts[i]->out_n;
+            avg[i] = n[i] ? sts[i]->out_sum / n[i] : 0.f;
+            mx[i] = sts[i]->out_max;
+            fd[i] = sts[i]->faded;
+            sts[i]->out_sum = sts[i]->out_max = 0;
+            sts[i]->out_n = sts[i]->faded = 0;
+        }
+        if (n[0] || n[1])
+            LOG_I("camera", "shown view's shake without your head: camera site %.2f deg avg, %.1f max (%d updates, %d faded); render view %.2f "
+                  "avg, %.1f max (%d, %d faded)%s", avg[0], mx[0], n[0], fd[0], avg[1], mx[1], n[1], fd[1], g_fake_shake.load() > 0.f ? " - FAKE SHAKE ON" : "");
         g_shake.rot_sum = g_shake.rot_max = g_shake.pos_sum = g_shake.pos_max = 0;
         g_shake.n = 0;
     }
@@ -928,6 +968,7 @@ void set_game_motion(bool on) {
 
 bool game_motion() { return g_game_motion.load(); }
 void set_steady_motion(bool on) { g_steady_motion = on; }
+void set_fake_shake(float deg) { g_fake_shake = deg; }
 
 bool take_motion_changed() { return g_motion_dirty.exchange(false); }
 

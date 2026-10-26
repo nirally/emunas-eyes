@@ -76,7 +76,8 @@ struct Detector {
     float times[kMax] = {};  // reversal times, ring
     int head = 0, count = 0;
     float now = 0;
-    vm::Vec3 last_step;
+    int last_sign[3] = {};  // per axis of the step (desktop fake shake, roll 4 Hz + pitch 5 Hz: the step's direction
+                            // turned smoothly and never reversed as a whole - each axis goes back and forth)
     bool shaking = false;
     float weight = 1.f;  // of the game motion: 1 = all of it, 0 = look pitch only
 
@@ -84,14 +85,16 @@ struct Detector {
     float update(vm::Vec3 step, float dt) {
         if (dt <= 0.f || dt > 0.25f) return weight;
         now += dt;
-        const float mag = std::sqrt(step.dot(step)) * 57.29578f;
-        if (mag > min_step_deg) {
-            if (std::sqrt(last_step.dot(last_step)) * 57.29578f > min_step_deg && step.dot(last_step) < 0.f) {
+        const float comp[3] = {step.x * 57.29578f, step.y * 57.29578f, step.z * 57.29578f};
+        for (int i = 0; i < 3; ++i) {
+            if (std::fabs(comp[i]) <= min_step_deg) continue;
+            const int sgn = comp[i] > 0.f ? 1 : -1;
+            if (last_sign[i] && sgn != last_sign[i]) {
                 times[head] = now;
                 head = (head + 1) % kMax;
                 if (count < kMax) ++count;
             }
-            last_step = step;
+            last_sign[i] = sgn;
         }
         int recent = 0;
         for (int i = 0; i < count; ++i) recent += now - times[i] <= window_s;

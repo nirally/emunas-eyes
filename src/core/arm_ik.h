@@ -190,13 +190,25 @@ inline float unwrap_near(float a, float prev) {
 // prev (optional): last frame's twist of this arm, in/out. PLAYTEST-8f (on the train in The Shard: "arms jump back
 // and front"): the hand was turned 100-140 deg from the game's hand about the forearm; past 180 the angle wrapped
 // and the forearm's share flipped side (k = 0.5: +90 -> -90 deg in one frame).
-inline void share_twist(Result& r, vm::Vec3 e0, vm::Vec3 w0, float k, float* prev = nullptr) {
+// PLAYTEST-8h ("the hands are glitching after the cutscene ends"): her own hand there was turned ~180 deg from the
+// controller's about an axis across the forearm. Then q.w and the twist part are both near 0 and the twist is noise
+// (it crossed +-180 deg in 553 of 894 arms in 5 s): below kTwistReliable the last twist is held. Returns true if held.
+constexpr float kTwistReliable = 0.3f;  // |(twist part, w)| of the unit quaternion; 1 = pure twist, 0 = a 180 deg swing
+inline float twist_reliability(vm::Quat q, vm::Vec3 axis) {
+    const float s = vm::Vec3{q.x, q.y, q.z}.dot(axis);
+    return std::sqrt(s * s + q.w * q.w);
+}
+
+inline bool share_twist(Result& r, vm::Vec3 e0, vm::Vec3 w0, float k, float* prev = nullptr) {
     const vm::Vec3 u0 = (w0 - e0).normalized();
-    float t = twist_angle(r.fore.q.conjugate() * r.hand.q, u0);
-    if (prev) t = *prev = unwrap_near(t, *prev);
+    const vm::Quat d = (r.fore.q.conjugate() * r.hand.q).normalized();
+    const bool held = prev && twist_reliability(d, u0) < kTwistReliable;
+    float t = held ? *prev : twist_angle(d, u0);
+    if (prev && !held) t = *prev = unwrap_near(t, *prev);
     const float a = t * k;
     r.fore.q = (r.fore.q * vm::Quat::axis_angle(u0, a)).normalized();  // turn about the game's forearm first
     r.fore.t = r.elbow - r.fore.q.rotate(e0);
+    return held;
 }
 
 // Apply a correction to a 3x4 row-major skinning matrix (world = R x + t): R' = Q R, t' = Q t + c.t.
