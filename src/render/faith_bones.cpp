@@ -125,6 +125,14 @@ int g_body_frames = 0, g_turned_rows = 0;
 // (head -> midpoint of the controllers, level; both hands out 15+ cm), so head-looks don't count. [0] attacks, [1] not.
 float g_off_hands_max[2] = {};
 int g_off_hands_n[2] = {}, g_off_hands_30[2] = {};
+// body.reach_scale (PLAYTEST-7l: punches went 0.65 m from her shoulder, her arm reaches 0.53 m, up to a third of
+// arms clamped short): your reach is learned as you play and your hand's distance is pulled in past kReachKnee of
+// her reach, so your full reach is hers (arm_ik::reach_remap).
+constexpr float kReachKnee = 0.6f, kMaxExtraReach = 0.25f;
+std::atomic<bool> g_reach_scale{true};
+float g_reach_hist[2][3] = {};
+unsigned g_reach_i[2] = {};
+float g_your_reach = 0, g_her_reach = 0, g_pulled_max = 0;  // render thread; g_pulled_max for the 5 s log
 double g_copy_ms = 0, g_copy_max_ms = 0;  // shadow -> real copies at Unmap
 unsigned g_copies = 0;
 bool learning() { return g_learning.load(std::memory_order_relaxed); }
@@ -313,7 +321,7 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
             if (!h.valid[hand]) continue;
             const int a = hand == 0 ? g_left : 1 - g_left;
             const vm::Quat grip = (h.rot[hand] * vm::Quat::axis_angle({1, 0, 0}, -1.5707963f)).normalized();
-            const vm::Vec3 target = h.pos[hand] + grip.rotate({hand == 0 ? -0.042f : 0.042f, -0.004f, 0.108f}) +
+            vm::Vec3 target = h.pos[hand] + grip.rotate({hand == 0 ? -0.042f : 0.042f, -0.004f, 0.108f}) +
                                    hand_render::wall_offset(hand);  // stops at walls like the gloves
             const float dist = (target - s[a]).length();
             if (dist > 1.0f) {  // not where an arm can be (tracking lost, cutscene camera)
@@ -324,6 +332,19 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
                 continue;
             }
             g_near_max = dist > g_near_max ? dist : g_near_max;
+            // Your reach: the farthest a hand held for 3 frames in a row (one-frame tracking jumps don't count).
+            g_reach_hist[hand][g_reach_i[hand]++ % 3] = dist;
+            const float held = std::fmin(g_reach_hist[hand][0], std::fmin(g_reach_hist[hand][1], g_reach_hist[hand][2]));
+            const float hers = (e[a] - s[a]).length() + (w[a] - e[a]).length() - 0.004f;
+            g_your_reach = std::fmax(g_your_reach, std::fmin(held, hers + kMaxExtraReach));
+            if (g_reach_scale.load()) {
+                const float d2 = arm_ik::reach_remap(dist, kReachKnee * hers, hers, g_your_reach);
+                if (d2 < dist) {
+                    target = s[a] + (target - s[a]) * (d2 / dist);
+                    g_pulled_max = std::fmax(g_pulled_max, dist - d2);
+                }
+            }
+            g_her_reach = hers;
             const vm::Vec3 pole = arm_ik::elbow_from_hand(s[a], target, grip.rotate({0, 0, -1}), (w[a] - e[a]).length(),
                                                           arm_ik::elbow_pole(s[a], s[1 - a], target), g_elbow_follow_hand.load());
             arm_ik::Result r = arm_ik::solve(s[a], e[a], w[a], target, pole);
@@ -486,6 +507,7 @@ int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) 
 
 void set_forearm_twist(float k) { g_forearm_twist = k; }
 void set_elbow_follow_hand(float k) { g_elbow_follow_hand = k; }
+void set_reach_scale(bool on) { g_reach_scale = on; }
 void set_turn_back(bool on) { g_turn_back = on; }
 void set_fingers(bool on) { g_fingers_on = on; }
 void set_game_when_hanging(bool on) { g_game_when_hanging = on; }
@@ -1013,7 +1035,10 @@ void on_present() {
         if (g_ik_far)
             LOG_I("bones", "  hands too far: %.2f-%.2f m from the shoulder (mono %d, left eye %d, right eye %d)", g_far_min,
                   g_far_max, g_far_eye[0], g_far_eye[1], g_far_eye[2]);
-        if (g_ik_arms) LOG_I("bones", "  posed hands up to %.2f m from the shoulder", g_near_max);
+        if (g_ik_arms)
+            LOG_I("bones", "  posed hands up to %.2f m from the shoulder; your reach %.2f m, hers %.2f m, hands pulled in up to %.0f mm%s",
+                  g_near_max, g_your_reach, g_her_reach, g_pulled_max * 1000.f, g_reach_scale.load() ? "" : " (reach scale off)");
+        g_pulled_max = 0;
         if (g_ik_frames)
             LOG_I("bones", "  her shoulders turned from the view up to %.0f deg (%d frames past 20); %d posed elbows inside her chest (elbows follow the hand %.2f)",
                   g_torso_turn_max, g_torso_turned, g_elbow_in_chest, g_elbow_follow_hand.load());

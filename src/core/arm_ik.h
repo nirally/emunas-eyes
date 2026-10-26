@@ -86,6 +86,18 @@ inline Rigid yaw_about(vm::Vec3 pivot, float angle) {
     return {q, pivot - q.rotate(pivot)};
 }
 
+// Your hand's distance d from her shoulder, pulled in so your full reach `yours` lands on her full reach `hers`
+// (PLAYTEST-7l: your punches went 0.65 m out, her arm reaches 0.53 m, up to a third of arms clamped short). Up to
+// `knee` it's unchanged (hands near the body stay on the controllers); past it the distance eases in with slope 1
+// at the knee, reaching `hers` at `yours`, and keeps a gentle slope past that. Monotonic; d itself when yours <= hers.
+inline float reach_remap(float d, float knee, float hers, float yours) {
+    if (yours <= hers || d <= knee || hers <= knee) return d;
+    const float a = yours - knee, b = hers - knee, x = d - knee;
+    if (2.f * b < a) return knee + x * b / a;  // a long way short: plain scale (the curve would turn back)
+    if (x <= a) return knee + x - (a - b) * (x / a) * (x / a);
+    return knee + b + (x - a) * (2.f * b - a) / a;
+}
+
 // pole: preferred elbow direction (unit, world), e.g. down and out from the body.
 inline Result solve(vm::Vec3 s, vm::Vec3 e0, vm::Vec3 w0, vm::Vec3 target, vm::Vec3 pole) {
     using vm::Vec3;

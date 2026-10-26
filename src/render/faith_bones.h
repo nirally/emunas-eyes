@@ -50,6 +50,9 @@ void set_elbow_follow_hand(float k);
 // body.turn_back_in_attacks (BUG-024/025): during an attack her whole body turns back to the way it faced the view
 // when the attack began (the game's attacks swing it 60-160 deg away from your arms).
 void set_turn_back(bool on);
+// body.reach_scale (PLAYTEST-7l): your reach (learned as you play) maps onto hers: hands near the body stay on the
+// controllers, farther out the distance eases in so a full punch is her full reach instead of her arm clamping short.
+void set_reach_scale(bool on);
 // body.fingers (7D): her fingers curl with yours (index from the trigger, the others from the grip; the thumb stays
 // with the hand). Found from the arm piece's mesh once her arms are known ([bones] "fingers of arm ...").
 void set_fingers(bool on);

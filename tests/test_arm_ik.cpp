@@ -285,3 +285,28 @@ TEST(arm_ik_body_turns_back_about_the_head) {
     arm_ik::apply(c, m);
     CHECK(near3(Vec3{m[3], m[7], m[11]}, l2));
 }
+
+TEST(arm_ik_reach_remap_maps_your_reach_onto_hers) {
+    const float knee = 0.32f, hers = 0.525f, yours = 0.65f;
+    // Near the body and when you don't reach farther than her: unchanged.
+    CHECK(std::fabs(arm_ik::reach_remap(0.25f, knee, hers, yours) - 0.25f) < 1e-6f);
+    CHECK(std::fabs(arm_ik::reach_remap(0.60f, knee, hers, 0.50f) - 0.60f) < 1e-6f);
+    // Your full reach is her full reach; smooth at the knee; monotonic all the way out.
+    CHECK(std::fabs(arm_ik::reach_remap(yours, knee, hers, yours) - hers) < 1e-5f);
+    CHECK(std::fabs(arm_ik::reach_remap(knee + 0.001f, knee, hers, yours) - (knee + 0.001f)) < 1e-4f);
+    float prev = 0;
+    for (float d = 0.f; d < 0.9f; d += 0.005f) {
+        const float m = arm_ik::reach_remap(d, knee, hers, yours);
+        CHECK(m >= prev - 1e-6f);
+        CHECK(m <= d + 1e-6f);
+        prev = m;
+    }
+    // Past your learned reach it keeps rising slowly (the IK clamps it); a far longer reach falls back to a scale.
+    CHECK(arm_ik::reach_remap(0.70f, knee, hers, yours) > hers);
+    CHECK(std::fabs(arm_ik::reach_remap(0.90f, knee, hers, 0.90f) - hers) < 1e-5f);
+    // The IK then reaches the remapped point without clamping.
+    const Vec3 dir = Vec3{0.2f, -0.1f, -1.f}.normalized();
+    const float reach = (kE - kS).length() + (kW - kE).length() - 0.004f;
+    const auto r = arm_ik::solve(kS, kE, kW, kS + dir * arm_ik::reach_remap(yours, knee, reach, yours), kPole);
+    CHECK(!r.clamped);
+}

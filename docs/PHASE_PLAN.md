@@ -42,7 +42,8 @@ Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 🐞 Open bugs: BUG-024 sev-3 (elbows into her body; fix 2 built); BUG-025 sev-3 (punch doesn't look right: torso swing); BUG-026 sev-3 (arms collide with her body; fix built); BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
 ✅ PLAYTEST-7k (air punches only, no enemies): body swing less, arms better, no body collisions, comfort 5; logs her chest vs your hands' direction now
 ✅ PLAYTEST-7l real fight: body doesn't swing, arms right, no body collisions, comfort 5; BUG-024/025/026 closed
-▶ Next: calibration. Me: Stage 7 wrap-up (calibration: arm length / grip offset), then Stage 8 HUD
+🚧 Calibration: your reach is learned and maps onto hers (D-048, body.reach_scale)
+▶ Next: You: PLAYTEST-7m. Me after it: Stage 7 done, then Stage 8 HUD
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
