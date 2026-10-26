@@ -214,3 +214,14 @@ Fix: the turn-back is for punches only - a kick (Y / heavy attack) keeps the gam
 Status: closed 2026-10-26 (PLAYTEST-8c: Options, map, mission select "yes") | Severity: 2 | Stage: 8 | Reported: PLAYTEST-8b ("I could not even see what i'm controlling it looked like an image I moved thorugh options in the menu but saw nothing happening")
 Cause: on the menu screen the camera override steps aside, so the game's frames carry no eye; the stereo path waits for a left/right pair that never comes and the screen kept the first frame.
 Fix: on the menu screen every frame goes straight to the screen (as in mono). Not checkable on the desktop (no headset frames).
+
+### BUG-030 — On the train in The Shard the whole picture shakes
+Status: open, measuring (PLAYTEST-8f) | Severity: 2 (comfort) | Stage: 8 | Reported: PLAYTEST-8e ("when standing on the train the whole screen shaked a lot which was not comfortable")
+Evidence: PLAYTEST-8e log: the train part is 21:18:44-21:19:23 (camera height 51.7 m held, then off the train at 61 m); across a tick the camera moved 1.39 m (~60 m/s) during the opening cutscene, 63 mm (still) at 21:19:04. Nothing in that log measured shake.
+Suspects: (a) the game shakes its camera on the train and comfort.game_camera_motion (on, the user's choice) passes the rotation straight into the view; (b) the camera's position jitters (not affected by game motion); (c) the train and the camera out of step with eye sync.
+Next: the 10 s camera log now gives "game camera shake" (rotation and position change per tick; desktop baseline running: 0.00 deg avg / 0.1 max, 8 mm avg / 41 max). PLAYTEST-8f: F5 (game motion off) on the train - does the shake stop?
+
+### BUG-031 — Faith's body and hands glitch without stopping after the cutscene on the train
+Status: open, measuring (PLAYTEST-8f) | Severity: 3 | Stage: 8 | Reported: PLAYTEST-8e ("after the cutscene ended by going in into faith head and making the transition to gameplay faith body and hands glitched without stopping")
+Evidence: PLAYTEST-8e log 21:19:05-21:19:23 (gameplay on the train, view pitched down 75-87 deg: the user looking at her): arms posed every frame, shoulders within 7 deg of the view, hands 0.28-0.41 m from her shoulders - nothing out of range. Her "chest off your hands' direction" read 172-180 deg, but that is the measure's blind spot (hands hanging at your sides while looking straight down sit behind the eyes), not a cause. Up to 1467 arm solves per 5 s are retries after failed solves, not two poses in one frame. After the second cutscene (21:20:30-21:20:35): 302 of 688 arms out of reach, 184 hands too far, hand twist 134 deg avg, back to normal by 21:20:40.
+Next: the 5 s bones log now gives her shoulders' jumps against the view between frames and posed <-> game-pose flips. PLAYTEST-8f: a headset screenshot (Y + B) while it glitches.

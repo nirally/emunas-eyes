@@ -462,11 +462,39 @@ void update_turning(const vm::LinearTransform& game_cam) {
     g_world_yaw = g_yaw.world;
 }
 
+// 10 s log (PLAYTEST-8e: on a train "the whole screen shaked a lot"): the game camera's own shake - its rotation
+// against its heading (what comfort.game_camera_motion adds) and its position, as the change of the per-tick step
+// (a smooth ride or turn gives ~0). Only ticks where the camera moved count (eye sync shows a tick twice).
+struct Shake { vm::Quat rel_prev, step_prev; vm::Vec3 pos_prev, vel_prev; bool primed = false; float rot_sum = 0, rot_max = 0, pos_sum = 0, pos_max = 0; int n = 0; };
+Shake g_shake;
+void measure_shake(const vm::LinearTransform& a) {
+    Shake& k = g_shake;
+    const vm::Quat rel = (vm::yaw_quat(-vm::heading_of(a)) * vm::quat_of(a)).normalized();
+    const vm::Vec3 pos = a.t();
+    const vm::Vec3 dp = pos - k.pos_prev;
+    if (k.primed && dp.dot(dp) < 1e-10f && std::fabs(rel.x * k.rel_prev.x + rel.y * k.rel_prev.y + rel.z * k.rel_prev.z + rel.w * k.rel_prev.w) > 0.9999999f)
+        return;  // the held tick again
+    const vm::Quat step = (k.rel_prev.conjugate() * rel).normalized();
+    if (k.primed && dp.length() < 5.f) {  // not a cut or teleport
+        const float rot = 2.f * std::acos(std::fmin(1.f, std::fabs((k.step_prev.conjugate() * step).normalized().w))) * 57.29578f;
+        const float acc = (dp - k.vel_prev).length() * 1000.f;  // mm
+        k.rot_sum += rot; k.rot_max = std::fmax(k.rot_max, rot);
+        k.pos_sum += acc; k.pos_max = std::fmax(k.pos_max, acc);
+        ++k.n;
+    }
+    k.primed = true;
+    k.rel_prev = rel;
+    k.step_prev = step;
+    k.vel_prev = dp;
+    k.pos_prev = pos;
+}
+
 // Main site: raw camera from the camera manager.
 void apply(uint8_t* data) {
     if (g_stereo.load()) g_frame_eye = g_frame_eye.load() ^ 1;
     ++g_main_count;
     auto* a = reinterpret_cast<vm::LinearTransform*>(data);
+    measure_shake(*a);
     update_turning(*a);
     update_room(*a);
     {
@@ -635,6 +663,12 @@ void report_view_site() {
               "max offset %.2f m, %llu far); gameplay camera %llu frames",
               (unsigned long long)(g + o + p), (unsigned long long)g, (unsigned long long)o, g_vs_max_angle.exchange(0), g_vs_max_pos.exchange(0),
               (unsigned long long)g_vs_far.exchange(0), (unsigned long long)mains);
+    if (g_shake.n) {  // game thread writes; a torn 10 s figure is harmless
+        LOG_I("camera", "game camera shake over %d ticks: rotation change %.2f deg avg, %.1f max; position change %.0f mm avg, %.0f max (game motion %s)",
+              g_shake.n, g_shake.rot_sum / g_shake.n, g_shake.rot_max, g_shake.pos_sum / g_shake.n, g_shake.pos_max, g_game_motion.load() ? "on" : "off");
+        g_shake.rot_sum = g_shake.rot_max = g_shake.pos_sum = g_shake.pos_max = 0;
+        g_shake.n = 0;
+    }
 }
 
 void report_callers() {

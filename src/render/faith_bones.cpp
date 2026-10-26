@@ -124,6 +124,13 @@ int g_body_frames = 0, g_turned_rows = 0;
 // 5 s log (PLAYTEST-7k, air punches only: "less"): her chest's front after the turn-back vs your hands' direction
 // (head -> midpoint of the controllers, level; both hands out 15+ cm), so head-looks don't count. [0] attacks, [1] not.
 float g_off_hands_max[2] = {};
+// 5 s log (PLAYTEST-8e: on a train, "faith body and hands glitched without stopping"): her shoulders' middle against
+// the view from one posed frame to the next (a jump = her body and the camera out of step), and posed <-> game pose flips.
+vm::Vec3 g_rel_prev;
+unsigned g_rel_frame = 0;
+float g_rel_jump_max = 0;
+int g_rel_jumps = 0, g_pose_flips = 0;
+bool g_posed_prev = false;
 int g_off_hands_n[2] = {}, g_off_hands_30[2] = {};
 // body.reach_scale (PLAYTEST-7l: punches went 0.65 m from her shoulder, her arm reaches 0.53 m, up to a third of
 // arms clamped short): your reach is learned as you play and your hand's distance is pulled in past kReachKnee of
@@ -250,6 +257,16 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
         chest_right.y = view_right.y = 0;
         chest_right = chest_right.normalized();
         vm::Vec3 chest_mid = (s[0] + s[1]) * 0.5f, chest_front = vm::Vec3{0, 1, 0}.cross(chest_right);
+        {
+            const vm::Vec3 rel = chest_mid - h.view_pos;
+            if (g_rel_frame + 1 == g_frame) {
+                const float jump = (rel - g_rel_prev).length();
+                g_rel_jump_max = std::fmax(g_rel_jump_max, jump);
+                g_rel_jumps += jump > 0.05f;
+            }
+            if (g_rel_frame != g_frame) g_rel_prev = rel;
+            g_rel_frame = g_frame;
+        }
         if (view_right.length() > 0.5f) {
             const float turn = std::fabs(std::atan2(view_right.normalized().cross(chest_right).y, view_right.normalized().dot(chest_right))) * 57.29578f;
             g_torso_turn_max = turn > g_torso_turn_max ? turn : g_torso_turn_max;
@@ -814,6 +831,9 @@ void before_draw(ID3D11DeviceContext* ctx, unsigned index_count, unsigned start_
             // share one bone buffer); at the arm piece itself again if that failed.
             const bool arm = count == g_arm_count;
             if (g_fix_frame != g_frame) {
+                const bool posed = g_fix_frame + 1 == g_frame && !g_fixes.empty();  // last frame's result
+                g_pose_flips += posed != g_posed_prev;
+                g_posed_prev = posed;
                 g_fix_frame = g_frame;
                 g_fixes.clear();
                 g_first_start = ~0u;
@@ -1065,6 +1085,10 @@ void on_present() {
                 LOG_I("bones", "  %s: her chest off your hands' direction up to %.0f deg (%d of %d frames past 30)",
                       k == 0 ? "attacks" : "no attack", g_off_hands_max[k], g_off_hands_30[k], g_off_hands_n[k]);
         g_off_hands_max[0] = g_off_hands_max[1] = 0;
+        LOG_I("bones", "  her shoulders against the view: %d jumps past 5 cm between frames (largest %.2f m); posed <-> game pose %d times",
+              g_rel_jumps, g_rel_jump_max, g_pose_flips);
+        g_rel_jumps = g_pose_flips = 0;
+        g_rel_jump_max = 0;
         g_off_hands_n[0] = g_off_hands_n[1] = g_off_hands_30[0] = g_off_hands_30[1] = 0;
         if (g_late_patched) LOG_I("bones", "  %d pieces drawn before the solve were patched at a later draw", g_late_patched);
         g_late_patched = 0;
