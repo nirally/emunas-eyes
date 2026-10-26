@@ -129,7 +129,7 @@ int g_off_hands_n[2] = {}, g_off_hands_30[2] = {};
 // arms clamped short): your reach is learned as you play and your hand's distance is pulled in past kReachKnee of
 // her reach, so your full reach is hers (arm_ik::reach_remap).
 constexpr float kReachKnee = 0.6f, kMaxExtraReach = 0.25f;
-std::atomic<bool> g_reach_scale{true};
+std::atomic<bool> g_reach_scale{false};  // PLAYTEST-7m: on, the elbows bent; the user liked 7l (off) more
 float g_reach_hist[2][3] = {};
 unsigned g_reach_i[2] = {};
 float g_your_reach = 0, g_her_reach = 0, g_pulled_max = 0;  // render thread; g_pulled_max for the 5 s log

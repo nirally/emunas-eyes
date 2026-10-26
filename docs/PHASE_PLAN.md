@@ -5,7 +5,7 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-20
-Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
+Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
 ✅ Stage 2 passed (D-025): true 3D, full headset view, sharp at 2880x1620 (DSR), eyes in sync, anti-aliasing per eye, effects correct in both eyes; size/depth 5/5, comfort 5
@@ -42,8 +42,8 @@ Mode: agentic | Gate: hard | Stage 7 of 10 — Faith's arms (IK)
 🐞 Open bugs: BUG-024 sev-3 (elbows into her body; fix 2 built); BUG-025 sev-3 (punch doesn't look right: torso swing); BUG-026 sev-3 (arms collide with her body; fix built); BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
 ✅ PLAYTEST-7k (air punches only, no enemies): body swing less, arms better, no body collisions, comfort 5; logs her chest vs your hands' direction now
 ✅ PLAYTEST-7l real fight: body doesn't swing, arms right, no body collisions, comfort 5; BUG-024/025/026 closed
-🚧 Calibration: your reach is learned and maps onto hers (D-048, body.reach_scale)
-▶ Next: You: PLAYTEST-7m. Me after it: Stage 7 done, then Stage 8 HUD
+✅ Calibration: reach scaling tried (D-048) and turned off by default - it bent her elbows; the 7l arms are better (PLAYTEST-7m). Stage 7 passed (tag stage-7)
+▶ Next: Me: Stage 8 recon (HUD/UI inventory, Runner Vision, cutscenes) and a Stage 8 brief
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -225,10 +225,10 @@ Plan: 7A arm piece + joints at runtime (log, simulator-checked) -> 7B IK arms wi
 Verify: looking down and in a mirror-like view (desktop third-person debug or reflections), Faith's hands sit on the controllers, elbows bend naturally, no inversion or popping; comfort.
 Risk: the world matrices are rendered positions - the game's own logic (hit boxes, ledge hands) doesn't know about the IK pose (visual only, intended). Index changes between meshes/LODs. Two eyes per frame pair: the correction must be the same for both eyes' draws.
 - [x] Recon: Faith's arm bones found, re-posable before the draw, skeleton solved from the matrices (STAGE7-RECON.md)
-- [ ] Retarget Faith's skeleton; head and hands from tracking; legs from game animation
+- [x] Head and hands from tracking, legs and body from the game's animation (full retarget not needed: brief goal met)
 - [x] ★ Faith punches with the arm you punch with (PLAYTEST-6a request): IK arms carry the attack instead of the game's combo choice (PLAYTEST-7h)
 - [x] ★ Blend IK arms with parkour animations (climbs, grabs) without breaking them: the game's arms while a game hand is above the shoulder, yours otherwise, 18-frame fades (PLAYTEST-7f)
-- [ ] Calibration flow + mirror view; persists
+- [x] Calibration: reach scaling built (D-048, body.reach_scale) but off by default - PLAYTEST-7m liked the unscaled arms more; no flow needed
 
 ### Stage 8 — HUD, UI, cutscenes, audio (M)
 - [ ] UI inventory in manifest; every element typed
