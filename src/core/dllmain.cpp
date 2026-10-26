@@ -37,6 +37,7 @@ namespace mecvr::bug_report { void poll(const std::filesystem::path& mod_dir, co
 #include "input/yaw_drive.h"
 #include "render/motion_fix.h"
 #include "render/faith_bones.h"
+#include "render/ui_shrink.h"
 #include "render/xr_session.h"
 
 namespace fs = std::filesystem;
@@ -210,6 +211,8 @@ DWORD WINAPI main_thread(LPVOID) {
                 hand_pose::set_flick(flick_mode(g_config.get_string("hands.flick")), static_cast<float>(g_config.get_number("hands.flick_speed")));
                 hand_pose::set_punch(g_config.get_bool("combat.punch"), static_cast<float>(g_config.get_number("combat.punch_speed")));
                 hand_pose::set_sim(g_config.get_bool("diagnostics.hand_sim"));
+                ui_shrink::set_scale(static_cast<float>(g_config.get_number("ui.scale")));
+                ui_shrink::set_flat(g_config.get_bool("diagnostics.ui_scale_flat"));
                 faith_bones::set_poke(int(g_config.get_number("diagnostics.bone_poke_piece")), int(g_config.get_number("diagnostics.bone_poke_bone")));
                 faith_bones::set_arms(g_config.get_bool("body.arms"));
                 faith_bones::set_forearm_twist(static_cast<float>(g_config.get_number("body.forearm_twist")));
@@ -278,6 +281,9 @@ DWORD WINAPI main_thread(LPVOID) {
         if (old_v["combat.punch"] != new_v["combat.punch"] || old_v["combat.punch_speed"] != new_v["combat.punch_speed"])
             hand_pose::set_punch(new_v["combat.punch"].get<bool>(), new_v["combat.punch_speed"].get<float>());
         if (old_v["diagnostics.hand_sim"] != new_v["diagnostics.hand_sim"]) hand_pose::set_sim(new_v["diagnostics.hand_sim"].get<bool>());
+        if (old_v["ui.scale"] != new_v["ui.scale"]) ui_shrink::set_scale(new_v["ui.scale"].get<float>());
+        if (old_v["diagnostics.ui_scale_flat"] != new_v["diagnostics.ui_scale_flat"])
+            ui_shrink::set_flat(new_v["diagnostics.ui_scale_flat"].get<bool>());
         if (old_v["diagnostics.hand_sim_closeup"] != new_v["diagnostics.hand_sim_closeup"])
             hand_pose::set_sim_closeup(new_v["diagnostics.hand_sim_closeup"].get<bool>());
         if (old_v["comfort.roomscale"] != new_v["comfort.roomscale"])

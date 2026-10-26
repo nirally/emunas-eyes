@@ -28,6 +28,7 @@
 #include "render/hand_render.h"
 #include "render/hook_guard.h"
 #include "render/taa_eyes.h"
+#include "render/ui_shrink.h"
 
 namespace mecvr::ctx_hooks {
 namespace {
@@ -271,7 +272,10 @@ template <int V>
 void STDMETHODCALLTYPE d_om(ID3D11DeviceContext* c, UINT n, ID3D11RenderTargetView* const* rt, ID3D11DepthStencilView* ds) {
     const Inside in;
     if (!in.nested) g_hits[V][1].fetch_add(1, std::memory_order_relaxed);
-    if (!in.nested) taa_eyes::on_set_targets(c, n, rt, _ReturnAddress());
+    if (!in.nested) {
+        taa_eyes::on_set_targets(c, n, rt, _ReturnAddress());
+        ui_shrink::on_set_targets(c, n, rt);
+    }
     if (on()) note(c, ("om       n=" + std::to_string(n) + " by " + caller_of(_ReturnAddress())).c_str());
     if (on()) {
         std::lock_guard lock(g_mutex);
@@ -285,7 +289,10 @@ template <int V>
 void STDMETHODCALLTYPE d_om_uav(ID3D11DeviceContext* c, UINT n, ID3D11RenderTargetView* const* rt, ID3D11DepthStencilView* ds,
                                 UINT us, UINT un, ID3D11UnorderedAccessView* const* u, const UINT* counts) {
     const Inside in;
-    if (!in.nested && n != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) taa_eyes::on_set_targets(c, n, rt, _ReturnAddress());
+    if (!in.nested && n != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) {
+        taa_eyes::on_set_targets(c, n, rt, _ReturnAddress());
+        ui_shrink::on_set_targets(c, n, rt);
+    }
     if (on()) note(c, ("omuav    n=" + std::to_string(n) + " by " + caller_of(_ReturnAddress())).c_str());
     if (on()) {
         std::lock_guard lock(g_mutex);
@@ -321,7 +328,9 @@ void STDMETHODCALLTYPE d_draw_idx(ID3D11DeviceContext* c, UINT a, UINT b, INT d)
     const Inside in;
     if (!in.nested) taa_eyes::on_other_draw(c, "indexed");
     if (on()) emit(c, "drawidx", false);
+    const bool ui = !in.nested && ui_shrink::before_draw(c);
     o_draw_idx[V](c, a, b, d);
+    if (ui) ui_shrink::after_draw(c);
 }
 template <int V>
 void STDMETHODCALLTYPE d_draw_idx_inst(ID3D11DeviceContext* c, UINT a, UINT b, UINT d, INT e, UINT f) {
@@ -618,6 +627,7 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
     // Faith's arms need the draw hooks too, with the gloves hidden (live: hands.show off at startup = no arms).
     if (!g_installed && (taa_eyes::enabled() || hand_render::enabled() || faith_bones::active())) install(chain);
     taa_eyes::on_present(chain);
+    ui_shrink::on_present(chain);
     faith_bones::on_present();
     if (g_tracing.load()) {
         std::lock_guard lock(g_mutex);

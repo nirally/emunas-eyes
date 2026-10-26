@@ -48,17 +48,21 @@ ANSWERED 2026-10-18 (PLAYTEST-7a): hide.
 Why: if it's readable and comfortable as it is, Stage 8 can give it a fixed depth and spend its time on menus and cutscenes.
 Options: (a) fine; (b) too close / hard to focus / doubled; (c) too big or at the edge of view; (d) never noticed it.
 Default if unanswered: (b) -> a panel ~2 m ahead.
+ANSWERED 2026-10-26: "the HUD don't bothers me but I can't see it clearly. the health bar is cropped and I can only see the end of it. prompts work well and I did not test the rest. I would like for the health bar to be on my bottom left screen at all time without being cropped."
 
 ### Q-802 — Menus and the map (pause, options, upgrades, the big map): usable in the headset?
 Options: (a) fine; (b) readable but uncomfortable; (c) hard to read; (d) other.
 Default: (b) -> a floating panel in front of you.
+ANSWERED 2026-10-26: "no they are zoomed in to the center so I can't see the most of the menus."
 
 ### Q-803 — Cutscenes: in 3D with your head free (as now), or on a big virtual screen?
 Context: cutscene cameras move on their own; a virtual screen is the comfort-safe choice, 3D is more immersive.
 Options: (a) 3D as now if comfortable; (b) virtual screen; (c) a setting, default (a).
 Default: (c).
+ANSWERED 2026-10-26: "keep it in 3D but add a setting to make it a big virtual screen."
 
 ### Q-804 — Health on your wrist?
 Context: the HUD is one shader, so moving a single element (health) needs extra recon and may not work.
 Options: (a) want it, worth the effort; (b) not needed, the whole HUD on one panel is fine.
 Default: (b) first, (a) later if possible.
+ANSWERED 2026-10-26: "not needed for now".
