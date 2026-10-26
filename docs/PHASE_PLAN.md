@@ -4,7 +4,7 @@ Mode: agentic
 Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
-## Status — Mirror's Edge Catalyst VR — 2026-10-20
+## Status — Mirror's Edge Catalyst VR — 2026-10-26
 Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
@@ -35,15 +35,12 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 ✅ Arms take the game's pose on pipes, ladders, wall climbs and ledges, follow yours on the ground; comfort 5 (PLAYTEST-7f, BUG-022 closed)
 ✅ 7D Faith's fingers follow yours, look right, fist about right, comfort 5 (PLAYTEST-7g retry, D-046); whole-body glitch fixed (BUG-023 closed); her thumb (the game's) a little odd
 ✅ 7E Faith punches with the arm you punch with (PLAYTEST-7h: yes; true since 7B)
-🚧 Stage 7: elbows from the controller looked worse (PLAYTEST-7j) → back to the old rule; the game's attacks swing her whole body up to 160°, so her body now turns back to your facing during attacks (D-047, desktop-tested). One-frame body "collisions" ignored (BUG-026, fix built)
-⬜ Not started: body, HUD, settings menu, packaging
+✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
+⬜ Not started: HUD/menus/cutscenes (Stage 8), settings menu (9), packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-7k (short fight test)
-🐞 Open bugs: BUG-024 sev-3 (elbows into her body; fix 2 built); BUG-025 sev-3 (punch doesn't look right: torso swing); BUG-026 sev-3 (arms collide with her body; fix built); BUG-018 sev-3 (body sometimes comes apart from the head, closes in 2-4 s); BUG-012 sev-2 (per-eye TAA ghosting; fix built, feature off until an A/B); BUG-007 sev-3 (fight framing); BUG-001 sev-4
-✅ PLAYTEST-7k (air punches only, no enemies): body swing less, arms better, no body collisions, comfort 5; logs her chest vs your hands' direction now
-✅ PLAYTEST-7l real fight: body doesn't swing, arms right, no body collisions, comfort 5; BUG-024/025/026 closed
-✅ Calibration: reach scaling tried (D-048) and turned off by default - it bent her elbows; the 7l arms are better (PLAYTEST-7m). Stage 7 passed (tag stage-7)
-▶ Next: Me: Stage 8 recon (HUD/UI inventory, Runner Vision, cutscenes) and a Stage 8 brief
+❓ Need from you: Q-801-Q-804 (what in the HUD, menus and cutscenes bothers you now)
+🐞 Open bugs: BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
+▶ Next: You: answer Q-801-Q-804. Me: Stage 8 recon on the desktop (find the HUD pass, the menus, cutscene camera, audio listener)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -231,6 +228,14 @@ Risk: the world matrices are rendered positions - the game's own logic (hit boxe
 - [x] Calibration: reach scaling built (D-048, body.reach_scale) but off by default - PLAYTEST-7m liked the unscaled arms more; no flow needed
 
 ### Stage 8 — HUD, UI, cutscenes, audio (M)
+#### Stage 8 brief
+Goal: every UI element at a comfortable depth with the treatment for its type; menus and the map usable in the headset; cutscenes watchable without forced camera motion; sound turning with your head.
+Known: today the HUD, menus and cutscenes go through as the game draws them, into each eye's frame (alternate-frame stereo). Helix (3D Vision fix) found the HUD is one shader/texture that can't be split by element. No playtest so far has complained about the HUD, menus or cutscenes (cutscenes/takedowns "nothing wrong", PLAYTEST-4h).
+Unknowns: Q-801-Q-804 (what bothers the user now); where the HUD pass is in the frame (one draw? a separate render target?); at what depth it shows now (same screen spot in both eyes = at infinity); whether menus and the map are the same pass; how cutscene cameras reach the view (Stage 1 owns gameplay cameras); whether the audio listener follows the game camera or our head pose.
+Hypotheses: H1 the HUD is drawn last into the back buffer with its own shader (Helix) - findable by shader in our draw hooks and redirectable to an offscreen texture shown as a panel at a set depth. H2 Runner Vision and objective markers are world-space draws already (right in stereo); only the flat HUD layer needs moving. H3 the listener is set from the camera the game thinks it has (our head is applied at render time), so sound may not turn with the head.
+Plan: Q-801-Q-804 -> desktop recon (HUD draw and its depth now, menus/map, cutscene camera path, listener) -> 8A HUD panel at depth -> 8B menus/map panel -> 8C cutscenes (per Q-803) -> 8D audio listener -> 8E prompts showing the Touch buttons (text substitution).
+Verify: PLAYTEST-8x per sub-stage; comfort.
+Risk: one HUD shader = all-or-nothing, no per-element anchoring (wrist health) without finding each element's draws; menus may share the HUD pass.
 - [ ] UI inventory in manifest; every element typed
 - [ ] ★ Runner Vision stays world-anchored; ghost runner line at correct depth
 - [ ] ★ HUD is one shader (Helix): find a deeper hook or a render-to-texture split

@@ -43,3 +43,22 @@ ANSWERED 2026-10-18 (PLAYTEST-7a): (b) always yours - her arms follow you in cli
 ### Q-702 — Hide the mod's gloved hands once Faith's own hands follow you?
 Default: hide them (one pair of hands), with an option to show them. Ask at the first IK playtest.
 ANSWERED 2026-10-18 (PLAYTEST-7a): hide.
+
+### Q-801 — Does the HUD bother you in the headset now? (health, prompts, timers, objective text)
+Why: if it's readable and comfortable as it is, Stage 8 can give it a fixed depth and spend its time on menus and cutscenes.
+Options: (a) fine; (b) too close / hard to focus / doubled; (c) too big or at the edge of view; (d) never noticed it.
+Default if unanswered: (b) -> a panel ~2 m ahead.
+
+### Q-802 — Menus and the map (pause, options, upgrades, the big map): usable in the headset?
+Options: (a) fine; (b) readable but uncomfortable; (c) hard to read; (d) other.
+Default: (b) -> a floating panel in front of you.
+
+### Q-803 — Cutscenes: in 3D with your head free (as now), or on a big virtual screen?
+Context: cutscene cameras move on their own; a virtual screen is the comfort-safe choice, 3D is more immersive.
+Options: (a) 3D as now if comfortable; (b) virtual screen; (c) a setting, default (a).
+Default: (c).
+
+### Q-804 — Health on your wrist?
+Context: the HUD is one shader, so moving a single element (health) needs extra recon and may not work.
+Options: (a) want it, worth the effort; (b) not needed, the whole HUD on one panel is fine.
+Default: (b) first, (a) later if possible.
