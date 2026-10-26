@@ -449,7 +449,7 @@ void sync(XrTime time, bool focused) {
                 // game is paused or in a menu).
                 if (!time_sync::game_paused()) pad.buttons |= hand_pose::touch_buttons();
                 pad.buttons |= punches();  // 6C: physical punching
-                if (pad.buttons & (pad_map::kX | pad_map::kY)) camera_override::note_attack();
+                if (pad.buttons & (pad_map::kX | pad_map::kY)) camera_override::note_attack((pad.buttons & pad_map::kY) != 0);
                 apply_dodge(pad);  // Shift by a quick lean or step (D-040)
                 // Y + B held together 0.5 s = a screenshot from the headset (PLAYTEST-8a); neither goes to the game then.
                 if (hand[0].secondary && hand[1].secondary) {

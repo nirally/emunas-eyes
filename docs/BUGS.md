@@ -199,7 +199,18 @@ Fix: a wall counts only when it was there in 3+ of the last 6 read-backs (a real
 BUG-024/025 fix 3 (D-047): during attacks her whole body turns back to the way it faced the view when the attack began (body.turn_back_in_attacks, on). Desktop: corrections up to 106 deg in attacks, ~110 rows of her other pieces turned with it per frame; looking down at a kick, off = her hip and torso swing across the view, on = her body stays under you and the kick goes ahead (docs/recon/turn_7k/kick_off_top_on_bottom.png). Also: a piece first drawn before her arms were solved is now patched at its later draw (0 such pieces seen in this run; the glove-off-the-hand frame came back once in 18 shots, glove_off_hand_mid_attack.png - still open).
 
 ### BUG-027 — Faith's hands look bent / palm twisted at rest
-Status: open | Severity: 3 | Stage: 7 | Reported: PLAYTEST-8a ("the punching is great but when not doing anything the hands bend and it look like the palm of the hand twisted and overall look very bad")
+Status: closed (PLAYTEST-8b: "the hands are much better now"; nothing was changed for it - reopen if it comes back) | Severity: 3 | Stage: 7 | Reported: PLAYTEST-8a ("the punching is great but when not doing anything the hands bend and it look like the palm of the hand twisted and overall look very bad")
 Evidence: none yet - the user can't take a screenshot in the headset. Added: hold Y + B 0.5 s = a headset screenshot (vrshot_<date>_<time>.bmp in the mecvr folder).
 Hypothesis: with the arms hanging, the controller is held at an angle to the forearm (the wrist straight, the controller pointing forward), and the hand takes the controller's whole turn (arm_ik::hand_to) - a fist fits a punch (controller along the forearm) but bends the wrist at rest; or the forearm takes half the twist (body.forearm_twist 0.5) and the skin at the wrist wrings.
 Next: a headset screenshot of the hands at rest (PLAYTEST-8b).
+Result (PLAYTEST-8b): two headset screenshots at rest (docs/playtests/shots/vr_181021.png, vr_181033.png): wrists straight, palms natural.
+
+### BUG-028 — Kicks make Faith's body glitch
+Status: fixed, to confirm (PLAYTEST-8c) | Severity: 3 | Stage: 8 | Reported: PLAYTEST-8b ("when I try to do a kick the body glitching everytime")
+Evidence: PLAYTEST-8b log: the attack turn-back (D-047) turned her body up to 156 deg in 5 s windows with kicks (punches: 70-110), and her chest went 117-125 deg off your hands' direction in those windows. A kick swings her legs round with her whole body; turned back about your head, the swing is torn apart.
+Fix: the turn-back is for punches only - a kick (Y / heavy attack) keeps the game's turn for 1.2 s, and one in a combo fades the turn-back out (camera_override::last_kick).
+
+### BUG-029 — The menu screen shows one still image
+Status: fixed, to confirm (PLAYTEST-8c) | Severity: 2 | Stage: 8 | Reported: PLAYTEST-8b ("I could not even see what i'm controlling it looked like an image I moved thorugh options in the menu but saw nothing happening")
+Cause: on the menu screen the camera override steps aside, so the game's frames carry no eye; the stereo path waits for a left/right pair that never comes and the screen kept the first frame.
+Fix: on the menu screen every frame goes straight to the screen (as in mono). Not checkable on the desktop (no headset frames).

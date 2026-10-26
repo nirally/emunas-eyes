@@ -17,4 +17,10 @@ inline Rect scale_about_centre(Rect r, float fw, float fh, float k) {
     return {cx + (r.x - cx) * k, cy + (r.y - cy) * k, r.w * k, r.h * k};
 }
 
+// r moved by the frame-space map f' = k f + o (f: -1..1 across the frame, y up), in pixels of a fw x fh frame. With
+// o = 0 it is scale_about_centre. 8C: the health bar's corner placed on its own (ui_shrink).
+inline Rect place(Rect r, float fw, float fh, float k, float ox, float oy) {
+    return {k * r.x + fw * 0.5f * (1.f - k + ox), k * r.y + fh * 0.5f * (1.f - k - oy), r.w * k, r.h * k};
+}
+
 }  // namespace mecvr::ui_fit

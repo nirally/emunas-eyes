@@ -385,7 +385,9 @@ void frame(IDXGISwapChain* chain) {
 
         ID3D11Texture2D* back = nullptr;
         if (SUCCEEDED(chain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&back)))) {
-            if (mono) {
+            // Screen mode (8B): every frame straight to the screen. The camera override steps aside then, so frames
+            // carry no eye and never pair up (PLAYTEST-8b: the screen showed one still image).
+            if (mono || screen) {
                 if (copy_to_swapchain(0, back)) {
                     g_has_image[0] = true;
                     g_eye_pose[0] = used;

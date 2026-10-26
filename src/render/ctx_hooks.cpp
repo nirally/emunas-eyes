@@ -329,7 +329,8 @@ void STDMETHODCALLTYPE d_draw_idx(ID3D11DeviceContext* c, UINT a, UINT b, INT d)
     const Inside in;
     if (!in.nested) taa_eyes::on_other_draw(c, "indexed");
     if (on()) emit(c, "drawidx", false);
-    const bool ui = !in.nested && ui_shrink::before_draw(c);
+    if (on() && !in.nested) ui_shrink::trace_draw(c, a, b, d);
+    const bool ui = !in.nested && ui_shrink::before_draw(c, d);
     o_draw_idx[V](c, a, b, d);
     if (ui) ui_shrink::after_draw(c);
 }
@@ -696,6 +697,7 @@ void on_present(IDXGISwapChain* chain, const std::filesystem::path& dir) {
 }
 
 void request_trace() { g_trace_request = true; }
+void trace_note(ID3D11DeviceContext* ctx, const char* text) { note(ctx, text); }
 bool tracing() { return g_tracing.load(std::memory_order_relaxed); }
 void on_big_write(const void* res, const void* data, unsigned size) {
     std::lock_guard lock(g_mutex);

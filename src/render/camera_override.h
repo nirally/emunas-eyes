@@ -69,8 +69,10 @@ void report_turning();  // every 10 s
 void set_crouch_slide(bool on);
 // An attack was sent (X/Y: punch, hook, flick or button): for 1 s room-scale neither walks Faith nor absorbs
 // her movement - attack animations move her and the view goes with her (BUG-015, PLAYTEST-6b report).
-void note_attack();
+void note_attack(bool kick = false);
 unsigned long long last_attack();  // GetTickCount64 of the last attack button from the hands/pad (0: none yet)
+// The last heavy attack (a kick; PLAYTEST-8b: "when I try to do a kick the body glitching everytime").
+unsigned long long last_kick();
 
 // Room-scale (D-029, comfort.roomscale): Faith walks to where you stand when your move stick is idle.
 void set_roomscale(bool on);

@@ -18,6 +18,8 @@ namespace mecvr::faith_bones {
 void* on_map(ID3D11Resource* res, void* mapped, unsigned size, bool constant_buffer);
 // cb_capture, before the game's Unmap: a shadowed buffer is copied to the real mapping.
 void on_unmap(ID3D11Resource* res);
+// A shadowed buffer's contents if the game wrote it this frame (else null; render thread). Stage 8 recon.
+const unsigned char* shadow_of(ID3D11Resource* res, size_t* size);
 // ctx_hooks, before an indexed instanced draw (inside the hook guard), with the draw's index range.
 void before_draw(ID3D11DeviceContext* ctx, unsigned index_count, unsigned start_index, int base_vertex);
 // Once per Present: frame boundary, 1 s log of Faith's pieces.

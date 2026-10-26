@@ -328,6 +328,7 @@ void finish(vm::LinearTransform* a, vm::LinearTransform* b, int eye_index, vm::Q
 }
 
 std::atomic<ULONGLONG> g_last_attack{0};  // note_attack()
+std::atomic<ULONGLONG> g_last_kick{0};    // note_attack(true): heavy attacks
 
 // Once per game frame: Faith's movement in her body frame -> room model -> walking stick + view offset.
 void update_room(const vm::LinearTransform& game_cam) {
@@ -915,6 +916,10 @@ Hands rendered_hands() {
 }  // namespace mecvr::camera_override
 
 namespace mecvr::camera_override {
-void note_attack() { g_last_attack = GetTickCount64(); }
+void note_attack(bool kick) {
+    g_last_attack = GetTickCount64();
+    if (kick) g_last_kick = g_last_attack.load();
+}
 unsigned long long last_attack() { return g_last_attack.load(); }
+unsigned long long last_kick() { return g_last_kick.load(); }
 }  // namespace mecvr::camera_override

@@ -20,6 +20,7 @@
 #include "render/hook_guard.h"
 #include "render/camera_override.h"
 #include "render/taa_eyes.h"
+#include "render/ui_shrink.h"
 #include "render/xr_session.h"
 
 namespace mecvr::cb_capture {
@@ -164,6 +165,7 @@ bool is_constant_buffer(ID3D11Resource* res, UINT* size) {
 void after_map(ID3D11Resource* res, HRESULT hr, D3D11_MAPPED_SUBRESOURCE* out) {
     UINT size = 0;
     const bool cb = SUCCEEDED(hr) && out && is_constant_buffer(res, &size);
+    if (SUCCEEDED(hr) && out && !cb && size == 2560000) out->pData = ui_shrink::on_vb_map(res, out->pData);  // 8C
     // Stage 7: the game writes Faith's bone and per-draw buffers into a shadow in ordinary memory (read back
     // cheaply, and the IK's changes kept); copied to the real buffer at Unmap.
     if (SUCCEEDED(hr) && out && size >= 256 * 1024) out->pData = faith_bones::on_map(res, out->pData, size, cb);
@@ -196,6 +198,7 @@ void before_unmap(ID3D11Resource* res) {
             taa_eyes::record_view_cb(static_cast<const float*>(p.data), p.size / 4);
         if (g_capturing) record("Map", res, p.data, p.size);
     }
+    ui_shrink::on_vb_unmap(res);
     faith_bones::on_unmap(res);  // last: the shadow goes to the real buffer
 }
 

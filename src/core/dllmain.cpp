@@ -214,6 +214,8 @@ DWORD WINAPI main_thread(LPVOID) {
                 hand_pose::set_sim(g_config.get_bool("diagnostics.hand_sim"));
                 ui_shrink::set_scale(static_cast<float>(g_config.get_number("ui.scale")));
                 ui_shrink::set_flat(g_config.get_bool("diagnostics.ui_scale_flat"));
+                ui_shrink::set_hud(g_config.get_bool("ui.hud_centre"), static_cast<float>(g_config.get_number("ui.hud_scale")),
+                                   static_cast<float>(g_config.get_number("ui.hud_height")));
                 screen_mode::set_enabled(g_config.get_bool("ui.menu_screen"));
                 screen_mode::set_flat(g_config.get_bool("diagnostics.screen_flat"));
                 screen_mode::set_size(static_cast<float>(g_config.get_number("ui.screen_width")), static_cast<float>(g_config.get_number("ui.screen_distance")));
@@ -288,6 +290,9 @@ DWORD WINAPI main_thread(LPVOID) {
         if (old_v["ui.scale"] != new_v["ui.scale"]) ui_shrink::set_scale(new_v["ui.scale"].get<float>());
         if (old_v["diagnostics.ui_scale_flat"] != new_v["diagnostics.ui_scale_flat"])
             ui_shrink::set_flat(new_v["diagnostics.ui_scale_flat"].get<bool>());
+        if (old_v["ui.hud_centre"] != new_v["ui.hud_centre"] || old_v["ui.hud_scale"] != new_v["ui.hud_scale"] ||
+            old_v["ui.hud_height"] != new_v["ui.hud_height"])
+            ui_shrink::set_hud(new_v["ui.hud_centre"].get<bool>(), new_v["ui.hud_scale"].get<float>(), new_v["ui.hud_height"].get<float>());
         if (old_v["ui.menu_screen"] != new_v["ui.menu_screen"]) screen_mode::set_enabled(new_v["ui.menu_screen"].get<bool>());
         if (old_v["diagnostics.screen_flat"] != new_v["diagnostics.screen_flat"]) screen_mode::set_flat(new_v["diagnostics.screen_flat"].get<bool>());
         if (old_v["ui.screen_width"] != new_v["ui.screen_width"] || old_v["ui.screen_distance"] != new_v["ui.screen_distance"])

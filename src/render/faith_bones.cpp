@@ -260,7 +260,11 @@ bool compute(ID3D11Resource* buf, size_t off, int bones) {
             const float turn = arm_ik::yaw_between(view_right, chest_right);
             if (hand_pose::simulated() && ((GetAsyncKeyState(VK_LBUTTON) | GetAsyncKeyState(VK_RBUTTON)) & 0x8000))
                 camera_override::note_attack();  // desktop tests: the mouse attacks
-            const bool attack = g_turn_back.load() && GetTickCount64() - camera_override::last_attack() < kTurnBackMs;
+            // Punches only: a kick swings her legs round with the body (up to 156 deg in PLAYTEST-8b) and turned back
+            // about your head it glitched every time - kicks keep the game's turn (a kick in a combo fades it out).
+            const unsigned long long now_ms64 = GetTickCount64();
+            const bool attack = g_turn_back.load() && now_ms64 - camera_override::last_attack() < kTurnBackMs &&
+                                now_ms64 - camera_override::last_kick() >= kTurnBackMs;
             if (attack && !g_in_attack && g_turn_w <= 0.f) g_turn0 = g_turn_prev;  // a new fight move: its starting turn
             g_in_attack = attack;
             g_turn_prev = turn;
@@ -675,6 +679,14 @@ void build_fingers(ID3D11DeviceContext* ctx, unsigned index_count, unsigned star
     LOG_I("bones", "fingers: %d of 2 hands (%.1f ms)", built, now_ms() - t0);
 }
 }  // namespace
+
+const unsigned char* shadow_of(ID3D11Resource* res, size_t* size) {
+    std::lock_guard lock(g_mutex);
+    const Shadow* s = contents(res);
+    if (!s) return nullptr;
+    *size = s->size();
+    return s->data();
+}
 
 void* on_map(ID3D11Resource* res, void* mapped, unsigned size, bool constant_buffer) {
     if (!active() || size != kRingBytes || !mapped) return mapped;
