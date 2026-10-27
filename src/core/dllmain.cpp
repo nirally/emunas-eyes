@@ -284,6 +284,7 @@ DWORD WINAPI main_thread(LPVOID) {
         settings_ui::init(nlohmann::ordered_json::parse(in, nullptr, false));
     }
     settings_ui::set_values(g_config.values());
+    settings_ui::init_profiles(dir / L"profiles");
     settings_ui::set_flat(g_config.get_bool("diagnostics.menu_flat"));
     g_config.on_change([](const config::json& old_v, const config::json& new_v) {
         settings_ui::set_values(new_v);
@@ -412,6 +413,7 @@ DWORD WINAPI main_thread(LPVOID) {
             Sleep(50);
             const config::json changes = settings_ui::take_changes();
             if (!changes.empty()) g_config.set_user_values(changes);
+            settings_ui::poll_profiles();
         }
         g_config.poll_reload();
         if (++tick % 20 == 0) log_export_calls();  // every 10 s; only logs exports whose count changed

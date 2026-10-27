@@ -36,9 +36,9 @@ Mode: agentic | Gate: hard | Stage 9 of 10 — In-VR settings menu
 ✅ 7D Faith's fingers follow yours, look right, fist about right, comfort 5 (PLAYTEST-7g retry, D-046); whole-body glitch fixed (BUG-023 closed); her thumb (the game's) a little odd
 ✅ 7E Faith punches with the arm you punch with (PLAYTEST-7h: yes; true since 7B)
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
-⬜ Not started: settings menu (Stage 9, starting), packaging (10)
+⬜ Not started: packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-9b (the settings menu, now on both sticks held 1 s; hands after an outfit change, ~10 min)
+❓ Need from you: PLAYTEST-9c (profiles, and the eye-height check 9b missed, ~5 min)
 🐞 Open bugs: BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
 ⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
 ⚠ 8B menus on a big flat screen (D-050): PLAYTEST-8b - showed a still image (BUG-029, fixed); hands at rest "much better" (BUG-027 closed); kicks glitch (BUG-028, fixed); comfort 5
@@ -69,8 +69,9 @@ Mode: agentic | Gate: hard | Stage 9 of 10 — In-VR settings menu
 ✅ PLAYTEST-8q: in her jacket the hands and sleeves follow and the legs are steady (BUG-033, BUG-034 closed; D-059/D-061), comfort 5
 🔧 Stage 8 gate: UI inventory done (15 elements, config/manifest.json); left for the headset: Runner Vision depth, objective/enemy markers (pulled in with the HUD, may sit off their targets), subtitle size. Seen on the desktop: the gridLink AR overlay is pulled into the middle of the view (docs/recon/stage8/gridlink_*.png). Layout mode (move UI by hand) goes to Stage 9
 ✅ Stage 8 passed (D-062): HUD, menus, map, cutscenes, sound, prompts verified in 8a-8q; the user waived the last check (Runner Vision, markers, subtitles untested in the headset)
-🔧 9A settings menu (D-063): hold the left menu button 1 s; every setting from the schema, live apply, saved, resets; desktop-checked, not yet in the headset
-▶ Next: You: PLAYTEST-9b (9a: menu never opened - SteamVR keeps the menu button, BUG-036; hands lost after aborting the jacket mission, BUG-035; both fixed in D-064). Me after it: 9B profiles (named copies of your settings), then the Stage 9 gate. Parked: her fingers in the jacket (40-byte hand mesh)
+✅ 9A settings menu (D-063/D-064): both sticks held 1 s (the menu button is SteamVR's); every setting from the schema, live apply, saved, resets; PLAYTEST-9b: opens, text fine, gloves toggle, comfort 5 (eye height not actually changed - recheck in 9c)
+🔧 9B profiles (D-065): 4 slots on a Profiles page, save/load ask twice; desktop: saved, changed, loaded back, live-applied
+▶ Next: You: PLAYTEST-9c. Me after it: the Stage 9 gate. Parked: her fingers in the jacket (40-byte hand mesh)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

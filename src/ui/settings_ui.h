@@ -4,6 +4,7 @@
 // gets a neutral pad. Changes go to the main thread (take_changes), which writes them to config.json - applied live
 // like any other edit. The panel is drawn with GDI into a texture only when it changes; xr_session shows it as a
 // quad layer fixed in the room where you looked when it opened.
+#include <filesystem>
 #include <string>
 
 #include <nlohmann/json.hpp>
@@ -18,6 +19,9 @@ namespace mecvr::settings_ui {
 void init(const nlohmann::ordered_json& schema);  // read in file order (the menu keeps it)
 void set_values(const nlohmann::json& values);  // every setting's current value (after each change)
 nlohmann::json take_changes();                  // {key: value, ...}; empty object when none
+// 9B: profiles in dir/profile_N.json (after init). poll_profiles writes the ones saved from the menu.
+void init_profiles(const std::filesystem::path& dir);
+void poll_profiles();
 
 // Render thread.
 bool is_open();

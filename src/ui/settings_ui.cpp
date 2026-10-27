@@ -6,7 +6,12 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cmath>
+#include <ctime>
+#include <filesystem>
+#include <fstream>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -25,6 +30,9 @@ std::mutex g_mutex;
 std::unique_ptr<settings_menu::Menu> g_menu;
 json g_values = json::object();   // shown values (a change shows at once, before the main thread writes it)
 json g_pending = json::object();  // changes for the main thread
+// 9B: profiles, mecvr/profiles/profile_N.json (same format as config.json). Saves wait here for the main thread.
+std::filesystem::path g_profiles_dir;
+std::map<int, json> g_saves;
 std::atomic<bool> g_open{false};
 bool g_dirty = true;  // the panel needs redrawing (render thread, under g_mutex)
 std::atomic<bool> g_flat{false};
@@ -48,10 +56,15 @@ std::wstring wide(const std::string& s) {
 void press(Key k) {
     if (!g_menu) return;
     bool close = false;
-    for (const auto& c : g_menu->press(k, g_values, &close)) {
+    int save = -1;
+    for (const auto& c : g_menu->press(k, g_values, &close, &save)) {
         g_values[c.key] = c.value;
         g_pending[c.key] = c.value;
         LOG_I("menu", "%s = %s", c.key.c_str(), c.value.dump().c_str());
+    }
+    if (save >= 0) {
+        g_saves[save] = g_menu->slots()[save].values;
+        LOG_I("menu", "profile %d: saving %zu settings", save + 1, g_saves[save].size());
     }
     g_dirty = true;
     if (close) {
@@ -180,6 +193,66 @@ json take_changes() {
     json out = std::move(g_pending);
     g_pending = json::object();
     return out;
+}
+
+namespace {
+std::filesystem::path slot_file(int s) { return g_profiles_dir / ("profile_" + std::to_string(s + 1) + ".json"); }
+
+// Main thread, under g_mutex: the slots as on disk.
+void read_slots() {
+    std::vector<settings_menu::Slot> slots(settings_menu::kSlots);
+    for (int s = 0; s < settings_menu::kSlots; ++s) {
+        std::error_code ec;
+        const auto t = std::filesystem::last_write_time(slot_file(s), ec);
+        if (ec) continue;
+        std::ifstream in(slot_file(s));
+        json v = json::parse(in, nullptr, false);
+        if (!v.is_object()) {
+            LOG_W("menu", "profile %d: %s didn't parse - shown as empty", s + 1, slot_file(s).string().c_str());
+            continue;
+        }
+        const auto sys = std::chrono::clock_cast<std::chrono::system_clock>(t);
+        const std::time_t tt = std::chrono::system_clock::to_time_t(sys);
+        std::tm tm{};
+        localtime_s(&tm, &tt);
+        char when[32];
+        strftime(when, sizeof(when), "%d %b %H:%M", &tm);
+        slots[s] = {true, when, std::move(v)};
+    }
+    g_menu->set_slots(std::move(slots));
+}
+}  // namespace
+
+void init_profiles(const std::filesystem::path& dir) {
+    std::lock_guard lock(g_mutex);
+    if (!g_menu) return;
+    g_profiles_dir = dir;
+    read_slots();
+    int used = 0;
+    for (const auto& s : g_menu->slots()) used += s.used;
+    LOG_I("menu", "profiles: %d of %d slots saved (%s)", used, settings_menu::kSlots, dir.string().c_str());
+}
+
+void poll_profiles() {
+    std::lock_guard lock(g_mutex);
+    if (g_saves.empty() || !g_menu || g_profiles_dir.empty()) return;
+    std::error_code ec;
+    std::filesystem::create_directories(g_profiles_dir, ec);
+    for (const auto& [s, v] : g_saves) {
+        const auto tmp = slot_file(s).string() + ".tmp";
+        bool ok = false;
+        {
+            std::ofstream out(tmp, std::ios::trunc);
+            out << v.dump(2) << "\n";
+            ok = bool(out);
+        }
+        if (ok) std::filesystem::rename(tmp, slot_file(s), ec);
+        if (ok && !ec) LOG_I("menu", "profile %d saved: %s", s + 1, slot_file(s).string().c_str());
+        else LOG_E("menu", "profile %d: could not write %s", s + 1, slot_file(s).string().c_str());
+    }
+    g_saves.clear();
+    read_slots();
+    g_dirty = true;
 }
 
 bool is_open() { return g_open.load(); }

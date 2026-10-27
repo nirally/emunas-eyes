@@ -127,3 +127,63 @@ TEST(settings_menu_keeps_the_schema_files_order) {
     const auto items = settings_menu::items_from_schema(s);
     CHECK(items.size() == 2 && items[0].key == "z.first" && items[1].key == "a.second");
 }
+
+namespace {
+// From the section list (cursor on the first section) to the profiles page.
+void open_profiles(settings_menu::Menu& m, const json& v) {
+    bool close = false;
+    for (size_t k = 0; k < m.sections().size(); ++k) m.press(Key::Down, v, &close);
+    m.press(Key::Ok, v, &close);
+}
+}  // namespace
+
+TEST(settings_menu_profiles_save_then_load) {
+    const json s = small_schema();
+    json v = defaults(s);
+    v["c.speed"] = 0.5;
+    settings_menu::Menu m(settings_menu::items_from_schema(s));
+    bool close = false;
+    int save = -1;
+    open_profiles(m, v);
+    CHECK(m.page() == settings_menu::Menu::kProfiles && m.title() == "Profiles");
+    CHECK(m.lines(v)[0].value == "empty");
+    CHECK(m.press(Key::Ok, v, &close, &save).empty() && save == -1);  // loading an empty slot does nothing
+    m.press(Key::Down, v, &close, &save);                             // "Save your settings as profile 1"
+    m.press(Key::Ok, v, &close, &save);                               // an empty slot saves at once
+    CHECK(save == 0);
+    CHECK(m.slots()[0].used && m.slots()[0].values == json({{"c.speed", 0.5}}));  // only what differs from defaults
+    // Saving over it asks first.
+    m.press(Key::Ok, v, &close, &save);
+    CHECK(save == -1 && m.lines(v)[1].text.find("again") != std::string::npos);
+    m.press(Key::Ok, v, &close, &save);
+    CHECK(save == 0);
+    // Other settings now; loading profile 1 (asks twice) puts every setting back: its own, the rest to defaults.
+    v["c.speed"] = 2;
+    v["u.mode"] = "c";
+    m.press(Key::Up, v, &close, &save);
+    CHECK(m.press(Key::Ok, v, &close, &save).empty());
+    auto c = m.press(Key::Ok, v, &close, &save);
+    CHECK(c.size() == 2 && save == -1);
+    apply_changes(v, c);
+    CHECK(v["c.speed"] == 0.5 && v["u.mode"] == "a" && v["c.on"] == true);
+}
+
+TEST(settings_menu_profiles_back_and_slots) {
+    const json s = small_schema();
+    const json v = defaults(s);
+    settings_menu::Menu m(settings_menu::items_from_schema(s));
+    std::vector<settings_menu::Slot> slots(1);
+    slots[0] = {true, "27 Oct 23:05", json({{"u.mode", "b"}})};
+    m.set_slots(slots);
+    CHECK(m.slots().size() == size_t(settings_menu::kSlots));
+    bool close = false;
+    open_profiles(m, v);
+    CHECK(m.lines(v)[0].value == "27 Oct 23:05" && m.lines(v)[2].value == "empty");
+    CHECK(m.lines(v).size() == size_t(2 * settings_menu::kSlots + 1));
+    m.press(Key::Back, v, &close);
+    CHECK(!close && m.page() == -1 && m.lines(v)[m.cursor()].text == "Profiles");
+    m.press(Key::Ok, v, &close);
+    m.press(Key::Up, v, &close);  // wraps to Back
+    m.press(Key::Ok, v, &close);
+    CHECK(!close && m.page() == -1);
+}

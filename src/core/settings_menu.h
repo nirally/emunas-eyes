@@ -3,6 +3,9 @@
 // type (bool / enum / float), range, default, section and label - so the menu and the config can't drift apart.
 // Pages: the sections, then one section's settings. Sticks move and change, A picks, B goes back; resets ask for a
 // second A. The menu hands back changes (key, value); the caller writes them (config::Store::set_user_value).
+// 9B: profiles - kSlots saved copies of your settings (a household sharing a headset switches with one pick). Loading
+// one is ordinary changes (every setting to the profile's value, or its default when the profile doesn't set it);
+// saving hands the slot and the settings that differ from their defaults to the caller, which writes the file.
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -94,6 +97,13 @@ inline json stepped(const Item& i, const json& v, int dir) {
 
 enum class Key { Up, Down, Left, Right, Ok, Back };
 
+struct Slot {
+    bool used = false;
+    std::string saved;             // when, as shown ("27 Oct 23:05")
+    json values = json::object();  // the settings it sets (like config.json)
+};
+constexpr int kSlots = 4;
+
 struct Change { std::string key; json value; };
 
 struct Line {
@@ -111,7 +121,21 @@ public:
     }
 
     const std::vector<std::string>& sections() const { return sections_; }
-    int page() const { return page_; }  // -1 = the section list
+    static constexpr int kProfiles = -2;
+    int page() const { return page_; }  // -1 = the section list, kProfiles = the profiles page
+    void set_slots(std::vector<Slot> slots) {
+        slots.resize(kSlots);
+        slots_ = std::move(slots);
+    }
+    const std::vector<Slot>& slots() const { return slots_; }
+
+    // The settings that differ from their defaults (what a profile, like config.json, holds).
+    json profile_of(const json& values) const {
+        json out = json::object();
+        for (const Item& i : items_)
+            if (value_of(i, values) != i.def) out[i.key] = value_of(i, values);
+        return out;
+    }
     int cursor() const { return cursor_; }
 
     void reset_view() {
@@ -121,26 +145,51 @@ public:
     }
 
     // One key press. `values` = every setting's current value. Returns the settings to change; *close = the menu
-    // asks to be closed (Close picked, or B on the section list).
-    std::vector<Change> press(Key k, const json& values, bool* close) {
+    // asks to be closed (Close picked, or B on the section list); *save = a profile slot to save `values` to (-1 none).
+    std::vector<Change> press(Key k, const json& values, bool* close, int* save = nullptr) {
         std::vector<Change> out;
         if (close) *close = false;
+        if (save) *save = -1;
         const int n = rows();
         if (k != Key::Ok) confirm_ = false;
         switch (k) {
             case Key::Up: cursor_ = (cursor_ + n - 1) % n; break;
             case Key::Down: cursor_ = (cursor_ + 1) % n; break;
             case Key::Back:
-                if (page_ < 0) { if (close) *close = true; }
-                else { cursor_ = page_; page_ = -1; }
+                if (page_ == -1) { if (close) *close = true; }
+                else { cursor_ = page_ == kProfiles ? int(sections_.size()) : page_; page_ = -1; }
                 break;
             case Key::Left:
             case Key::Right:
             case Key::Ok: {
                 const int dir = k == Key::Left ? -1 : 1;
+                if (page_ == kProfiles) {
+                    if (k != Key::Ok) break;
+                    if (cursor_ == 2 * kSlots) {  // Back
+                        cursor_ = int(sections_.size());
+                        page_ = -1;
+                        break;
+                    }
+                    Slot& sl = slots_[cursor_ / 2];
+                    const bool load = cursor_ % 2 == 0;
+                    if (load && !sl.used) break;
+                    if (!confirm_ && (load || sl.used)) { confirm_ = true; break; }  // saving to an empty slot asks once
+                    confirm_ = false;
+                    if (load) {
+                        for (const Item& i : items_) {
+                            const json to = sl.values.contains(i.key) ? sl.values[i.key] : i.def;
+                            if (value_of(i, values) != to) out.push_back({i.key, to});
+                        }
+                    } else {
+                        sl = {true, "just now", profile_of(values)};
+                        if (save) *save = cursor_ / 2;
+                    }
+                    break;
+                }
                 if (page_ < 0) {
                     if (k == Key::Ok && cursor_ < int(sections_.size())) { page_ = cursor_; cursor_ = 0; }
-                    else if (k == Key::Ok && cursor_ == int(sections_.size())) {  // reset all
+                    else if (k == Key::Ok && cursor_ == int(sections_.size())) { page_ = kProfiles; cursor_ = 0; }
+                    else if (k == Key::Ok && cursor_ == int(sections_.size()) + 1) {  // reset all
                         if (!confirm_) confirm_ = true;
                         else { for (const Item& i : items_) reset(i, values, out); confirm_ = false; }
                     } else if (k == Key::Ok && close) *close = true;  // Close
@@ -163,18 +212,31 @@ public:
         return out;
     }
 
-    std::string title() const { return page_ < 0 ? "MEC VR settings" : sections_[page_]; }
+    std::string title() const { return page_ == kProfiles ? "Profiles" : page_ < 0 ? "MEC VR settings" : sections_[page_]; }
 
     // Every row of the page (the panel scrolls them).
     std::vector<Line> lines(const json& values) const {
         std::vector<Line> out;
-        if (page_ < 0) {
+        if (page_ == kProfiles) {
+            for (int s = 0; s < kSlots; ++s) {
+                const std::string n = std::to_string(s + 1);
+                const bool ask = confirm_ && cursor_ / 2 == s;
+                out.push_back({ask && cursor_ % 2 == 0 ? "Load profile " + n + "? Your settings now are replaced. Press A again"
+                                                       : "Load profile " + n,
+                               slots_[s].used ? slots_[s].saved : "empty"});
+                out.push_back({ask && cursor_ % 2 == 1 ? "Replace profile " + n + " with your settings now? Press A again"
+                                                       : "Save your settings as profile " + n,
+                               ""});
+            }
+            out.push_back({"Back", ""});
+        } else if (page_ < 0) {
             for (size_t s = 0; s < sections_.size(); ++s) {
                 char count[24];
                 snprintf(count, sizeof(count), "%zu", section_items(int(s)).size());
                 out.push_back({sections_[s], count});
             }
-            out.push_back({confirm_ && cursor_ == int(sections_.size()) ? "Reset ALL settings? Press A again" : "Reset all to defaults", ""});
+            out.push_back({"Profiles", ""});
+            out.push_back({confirm_ && cursor_ == int(sections_.size()) + 1 ? "Reset ALL settings? Press A again" : "Reset all to defaults", ""});
             out.push_back({"Close", ""});
         } else {
             const std::vector<int> in = section_items(page_);
@@ -188,7 +250,12 @@ public:
 
     // What the selected row does (bottom of the panel).
     std::string help(const json& values) const {
-        if (page_ < 0) return cursor_ < int(sections_.size()) ? "A: open   B: close the menu" : "A: pick";
+        if (page_ == kProfiles) {
+            if (cursor_ == 2 * kSlots) return "A: pick   B: back";
+            if (cursor_ % 2 == 0) return slots_[cursor_ / 2].used ? "A: load (asks twice)   B: back" : "Nothing saved here yet   B: back";
+            return slots_[cursor_ / 2].used ? "A: save (asks twice: replaces it)   B: back" : "A: save   B: back";
+        }
+        if (page_ < 0) return cursor_ <= int(sections_.size()) ? "A: open   B: close the menu" : "A: pick";
         const std::vector<int> in = section_items(page_);
         if (cursor_ >= int(in.size())) return "A: pick   B: back";
         const Item& i = items_[in[cursor_]];
@@ -215,7 +282,10 @@ private:
             if (items_[i].section == sections_[s]) out.push_back(int(i));
         return out;
     }
-    int rows() const { return page_ < 0 ? int(sections_.size()) + 2 : int(section_items(page_).size()) + 2; }
+    int rows() const {
+        if (page_ == kProfiles) return 2 * kSlots + 1;
+        return page_ < 0 ? int(sections_.size()) + 3 : int(section_items(page_).size()) + 2;
+    }
     static json value_of(const Item& i, const json& values) { return values.contains(i.key) ? values[i.key] : i.def; }
     static void reset(const Item& i, const json& values, std::vector<Change>& out) {
         if (value_of(i, values) != i.def) out.push_back({i.key, i.def});
@@ -223,6 +293,7 @@ private:
 
     std::vector<Item> items_;
     std::vector<std::string> sections_;
+    std::vector<Slot> slots_ = std::vector<Slot>(kSlots);
     int page_ = -1, cursor_ = 0;
     bool confirm_ = false;
 };
