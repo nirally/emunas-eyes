@@ -24,6 +24,8 @@ public:
 
     // Writes one value into the user file (config.json) and applies it. Main thread only.
     void set_user_value(const std::string& key, const json& value);
+    // Several at once (the settings menu's reset), one write.
+    void set_user_values(const json& values);
 
     bool get_bool(const std::string& key) const;
     double get_number(const std::string& key) const;

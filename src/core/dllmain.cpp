@@ -6,6 +6,7 @@
 #include <MinHook.h>
 
 #include <filesystem>
+#include <fstream>
 #include <string>
 
 #include "core/config.h"
@@ -40,6 +41,9 @@ namespace mecvr::bug_report { void poll(const std::filesystem::path& mod_dir, co
 #include "render/screenshot.h"
 #include "render/ui_shrink.h"
 #include "render/xr_session.h"
+#include "ui/settings_ui.h"
+
+#include <d3d11.h>
 
 namespace fs = std::filesystem;
 using namespace mecvr;
@@ -121,7 +125,23 @@ camera_override::PitchSource pitch_source_from(const std::string& s) {
 // Render thread, start of every Present.
 fs::path g_dir_for_frame;
 
+// Desktop tests of the settings menu (diagnostics.menu_flat): drawn into the flat frame before anything copies it.
+void menu_flat(IDXGISwapChain* chain) {
+    if (!settings_ui::flat()) return;
+    ID3D11Texture2D* back = nullptr;
+    if (FAILED(chain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&back))) || !back) return;
+    ID3D11Device* dev = nullptr;
+    back->GetDevice(&dev);
+    ID3D11DeviceContext* ctx = nullptr;
+    if (dev) dev->GetImmediateContext(&ctx);
+    if (ctx) settings_ui::on_present_flat(dev, ctx, back);
+    if (ctx) ctx->Release();
+    if (dev) dev->Release();
+    back->Release();
+}
+
 void on_frame(IDXGISwapChain* chain) {
+    menu_flat(chain);
     xr_session::on_present(chain);
     screenshot::on_present(chain, g_dir_for_frame);
     ctx_hooks::on_present(chain, g_dir_for_frame);
@@ -258,6 +278,18 @@ DWORD WINAPI main_thread(LPVOID) {
         LOG_I("core", "features.present_hook is off - not hooking rendering");
     }
 
+    // Stage 9: the in-VR settings menu, from the schema.
+    {
+        std::ifstream in(dir / L"schema.json");
+        settings_ui::init(nlohmann::ordered_json::parse(in, nullptr, false));
+    }
+    settings_ui::set_values(g_config.values());
+    settings_ui::set_flat(g_config.get_bool("diagnostics.menu_flat"));
+    g_config.on_change([](const config::json& old_v, const config::json& new_v) {
+        settings_ui::set_values(new_v);
+        if (old_v["diagnostics.menu_flat"] != new_v["diagnostics.menu_flat"]) settings_ui::set_flat(new_v["diagnostics.menu_flat"].get<bool>());
+    });
+
     g_config.on_change([hooks_ok](const config::json& old_v, const config::json& new_v) {
         if (old_v["diagnostics.log_level"] != new_v["diagnostics.log_level"])
             log::set_level(log::level_from_string(new_v["diagnostics.log_level"].get<std::string>(), log::Level::Info));
@@ -376,7 +408,11 @@ DWORD WINAPI main_thread(LPVOID) {
     bool smoke_done = false;
     int tick = 0;
     for (;;) {
-        Sleep(500);
+        for (int i = 0; i < 10; ++i) {  // 500 ms; the settings menu's changes are written every 50 ms
+            Sleep(50);
+            const config::json changes = settings_ui::take_changes();
+            if (!changes.empty()) g_config.set_user_values(changes);
+        }
         g_config.poll_reload();
         if (++tick % 20 == 0) log_export_calls();  // every 10 s; only logs exports whose count changed
         xinput_hook::poll_install();

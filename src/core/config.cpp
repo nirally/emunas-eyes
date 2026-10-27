@@ -130,14 +130,21 @@ std::string Store::get_string(const std::string& key) const {
 namespace mecvr::config {
 
 void Store::set_user_value(const std::string& key, const json& value) {
+    json one = json::object();
+    one[key] = value;
+    set_user_values(one);
+}
+
+void Store::set_user_values(const json& values) {
     json user = read_user_file();
     if (!user.is_object()) user = json::object();
-    user[key] = value;
+    for (auto& [k, v] : values.items()) user[k] = v;
     {
         std::ofstream out(user_file_);
         out << user.dump(2) << "\n";
     }
-    poll_reload();  // re-validate and notify like any other edit
+    user_mtime_ = {};  // two writes within the file time's resolution must not look like no change
+    poll_reload();     // re-validate and notify like any other edit
 }
 
 }  // namespace mecvr::config

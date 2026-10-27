@@ -38,7 +38,7 @@ Mode: agentic | Gate: hard | Stage 9 of 10 — In-VR settings menu
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
 ⬜ Not started: settings menu (Stage 9, starting), packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: nothing right now
+❓ Need from you: PLAYTEST-9a (the settings menu, ~10 min)
 🐞 Open bugs: BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
 ⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
 ⚠ 8B menus on a big flat screen (D-050): PLAYTEST-8b - showed a still image (BUG-029, fixed); hands at rest "much better" (BUG-027 closed); kicks glitch (BUG-028, fixed); comfort 5
@@ -69,7 +69,8 @@ Mode: agentic | Gate: hard | Stage 9 of 10 — In-VR settings menu
 ✅ PLAYTEST-8q: in her jacket the hands and sleeves follow and the legs are steady (BUG-033, BUG-034 closed; D-059/D-061), comfort 5
 🔧 Stage 8 gate: UI inventory done (15 elements, config/manifest.json); left for the headset: Runner Vision depth, objective/enemy markers (pulled in with the HUD, may sit off their targets), subtitle size. Seen on the desktop: the gridLink AR overlay is pulled into the middle of the view (docs/recon/stage8/gridlink_*.png). Layout mode (move UI by hand) goes to Stage 9
 ✅ Stage 8 passed (D-062): HUD, menus, map, cutscenes, sound, prompts verified in 8a-8q; the user waived the last check (Runner Vision, markers, subtitles untested in the headset)
-▶ Next: Me: Stage 9 recon and brief (in-VR settings menu). Parked: her fingers in the jacket (40-byte hand mesh)
+🔧 9A settings menu (D-063): hold the left menu button 1 s; every setting from the schema, live apply, saved, resets; desktop-checked, not yet in the headset
+▶ Next: You: PLAYTEST-9a. Me after it: 9B profiles (named copies of your settings), then the Stage 9 gate. Parked: her fingers in the jacket (40-byte hand mesh)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -274,6 +275,14 @@ Risk: one HUD shader = all-or-nothing, no per-element anchoring (wrist health) w
 - [x] Audio listener on head pose: already true (PLAYTEST-8m)
 
 ### Stage 9 — In-VR settings menu (M)
+#### Stage 9 brief
+Goal: every setting in config/schema.json changeable from inside the headset, applied live, saved, with reset.
+Known: the schema already has type (bool/enum/float), range, default, section and a label for all 85 settings; config.json hot-reloads and Store::set_user_value writes one key and applies it (main thread); an OpenXR quad layer already shows the 8B menu screen; the controllers' buttons are actions (xr_input), the left menu button = Start today.
+Unknowns: whether a second quad layer over the game's projection layer composes cleanly on the user's runtime (Meta via Link: 16 layers allowed); how readable GDI text is on a quad at ~1 m in a Quest 2.
+Hypotheses: H1 GDI draws the menu into a 1024x1024 texture (only when it changes), copied into its own swapchain each frame - cheap. H2 the game can be left running with a neutral pad while the menu is open (Faith stands still) - pausing it would put the game's pause menu on the big screen under ours.
+Plan: core/settings_menu.h (pure: items from the schema, navigation, changes, reset; unit tests) -> ui/menu_panel (GDI -> texture -> quad layer, fixed in the room ~1 m ahead) -> input: hold the left menu button 1 s to open/close, sticks/A/B to use it, the game gets a neutral pad -> changes queued to the main thread -> set_user_value. Then profiles (named copies of config.json).
+Verify: desktop (diagnostics.menu_flat draws the panel into the flat frame), PLAYTEST-9a.
+Risk: the injected "VR" entry in the game's pause menu (Frostbite UI, one shader) - likely not doable; the dedicated binding is the door.
 - [ ] All schema entries in menu; live apply; profiles; reset; binding + injected pause-menu entry
 
 ### Stage 10 — Sweep and package (M)

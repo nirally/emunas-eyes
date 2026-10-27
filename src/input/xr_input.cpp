@@ -5,6 +5,7 @@
 
 #include <Xinput.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstring>
@@ -20,6 +21,7 @@
 #include "render/camera_override.h"
 #include "render/screenshot.h"
 #include "render/time_sync.h"
+#include "ui/settings_ui.h"
 
 namespace mecvr::xr_input {
 namespace {
@@ -45,6 +47,8 @@ std::atomic<bool> g_left_handed{false}, g_stick_pitch{false};
 bool g_pad_on = false;
 pad_map::TapHold g_stick_click;  // move-hand stick click: Pause / Map
 pad_map::TapHold g_turn_click{1.0, 0.15};  // turn-hand stick click: Runner's Vision / recentre (hold 1 s)
+pad_map::TapHold g_menu_button{1.0, 0.15};  // menu button: tap = Start (pause), hold 1 s = the settings menu (Stage 9)
+bool g_menu_held = false;
 bool g_recentred = false;
 ULONGLONG g_shot_since = 0;  // both top buttons (Y + B) held since; 0 = not held
 bool g_shot_taken = false;
@@ -405,7 +409,19 @@ void sync(XrTime time, bool focused) {
                 hand_pose::set_controls(h, hand[h].trigger, get_bool(kTriggerTouch, h), hand[h].grip, get_bool(kThumbTouch, h));
             }
             if (active) {
+                // Stage 9: the menu button no longer pauses at once - a tap does (on release), a 1 s hold opens or
+                // closes the settings menu.
+                const bool menu_button = hand[0].menu || hand[1].menu;
+                hand[0].menu = hand[1].menu = false;
+                constexpr uint16_t kSettings = 0x0800;  // internal, never sent to the game
+                const uint16_t mb = g_menu_button.update(menu_button, GetTickCount64() / 1000.0, pad_map::kStart, kSettings);
+                if ((mb & kSettings) && !g_menu_held) {
+                    settings_ui::toggle();
+                    g_hello_until = GetTickCount64() + 120;
+                }
+                g_menu_held = (mb & kSettings) != 0;
                 pad_map::Pad pad = pad_map::map(hand[0], hand[1], g_left_handed.load(), g_stick_pitch.load());
+                pad.buttons |= mb & pad_map::kStart;
                 const float head_dy = head_pose::current().relative.position.y;
                 if (head_dy < g_head_dy_min) g_head_dy_min = head_dy;
                 const bool was_down = g_crouch.down;
@@ -465,6 +481,19 @@ void sync(XrTime time, bool focused) {
                 } else {
                     g_shot_since = 0;
                     g_shot_taken = false;
+                }
+                if (settings_ui::is_open()) {  // the menu takes the sticks and A/B; the game gets a neutral pad
+                    settings_ui::Controls mc;
+                    const pad_map::Hand& a = hand[0];
+                    const pad_map::Hand& b = hand[1];
+                    const bool use_a = a.x * a.x + a.y * a.y >= b.x * b.x + b.y * b.y;
+                    mc.x = use_a ? a.x : b.x;
+                    mc.y = use_a ? a.y : b.y;
+                    mc.ok = a.primary || b.primary;
+                    mc.back = (a.secondary || b.secondary) && !(a.secondary && b.secondary);  // not Y + B (screenshot)
+                    if (settings_ui::input(mc, GetTickCount64() / 1000.0)) g_hello_until = std::max(g_hello_until, GetTickCount64() + 25);
+                    pad = pad_map::Pad{};
+                    camera_override::set_turn_input(0);
                 }
                 xinput_hook::set_pad(pad);
 

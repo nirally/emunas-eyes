@@ -19,6 +19,7 @@
 #include "diagnostics/log.h"
 #include "input/xr_input.h"
 #include "render/screen_mode.h"
+#include "ui/settings_ui.h"
 
 namespace mecvr::xr_session {
 namespace {
@@ -50,6 +51,8 @@ XrSession g_session = XR_NULL_HANDLE;
 XrSpace g_local = XR_NULL_HANDLE, g_view = XR_NULL_HANDLE, g_stage = XR_NULL_HANDLE;
 XrSwapchain g_swapchain[2] = {XR_NULL_HANDLE, XR_NULL_HANDLE};  // [eye]; mono uses [0] for both eyes
 std::vector<XrSwapchainImageD3D11KHR> g_images[2];
+XrSwapchain g_menu_chain = XR_NULL_HANDLE;  // Stage 9: the settings menu's panel (settings_ui)
+std::vector<XrSwapchainImageD3D11KHR> g_menu_images;
 bool g_has_image[2] = {false, false};
 head_pose::Pose g_eye_pose[2];       // pose each eye's latest image was rendered with
 ID3D11Texture2D* g_hold = nullptr;   // left eye image waiting for its right eye
@@ -215,6 +218,16 @@ bool create_swapchain(IDXGISwapChain* chain) {
                  "swapchain images");
     }
     LOG_I("xr", "per-eye swapchains %ux%u, %u images each", g_width, g_height, n);
+    // The settings menu's panel: its own small swapchain (the panel texture holds gamma-encoded RGBA8, as GDI drew it).
+    ci.width = settings_ui::kWidth;
+    ci.height = settings_ui::kHeight;
+    if (XR_SUCCEEDED(pxrCreateSwapchain(g_session, &ci, &g_menu_chain))) {
+        pxrEnumerateSwapchainImages(g_menu_chain, 0, &n, nullptr);
+        g_menu_images.assign(n, {XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
+        if (XR_FAILED(pxrEnumerateSwapchainImages(g_menu_chain, n, &n, reinterpret_cast<XrSwapchainImageBaseHeader*>(g_menu_images.data()))))
+            g_menu_images.clear();
+    }
+    if (g_menu_images.empty()) LOG_W("xr", "no swapchain for the settings menu - it can't be shown in the headset");
     return true;
 }
 
@@ -360,7 +373,7 @@ void frame(IDXGISwapChain* chain) {
     XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
     XrCompositionLayerProjectionView views[2] = {{XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW},
                                                  {XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW}};
-    const XrCompositionLayerBaseHeader* layers[1] = {reinterpret_cast<XrCompositionLayerBaseHeader*>(&layer)};
+    const XrCompositionLayerBaseHeader* layers[2] = {reinterpret_cast<XrCompositionLayerBaseHeader*>(&layer), nullptr};
     uint32_t layer_count = 0;
     // 8B: menus and the map on one flat screen, fixed in the room where you looked when it opened.
     XrCompositionLayerQuad quad{XR_TYPE_COMPOSITION_LAYER_QUAD};
@@ -376,6 +389,41 @@ void frame(IDXGISwapChain* chain) {
         screen_pose.position = {loc.pose.position.x + f.x * d, loc.pose.position.y, loc.pose.position.z + f.z * d};
     }
     screen_was = screen;
+    // Stage 9: the settings menu, 1 m ahead and a little low, fixed in the room where you looked when it opened.
+    XrCompositionLayerQuad menu{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    static bool menu_was = false;
+    static XrPosef menu_pose{{0, 0, 0, 1}, {0, 0, -1}};
+    const bool menu_open = settings_ui::is_open() && !g_menu_images.empty();
+    if (menu_open && !menu_was && pose_ok) {
+        vm::Vec3 f = to_quat(loc.pose.orientation).rotate({0, 0, -1});
+        f.y = 0;
+        f = f.length() > 0.1f ? f.normalized() : vm::Vec3{0, 0, -1};
+        menu_pose.orientation = to_xr(vm::Quat::axis_angle({0, 1, 0}, std::atan2(-f.x, -f.z)));
+        menu_pose.position = {loc.pose.position.x + f.x * 1.0f, loc.pose.position.y - 0.12f, loc.pose.position.z + f.z * 1.0f};
+    }
+    menu_was = menu_open;
+    bool menu_shown = false;
+    if (menu_open) {
+        ID3D11Texture2D* t = settings_ui::texture(g_device, g_ctx);
+        uint32_t idx = 0;
+        XrSwapchainImageAcquireInfo ai{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+        XrSwapchainImageWaitInfo wsi{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
+        wsi.timeout = XR_INFINITE_DURATION;
+        if (t && XR_SUCCEEDED(pxrAcquireSwapchainImage(g_menu_chain, &ai, &idx))) {
+            if (XR_SUCCEEDED(pxrWaitSwapchainImage(g_menu_chain, &wsi))) {
+                g_ctx->CopySubresourceRegion(g_menu_images[idx].texture, 0, 0, 0, 0, t, 0, nullptr);
+                menu_shown = true;
+            }
+            XrSwapchainImageReleaseInfo ri{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+            pxrReleaseSwapchainImage(g_menu_chain, &ri);
+        }
+        menu.space = g_local;
+        menu.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+        menu.subImage.swapchain = g_menu_chain;
+        menu.subImage.imageRect = {{0, 0}, {settings_ui::kWidth, settings_ui::kHeight}};
+        menu.pose = menu_pose;
+        menu.size = {0.75f, 0.75f * float(settings_ui::kHeight) / float(settings_ui::kWidth)};
+    }
 
     if (fs.shouldRender) {
         // Which eye this frame was rendered for (-1 = mono) and with which pose.
@@ -452,6 +500,8 @@ void frame(IDXGISwapChain* chain) {
             layer_count = 1;
         }
     }
+
+    if (menu_shown) layers[layer_count++] = reinterpret_cast<XrCompositionLayerBaseHeader*>(&menu);  // over the game
 
     XrFrameEndInfo ei{XR_TYPE_FRAME_END_INFO};
     ei.displayTime = fs.predictedDisplayTime;
