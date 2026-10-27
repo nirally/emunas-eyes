@@ -4,7 +4,7 @@ Mode: agentic
 Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
-## Status — Mirror's Edge Catalyst VR — 2026-10-26
+## Status — Mirror's Edge Catalyst VR — 2026-10-27
 Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
@@ -38,8 +38,8 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
 ⬜ Not started: HUD/menus/cutscenes (Stage 8), settings menu (9), packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-8k (the hands after the train cutscene, for the log)
-🐞 Open bugs: BUG-031 sev-3 (hands move towards the headset, flickering, after the train cutscene - measuring); BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
+❓ Need from you: PLAYTEST-8m (sound with your head, button prompts, a hand on a wall indoors)
+🐞 Open bugs: BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
 ⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
 ⚠ 8B menus on a big flat screen (D-050): PLAYTEST-8b - showed a still image (BUG-029, fixed); hands at rest "much better" (BUG-027 closed); kicks glitch (BUG-028, fixed); comfort 5
 ✅ 8C menu screen live, Options/map/mission select usable (BUG-029 closed); kicks fine (BUG-028 closed); health bar whole and readable (D-051); comfort 5 (PLAYTEST-8c)
@@ -55,7 +55,10 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 🔧 D-056: while shaking, the view's heading and look pitch are smoothed too; desktop fake shake on all axes -91%
 ✅ PLAYTEST-8j: the train no longer shakes (BUG-030 closed, D-056), comfort 5; the hands still glitch after the cutscene
 🔧 BUG-031 recon: a 4 s trace of her shoulders and hands when the arms come back after the cutscene, and an automatic headset screenshot when most arms are clamped
-▶ Next: You: PLAYTEST-8k (~3 min). Me after it: fix BUG-031 from the trace and screenshot
+✅ PLAYTEST-8l: hands no longer glitch on the Shard roof (BUG-031 closed, D-057: the wall probes hit her own hand where her body mark is lost), comfort 5
+🔧 8F recon: desktop loopback recording (tools/audio_balance) can't tell yet - the roof's sound is ambient, no direction to turn
+🔧 8G recon: prompts already match by letter (A/B/X/Y = the Touch buttons); only LB/RB = grips, LT/RT = triggers differ
+▶ Next: You: PLAYTEST-8m (~5 min). Me after it: 8F (sound on your head) if it doesn't turn; 8G only if the LB/RT prompts bother you; then the cutscene big-screen setting (Q-803)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

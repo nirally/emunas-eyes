@@ -74,3 +74,5 @@ add_executable(bone_solve tools/bone_solve.cpp)  # Stage 7 recon (skeleton from 
 target_include_directories(bone_solve PRIVATE src)
 add_executable(finger_recon tools/finger_recon.cpp)  # Stage 7D recon (finger chains and the game's finger curl)
 target_include_directories(finger_recon PRIVATE src)
+add_executable(audio_balance tools/audio_balance.cpp)  # Stage 8F recon (left/right loudness of what the PC plays)
+target_link_libraries(audio_balance PRIVATE ole32)
