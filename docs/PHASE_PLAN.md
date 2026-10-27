@@ -67,7 +67,7 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 ⚠ PLAYTEST-8p: legs still glitch (the carry was not it), hands follow, comfort 5
 🔧 D-061 (BUG-034): 10 leg bones had been put on the forearms (merged skeleton includes her legs); arm bones must now keep their segment's joints; desktop: her hips no longer pulled into view
 ✅ PLAYTEST-8q: in her jacket the hands and sleeves follow and the legs are steady (BUG-033, BUG-034 closed; D-059/D-061), comfort 5
-▶ Next: Me: the Stage 8 gate (UI inventory, Runner Vision check; cutscene subtitles looked small in the 8q shot). Parked: her fingers in the jacket (40-byte hand mesh)
+▶ Next: Me: the Stage 8 gate, started 2026-10-27 - still to do: the UI inventory into config/manifest.json (ui is empty), the Runner Vision depth check (stereo pair of red highlights; desktop recon stopped at an "EA servers" notice with the window minimized), a check of subtitle size, then PLAYTEST-8 gate. Parked: her fingers in the jacket (40-byte hand mesh)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
