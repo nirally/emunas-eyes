@@ -73,7 +73,8 @@ Mode: agentic | Gate: hard | Stage 10 of 10 — Sweep and package
 ✅ 9B profiles (D-065): 4 slots on a Profiles page, save/load ask twice; PLAYTEST-9c: saved, loaded back, eye height live, section reset used, comfort 5
 ✅ Stage 9 passed (D-066): every setting in the menu, live, saved, resets, profiles, both-sticks binding; no pause-menu entry (not hookable)
 🔧 10A handedness audit: only pad_map / xr_input's move-turn indices depend on it (unit-tested mirror); punches, Disruptor, MAG Rope, hand walls, arm IK and the menu chord are per hand or both hands - no fixes needed, headset to confirm
-▶ Next: You: PLAYTEST-10a. Me meanwhile: 10E dist/ (install/uninstall that find the game, README as Runner's Sight). Then PLAYTEST-10c, the opening hour (BUG-035 in the jacket mission, BUG-032 F5). Parked: her fingers in the jacket (40-byte hand mesh)
+🔧 10E package (D-068): tools/package.ps1 -> out/RunnersSight-0.1.0.zip (our 4 files + install/uninstall + README + licences); round trip on this PC: uninstall -KeepSettings put the game's own DLL back (same hash), install found the game through Steam, settings and profiles kept
+▶ Next: You: PLAYTEST-10a. Then PLAYTEST-10c, the opening hour (BUG-035 in the jacket mission, BUG-032 F5). Parked: her fingers in the jacket (40-byte hand mesh)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
