@@ -5,7 +5,7 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-27
-Mode: agentic | Gate: hard | Stage 9 of 10 — In-VR settings menu
+Mode: agentic | Gate: hard | Stage 10 of 10 — Sweep and package
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
 ✅ Stage 2 passed (D-025): true 3D, full headset view, sharp at 2880x1620 (DSR), eyes in sync, anti-aliasing per eye, effects correct in both eyes; size/depth 5/5, comfort 5
@@ -38,7 +38,7 @@ Mode: agentic | Gate: hard | Stage 9 of 10 — In-VR settings menu
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
 ⬜ Not started: packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-9c (profiles, and the eye-height check 9b missed, ~5 min)
+❓ Need from you: nothing yet - Stage 10 starts with a plan (opening hour, left-handed, seated, packaging)
 🐞 Open bugs: BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
 ⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
 ⚠ 8B menus on a big flat screen (D-050): PLAYTEST-8b - showed a still image (BUG-029, fixed); hands at rest "much better" (BUG-027 closed); kicks glitch (BUG-028, fixed); comfort 5
@@ -70,8 +70,9 @@ Mode: agentic | Gate: hard | Stage 9 of 10 — In-VR settings menu
 🔧 Stage 8 gate: UI inventory done (15 elements, config/manifest.json); left for the headset: Runner Vision depth, objective/enemy markers (pulled in with the HUD, may sit off their targets), subtitle size. Seen on the desktop: the gridLink AR overlay is pulled into the middle of the view (docs/recon/stage8/gridlink_*.png). Layout mode (move UI by hand) goes to Stage 9
 ✅ Stage 8 passed (D-062): HUD, menus, map, cutscenes, sound, prompts verified in 8a-8q; the user waived the last check (Runner Vision, markers, subtitles untested in the headset)
 ✅ 9A settings menu (D-063/D-064): both sticks held 1 s (the menu button is SteamVR's); every setting from the schema, live apply, saved, resets; PLAYTEST-9b: opens, text fine, gloves toggle, comfort 5 (eye height not actually changed - recheck in 9c)
-🔧 9B profiles (D-065): 4 slots on a Profiles page, save/load ask twice; desktop: saved, changed, loaded back, live-applied
-▶ Next: You: PLAYTEST-9c. Me after it: the Stage 9 gate. Parked: her fingers in the jacket (40-byte hand mesh)
+✅ 9B profiles (D-065): 4 slots on a Profiles page, save/load ask twice; PLAYTEST-9c: saved, loaded back, eye height live, section reset used, comfort 5
+✅ Stage 9 passed (D-066): every setting in the menu, live, saved, resets, profiles, both-sticks binding; no pause-menu entry (not hookable)
+▶ Next: Me: Stage 10 brief and plan. BUG-035's outfit re-learn gets checked in the opening-hour playthrough (jacket mission). Parked: her fingers in the jacket (40-byte hand mesh)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -284,7 +285,7 @@ Hypotheses: H1 GDI draws the menu into a 1024x1024 texture (only when it changes
 Plan: core/settings_menu.h (pure: items from the schema, navigation, changes, reset; unit tests) -> ui/menu_panel (GDI -> texture -> quad layer, fixed in the room ~1 m ahead) -> input: hold the left menu button 1 s to open/close, sticks/A/B to use it, the game gets a neutral pad -> changes queued to the main thread -> set_user_value. Then profiles (named copies of config.json).
 Verify: desktop (diagnostics.menu_flat draws the panel into the flat frame), PLAYTEST-9a.
 Risk: the injected "VR" entry in the game's pause menu (Frostbite UI, one shader) - likely not doable; the dedicated binding is the door.
-- [ ] All schema entries in menu; live apply; profiles; reset; binding + injected pause-menu entry
+- [x] All schema entries in menu; live apply; profiles; reset; binding (both sticks, D-064); injected pause-menu entry not doable (D-063)
 
 ### Stage 10 — Sweep and package (M)
 - [ ] Opening hour end to end, left-handed and seated pass, simulator regression
