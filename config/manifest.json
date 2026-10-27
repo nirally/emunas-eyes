@@ -1,13 +1,182 @@
 {
-  "game": { "name": "Mirror's Edge Catalyst", "version": "1.0.3.47248", "engine": "Frostbite 3" },
-  "skeleton": { "head": "", "hand_l": "", "hand_r": "", "hips": "", "spine": [] },
+  "game": {
+    "name": "Mirror's Edge Catalyst",
+    "version": "1.0.3.47248",
+    "engine": "Frostbite 3"
+  },
+  "skeleton": {
+    "head": "",
+    "hand_l": "",
+    "hand_r": "",
+    "hips": "",
+    "spine": []
+  },
   "weapons": [],
   "gadgets": [
-    { "id": "mag_rope", "class": "ability", "aim": "hand" },
-    { "id": "disruptor", "class": "ability", "aim": "hand" }
+    {
+      "id": "mag_rope",
+      "class": "ability",
+      "aim": "hand"
+    },
+    {
+      "id": "disruptor",
+      "class": "ability",
+      "aim": "hand"
+    }
   ],
   "holsters": {},
   "interactables": [],
   "vehicles": [],
-  "ui": []
+  "ui": [
+    {
+      "id": "health_focus_bar",
+      "shows": "health and focus bar with icon and count",
+      "visible": "gameplay, always",
+      "kind": "sprite+text",
+      "type": "status",
+      "anchor": "head",
+      "treatment": "bottom-left corner moved to the bottom middle (ui.hud_centre/hud_scale/hud_height, D-051); wrist not wanted (Q-804)",
+      "status": "verified PLAYTEST-8c"
+    },
+    {
+      "id": "button_prompts",
+      "shows": "\"press X\" prompts (Xbox letters)",
+      "visible": "gameplay, near actions",
+      "kind": "text+glyph",
+      "type": "transient",
+      "anchor": "head",
+      "treatment": "pulled in with the HUD (ui.scale 0.4, D-049); letters match the Touch buttons, LB/RB/LT/RT = grips/triggers (8G)",
+      "status": "verified PLAYTEST-8a/8m"
+    },
+    {
+      "id": "ksec_alert",
+      "shows": "\"KSEC Responding\" window and other top-right alerts",
+      "visible": "when KSEC chases you",
+      "kind": "sprite+text",
+      "type": "transient",
+      "anchor": "head",
+      "treatment": "top-right corner moved in (ui.alert_*, D-052)",
+      "status": "verified PLAYTEST-8d"
+    },
+    {
+      "id": "notifications",
+      "shows": "notification toasts (e.g. \"low on funds\") in the top-right",
+      "visible": "events",
+      "kind": "sprite+text",
+      "type": "transient",
+      "anchor": "head",
+      "treatment": "same as ksec_alert (top-right corner)",
+      "status": "desktop only (gridLink scene, 2026-10-27)"
+    },
+    {
+      "id": "subtitles",
+      "shows": "dialogue subtitles",
+      "visible": "dialogue and cutscenes",
+      "kind": "text",
+      "type": "transient",
+      "anchor": "head",
+      "treatment": "pulled in with the HUD (ui.scale 0.4); small in the headset shot of PLAYTEST-8q",
+      "status": "to check: PLAYTEST-8r"
+    },
+    {
+      "id": "objective_marker",
+      "shows": "objective / waypoint marker",
+      "visible": "gameplay with an objective",
+      "kind": "sprite+text",
+      "type": "spatial",
+      "anchor": "world (projected by the game)",
+      "treatment": "a UI draw at the projected world position, pulled in with the HUD (ui.scale 0.4) - may sit nearer the centre than its target (STAGE8-RECON)",
+      "status": "to check: PLAYTEST-8r"
+    },
+    {
+      "id": "runner_vision",
+      "shows": "red highlights on the route and the ghost runner",
+      "visible": "gameplay (game option)",
+      "kind": "3D",
+      "type": "spatial",
+      "anchor": "world",
+      "treatment": "drawn by the game in the 3D scene, once per eye: untouched",
+      "status": "to check: PLAYTEST-8r"
+    },
+    {
+      "id": "enemy_markers",
+      "shows": "enemy stamina bars and position reticle",
+      "visible": "combat (game options)",
+      "kind": "sprite",
+      "type": "spatial",
+      "anchor": "world (projected by the game)",
+      "treatment": "UI draws, pulled in with the HUD like the objective marker",
+      "status": "to check: PLAYTEST-8r"
+    },
+    {
+      "id": "center_cursor",
+      "shows": "centre cursor dot",
+      "visible": "gameplay (game option)",
+      "kind": "sprite",
+      "type": "reticle",
+      "anchor": "head",
+      "treatment": "pulled in with the HUD; stays at the view centre",
+      "status": "not tested"
+    },
+    {
+      "id": "gridlink_overlay",
+      "shows": "full-screen AR overlay while Faith gets her gridLink (corner panels, ticker, notification)",
+      "visible": "first mission, scripted walk",
+      "kind": "sprite+text",
+      "type": "transient",
+      "anchor": "head",
+      "treatment": "pulled in with the HUD; its bottom-left panel moves to the bottom middle and its top-right panel moves in like the alerts (docs/recon/stage8/gridlink_*.png)",
+      "status": "seen in PLAYTEST-8q session, nothing reported"
+    },
+    {
+      "id": "pause_menu",
+      "shows": "pause, options, upgrades",
+      "visible": "paused",
+      "kind": "sprite+text",
+      "type": "menu",
+      "anchor": "screen",
+      "treatment": "big flat screen 2.6 m at 2 m, fixed in the room (ui.menu_screen, D-050)",
+      "status": "verified PLAYTEST-8c"
+    },
+    {
+      "id": "map",
+      "shows": "the big map and mission select",
+      "visible": "paused (Tab / hold left stick)",
+      "kind": "sprite+text",
+      "type": "menu",
+      "anchor": "screen",
+      "treatment": "big flat screen, the game's own camera so icons line up (D-050)",
+      "status": "verified PLAYTEST-8c"
+    },
+    {
+      "id": "loading",
+      "shows": "loading screens",
+      "visible": "loading",
+      "kind": "sprite+video",
+      "type": "screen",
+      "anchor": "screen",
+      "treatment": "big flat screen (a loading screen counts as paused, D-058)",
+      "status": "verified PLAYTEST-8c..8q"
+    },
+    {
+      "id": "cutscenes",
+      "shows": "in-engine cutscenes",
+      "visible": "story",
+      "kind": "3D",
+      "type": "screen",
+      "anchor": "world",
+      "treatment": "in 3D around you, head free (user choice, Q-803); ui.cutscene_screen puts them on the big screen (D-058)",
+      "status": "verified PLAYTEST-8e/8n"
+    },
+    {
+      "id": "ambient_effects",
+      "shows": "low-health desaturation, hit flashes, speed blur",
+      "visible": "gameplay",
+      "kind": "post-process",
+      "type": "ambient",
+      "anchor": "world",
+      "treatment": "the game's post-process, rendered per eye",
+      "status": "no complaints in any playtest"
+    }
+  ]
 }
