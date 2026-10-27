@@ -38,7 +38,7 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
 ⬜ Not started: HUD/menus/cutscenes (Stage 8), settings menu (9), packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-8m (sound with your head, button prompts, a hand on a wall indoors)
+❓ Need from you: PLAYTEST-8n (one cutscene with ui.cutscene_screen on)
 🐞 Open bugs: BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
 ⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
 ⚠ 8B menus on a big flat screen (D-050): PLAYTEST-8b - showed a still image (BUG-029, fixed); hands at rest "much better" (BUG-027 closed); kicks glitch (BUG-028, fixed); comfort 5
@@ -58,7 +58,9 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 ✅ PLAYTEST-8l: hands no longer glitch on the Shard roof (BUG-031 closed, D-057: the wall probes hit her own hand where her body mark is lost), comfort 5
 🔧 8F recon: desktop loopback recording (tools/audio_balance) can't tell yet - the roof's sound is ambient, no direction to turn
 🔧 8G recon: prompts already match by letter (A/B/X/Y = the Touch buttons); only LB/RB = grips, LT/RT = triggers differ
-▶ Next: You: PLAYTEST-8m (~5 min). Me after it: 8F (sound on your head) if it doesn't turn; 8G only if the LB/RT prompts bother you; then the cutscene big-screen setting (Q-803)
+✅ PLAYTEST-8m: sound turns with your head (8F: nothing to do), prompts fine (8G: nothing to do), comfort 5; walls were off all session (no body mark in The Shard)
+🔧 D-058: cutscenes on the big screen as a setting (ui.cutscene_screen, off by default; on for PLAYTEST-8n): no health bar for 1 s = cutscene; desktop: no false switch
+▶ Next: You: PLAYTEST-8n (the next cutscene you reach). Me after it: Stage 8 gate (UI inventory, Runner Vision check)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

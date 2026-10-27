@@ -20,6 +20,11 @@ void set_hud(bool centre, float scale, float y);  // ui.hud_centre, ui.hud_scale
 // in the top-right corner go in towards the middle at their own size.
 void set_alert(bool on, float scale, float x, float y);  // ui.alert_move, ui.alert_scale, ui.alert_x, ui.alert_y
 
+// 8E: seconds since the HUD's health bar was last drawn (3+ frames in a row); 0 before it was ever seen this session,
+// so a failed lookup can't send the game to the big screen. Watched while ui.cutscene_screen is on, also while the
+// big screen shows (the UI is full size there, untouched), so its return ends a cutscene. Render thread.
+float hud_absent_seconds();
+
 // From ctx_hooks (render thread).
 void on_present(IDXGISwapChain* chain);
 void on_set_targets(ID3D11DeviceContext* ctx, unsigned count, ID3D11RenderTargetView* const* rtvs);

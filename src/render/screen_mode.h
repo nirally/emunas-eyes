@@ -8,6 +8,12 @@ namespace mecvr::screen_mode {
 // steps aside (the game's own flat camera and field of view, so its icons line up again), the UI is drawn full
 // size, and the headset shows one quad layer, fixed in the room where you looked when it opened.
 void set_enabled(bool on);         // ui.menu_screen
+// 8E (Q-803: "keep it in 3D but add a setting to make it a big virtual screen"): cutscenes on the screen too. A
+// cutscene is the HUD gone for 1 s while the game runs - the health bar is drawn in every gameplay frame, and in
+// PLAYTEST-8e..8j the only long gaps were the train cutscene (the cutscene camera can't be told from the gameplay
+// one at the camera site). Loading screens count as well.
+void set_cutscenes(bool on);       // ui.cutscene_screen
+bool cutscenes();
 void set_size(float width_m, float distance_m);  // ui.screen_width, ui.screen_distance
 void set_flat(bool on);            // diagnostics.screen_flat: also without a headset (desktop tests; no quad layer)
 

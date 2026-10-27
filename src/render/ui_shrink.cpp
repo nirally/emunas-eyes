@@ -86,6 +86,11 @@ Slot* slot(ID3D11DeviceContext* ctx, bool add) {
 bool shown() { return g_back && (xr_session::running() || g_flat.load()) && !screen_mode::active(); }
 bool moving() { return g_hud_centre.load() || g_alert_on.load(); }  // some corner moves on its own: the vertex shadow is needed
 bool active() { return (g_scale.load() < 0.999f || moving()) && shown(); }
+// 8E: the health bar's draws are looked for (not moved) while cutscenes may go to the big screen.
+bool watching() { return screen_mode::cutscenes() && g_back && (xr_session::running() || g_flat.load()); }
+bool g_hud_now = false;          // a health-bar draw this frame
+unsigned g_hud_run = 0;          // frames in a row with one
+ULONGLONG g_hud_seen_ms = 0;     // when the bar was last there (3+ frames in a row)
 
 void grow(float* box, float fx, float fy) {
     if (fx < box[0]) box[0] = fx;
@@ -141,7 +146,7 @@ bool first_vertex(ID3D11DeviceContext* ctx, int base_vertex, float* fx, float* f
 }  // namespace
 
 void* on_vb_map(ID3D11Resource* res, void* mapped) {
-    if (!mapped || !moving() || !shown()) {
+    if (!mapped || !((moving() && shown()) || watching())) {
         if (res == g_vb) g_vb = nullptr;
         return mapped;
     }
@@ -188,6 +193,9 @@ void on_present(IDXGISwapChain* chain) {
         t->Release();
     }
     ++g_frames;
+    g_hud_run = g_hud_now ? g_hud_run + 1 : 0;
+    if (g_hud_run >= 3) g_hud_seen_ms = GetTickCount64();
+    g_hud_now = false;
     static ULONGLONG last = 0;
     if (GetTickCount64() - last >= 10000) {
         last = GetTickCount64();
@@ -216,14 +224,23 @@ void on_set_targets(ID3D11DeviceContext* ctx, unsigned count, ID3D11RenderTarget
     if (Slot* s = slot(ctx, back)) s->on = back;
 }
 
+float hud_absent_seconds() { return g_hud_seen_ms ? (GetTickCount64() - g_hud_seen_ms) / 1000.f : 0.f; }
+
 bool before_draw(ID3D11DeviceContext* ctx, int base_vertex) {
-    if (!active()) return false;
+    const bool on = active();
+    if (!on && !watching()) return false;
     const Slot* s = slot(ctx, false);
     if (!s || !s->on) return false;
+    if (!on) {  // the big screen shows: only look for the health bar
+        float fx, fy;
+        if (first_vertex(ctx, base_vertex, &fx, &fy) && fx < kCornerX && fy < kCornerY) g_hud_now = true;
+        return false;
+    }
     // Everything scales by ui.scale about the centre; the health bar's corner goes to the bottom middle on its own,
     // the top-right alerts in towards the middle.
     float k = g_scale.load(), ox = 0.f, oy = 0.f, fx = 0.f, fy = 0.f;
-    if (moving() && first_vertex(ctx, base_vertex, &fx, &fy)) {
+    if ((moving() || watching()) && first_vertex(ctx, base_vertex, &fx, &fy)) {
+        if (fx < kCornerX && fy < kCornerY) g_hud_now = true;
         if (g_hud_centre.load() && fx < kCornerX && fy < kCornerY) {
             k = g_hud_scale.load();
             ox = -k * kAnchorX;
