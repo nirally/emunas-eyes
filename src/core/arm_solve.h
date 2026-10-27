@@ -383,4 +383,37 @@ inline int adopt_new_bones(Result& cur, const Result& next, float agree = 0.9f, 
     return taken;
 }
 
+// PLAYTEST-8n (her jacket, first mission: "not having hands that follow the controllers"): there her arms are in no
+// one piece - 5 pieces of 3, 51, 26, 42 and 18 bones, hands in the 51, sleeves in the 26 and 42, forearm bones in all
+// five - and each piece carries its own copies of the skeleton's matrices. One skeleton from them: a piece's bone that
+// equals an earlier piece's bone in every frame given is that bone (desktop recording: 140 rows -> 95 bones, and the
+// solve on them found both arms as without the jacket, upper 0.283 m, forearm 0.245 m).
+// frames[f][p] = piece p's bones in frame f (bones[p] of them).
+struct Merge {
+    std::vector<std::pair<int, int>> src;  // per merged bone: (piece, bone) it is read from
+    std::vector<std::vector<int>> of;      // per piece, per bone: its merged bone
+};
+inline Merge merge_pieces(const std::vector<std::vector<const Bone*>>& frames, const std::vector<int>& bones) {
+    Merge m;
+    m.of.resize(bones.size());
+    auto same = [&](int p, int b, int q, int c) {
+        for (const auto& f : frames)
+            for (int k = 0; k < 12; ++k)
+                if (f[p][b].m[k] != f[q][c].m[k]) return false;
+        return true;
+    };
+    for (int p = 0; p < int(bones.size()); ++p)
+        for (int b = 0; b < bones[p]; ++b) {
+            int hit = -1;
+            for (int u = 0; u < int(m.src.size()) && hit < 0; ++u)
+                if (same(p, b, m.src[u].first, m.src[u].second)) hit = u;
+            if (hit < 0) {
+                hit = int(m.src.size());
+                m.src.push_back({p, b});
+            }
+            m.of[p].push_back(hit);
+        }
+    return m;
+}
+
 }  // namespace mecvr::arm_solve

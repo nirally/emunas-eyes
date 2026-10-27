@@ -38,8 +38,8 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
 ⬜ Not started: HUD/menus/cutscenes (Stage 8), settings menu (9), packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-8n (one cutscene with ui.cutscene_screen on)
-🐞 Open bugs: BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
+❓ Need from you: PLAYTEST-8o (Faith's hands in her jacket, first mission)
+🐞 Open bugs: BUG-033 sev-2 (hands don't follow in her jacket - fixed, to confirm); BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
 ⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
 ⚠ 8B menus on a big flat screen (D-050): PLAYTEST-8b - showed a still image (BUG-029, fixed); hands at rest "much better" (BUG-027 closed); kicks glitch (BUG-028, fixed); comfort 5
 ✅ 8C menu screen live, Options/map/mission select usable (BUG-029 closed); kicks fine (BUG-028 closed); health bar whole and readable (D-051); comfort 5 (PLAYTEST-8c)
@@ -60,7 +60,9 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 🔧 8G recon: prompts already match by letter (A/B/X/Y = the Touch buttons); only LB/RB = grips, LT/RT = triggers differ
 ✅ PLAYTEST-8m: sound turns with your head (8F: nothing to do), prompts fine (8G: nothing to do), comfort 5; walls were off all session (no body mark in The Shard)
 🔧 D-058: cutscenes on the big screen as a setting (ui.cutscene_screen, off by default; on for PLAYTEST-8n): no health bar for 1 s = cutscene; desktop: no false switch
-▶ Next: You: PLAYTEST-8n (the next cutscene you reach). Me after it: Stage 8 gate (UI inventory, Runner Vision check)
+✅ PLAYTEST-8n: cutscenes go to the big screen and back with ui.cutscene_screen, no false switches; user prefers 3D (setting stays default off); comfort 5
+🔧 D-059 (BUG-033): in her jacket her arms are spread over 5 pieces - learned and posed as one merged skeleton; desktop: arms posed every frame, sleeves follow; fingers keep the game's pose in this outfit
+▶ Next: You: PLAYTEST-8o (first mission, jacket). Me after it: her fingers in the jacket (40-byte hand mesh), then the Stage 8 gate (UI inventory, Runner Vision check)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
