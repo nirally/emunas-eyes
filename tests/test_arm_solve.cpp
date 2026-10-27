@@ -233,3 +233,20 @@ TEST(arm_solve_merges_pieces_that_copy_bones) {
     }
     CHECK(l.solve().ok);
 }
+
+TEST(arm_solve_leaves_off_bones_that_do_not_keep_the_arm_joints) {
+    // PLAYTEST-8p: over all her pieces her hips and legs come in too; a joint of theirs can lie beside the arm in bind
+    // space (here a hem bone hanging from the chest, pivot beside the right upper arm) without moving with it.
+    Rig rig;
+    const int hem = rig.add(0, {0.38f, 1.2f, 0}, 1.0f);
+    arm_solve::Learner l;
+    l.reset(int(rig.bones.size()));
+    for (int f = 0; f < 120; ++f) l.add(frame(rig).data());
+    const auto r = l.solve();
+    CHECK(r.ok);
+    CHECK(r.side[hem] == -1 && r.segment[hem] == arm_solve::kNone);
+    int wrong = 0;  // the arms' own bones are all still on them
+    for (size_t b = 0; b < rig.bones.size(); ++b)
+        if (rig.bones[b].seg >= 0 && r.segment[b] != rig.bones[b].seg) ++wrong;
+    CHECK(wrong == 0);
+}

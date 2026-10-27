@@ -38,7 +38,7 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
 ⬜ Not started: HUD/menus/cutscenes (Stage 8), settings menu (9), packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-8p (her legs in the jacket, first mission)
+❓ Need from you: PLAYTEST-8q (her legs in the jacket, again)
 🐞 Open bugs: BUG-034 sev-2 (legs glitch in her jacket - fixed, to confirm); BUG-033 sev-2 (hands don't follow in her jacket - fixed, to confirm); BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
 ⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
 ⚠ 8B menus on a big flat screen (D-050): PLAYTEST-8b - showed a still image (BUG-029, fixed); hands at rest "much better" (BUG-027 closed); kicks glitch (BUG-028, fixed); comfort 5
@@ -64,7 +64,9 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 🔧 D-059 (BUG-033): in her jacket her arms are spread over 5 pieces - learned and posed as one merged skeleton; desktop: arms posed every frame, sleeves follow; fingers keep the game's pose in this outfit
 ⚠ PLAYTEST-8o: hands and sleeves follow in the jacket; the legs glitch "like crazy" (BUG-034); fingers in the jacket: later; comfort 5
 🔧 D-060 (BUG-034): no "carry" of nearby rows when the arms are learned over all her pieces (it caught the hem in some frames); desktop: 0 rows carried, arms as before
-▶ Next: You: PLAYTEST-8p (first mission, jacket). Me after it: the Stage 8 gate (UI inventory, Runner Vision check); her fingers in the jacket parked for later (40-byte hand mesh)
+⚠ PLAYTEST-8p: legs still glitch (the carry was not it), hands follow, comfort 5
+🔧 D-061 (BUG-034): 10 leg bones had been put on the forearms (merged skeleton includes her legs); arm bones must now keep their segment's joints; desktop: her hips no longer pulled into view
+▶ Next: You: PLAYTEST-8q (first mission, jacket). Me after it: the Stage 8 gate (UI inventory, Runner Vision check); her fingers in the jacket parked for later (40-byte hand mesh)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

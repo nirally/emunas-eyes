@@ -320,6 +320,25 @@ inline Result Learner::solve() const {
                 for (int jk : of_bone[b]) only_shoulder &= (joints[jk].x - arm.shoulder).length() < 0.03f;
                 if (only_shoulder && apart(b, main_upper, arm.elbow) > 0.02) not_arm[b] = true;
             }
+        // PLAYTEST-8p (her jacket, the arms learned over all her pieces: legs included, "the legs is gliching like
+        // crazy"): a hip, leg or hem joint can lie beside the arm in bind space, so leg bones were put on the forearm and
+        // swung with it (desktop recording: 10 of them, keeping the elbow and wrist 24-67 cm off). An upper arm or
+        // forearm bone must keep one of its segment's ends within kRideM of where the segment's own bone does (her
+        // sleeves' cloth bones: 5 cm).
+        constexpr double kRideM = 0.10;
+        int main_fore = -1;  // the forearm itself: touches the elbow and the wrist
+        for (int x : joints[c.e].bones)
+            for (int y : joints[c.w].bones)
+                if (x == y && res.side[x] == a && res.segment[x] == kFore) main_fore = x;
+        for (int b = 0; b < n_; ++b) {
+            if (res.side[b] != a || b == main_upper || b == main_fore) continue;
+            if (res.segment[b] == kUpper && main_upper >= 0 &&
+                std::fmin(apart(b, main_upper, arm.shoulder), apart(b, main_upper, arm.elbow)) > kRideM)
+                not_arm[b] = true;
+            if (res.segment[b] == kFore && main_fore >= 0 &&
+                std::fmin(apart(b, main_fore, arm.elbow), apart(b, main_fore, arm.wrist)) > kRideM)
+                not_arm[b] = true;
+        }
     }
     for (int b = 0; b < n_; ++b)
         if (not_arm[b]) { res.side[b] = -1; res.segment[b] = kNone; }
