@@ -5,7 +5,7 @@ Gate: hard for Stages 0–4, revisit after Stage 4
 Target: MirrorsEdgeCatalyst.exe 1.0.3.47248 (Steam build 10351434)
 
 ## Status — Mirror's Edge Catalyst VR — 2026-10-27
-Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
+Mode: agentic | Gate: hard | Stage 9 of 10 — In-VR settings menu
 
 ✅ Built and tested: Stage 0; Stage 1 (head tracking 1:1, no forced motion, feel-the-roll option, death/respawn fine, comfort excellent)
 ✅ Stage 2 passed (D-025): true 3D, full headset view, sharp at 2880x1620 (DSR), eyes in sync, anti-aliasing per eye, effects correct in both eyes; size/depth 5/5, comfort 5
@@ -36,9 +36,9 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 ✅ 7D Faith's fingers follow yours, look right, fist about right, comfort 5 (PLAYTEST-7g retry, D-046); whole-body glitch fixed (BUG-023 closed); her thumb (the game's) a little odd
 ✅ 7E Faith punches with the arm you punch with (PLAYTEST-7h: yes; true since 7B)
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
-⬜ Not started: HUD/menus/cutscenes (Stage 8), settings menu (9), packaging (10)
+⬜ Not started: settings menu (Stage 9, starting), packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-8r (Stage 8 check: Runner Vision, objective marker, subtitles; ~15 min)
+❓ Need from you: nothing right now
 🐞 Open bugs: BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
 ⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
 ⚠ 8B menus on a big flat screen (D-050): PLAYTEST-8b - showed a still image (BUG-029, fixed); hands at rest "much better" (BUG-027 closed); kicks glitch (BUG-028, fixed); comfort 5
@@ -68,7 +68,8 @@ Mode: agentic | Gate: hard | Stage 8 of 10 — HUD, UI, cutscenes, audio
 🔧 D-061 (BUG-034): 10 leg bones had been put on the forearms (merged skeleton includes her legs); arm bones must now keep their segment's joints; desktop: her hips no longer pulled into view
 ✅ PLAYTEST-8q: in her jacket the hands and sleeves follow and the legs are steady (BUG-033, BUG-034 closed; D-059/D-061), comfort 5
 🔧 Stage 8 gate: UI inventory done (15 elements, config/manifest.json); left for the headset: Runner Vision depth, objective/enemy markers (pulled in with the HUD, may sit off their targets), subtitle size. Seen on the desktop: the gridLink AR overlay is pulled into the middle of the view (docs/recon/stage8/gridlink_*.png). Layout mode (move UI by hand) goes to Stage 9
-▶ Next: You: PLAYTEST-8r (~15 min). Me after it: fix what it finds, then Stage 8 passes -> Stage 9 (in-VR settings menu). Parked: her fingers in the jacket (40-byte hand mesh)
+✅ Stage 8 passed (D-062): HUD, menus, map, cutscenes, sound, prompts verified in 8a-8q; the user waived the last check (Runner Vision, markers, subtitles untested in the headset)
+▶ Next: Me: Stage 9 recon and brief (in-VR settings menu). Parked: her fingers in the jacket (40-byte hand mesh)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -265,7 +266,7 @@ Plan: Q-801-Q-804 -> desktop recon (HUD draw and its depth now, menus/map, cutsc
 Verify: PLAYTEST-8x per sub-stage; comfort.
 Risk: one HUD shader = all-or-nothing, no per-element anchoring (wrist health) without finding each element's draws; menus may share the HUD pass.
 - [x] UI inventory in manifest; every element typed (15 elements, config/manifest.json ui, 2026-10-27)
-- [ ] ★ Runner Vision stays world-anchored; ghost runner line at correct depth (PLAYTEST-8r)
+- [~] ★ Runner Vision stays world-anchored; ghost runner line at correct depth - not headset-tested: user waived PLAYTEST-8r ("I'm fine with how it is", D-062); no playtest ever flagged it
 - [x] ★ HUD is one shader (Helix): each element is its own indexed draw, placeable by its vertices (D-049, D-051)
 - [x] Health/focus: bottom middle (user, Q-804: wrist not needed); menus and map on one big flat screen (D-050)
 - [x] ★ Cutscenes: in 3D with the head free (user, Q-803); big screen as a setting (D-058, PLAYTEST-8n)
