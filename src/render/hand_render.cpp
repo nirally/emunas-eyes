@@ -96,12 +96,20 @@ float4 ps(V i) : SV_Target {
     return float4(c, 1);
 }
 
-// Contact readback: one pixel per hand (2x1 target), the distance the hand was moved back (m).
+// Contact readback: one pixel per hand (2x1 target), the distance the hand was moved back (m); -1 when no pixel of
+// a 32x18 grid over the view is marked 0x20. Her draws can carry the mark and still lose it before this pass (the
+// Shard's glass roof, PLAYTEST-8k: her arms read 0x01 like the roof): the probes then hit her own posed hand, it
+// moved back, the next probe hit it again - the hands walked towards the headset, gave up past 30 cm and snapped
+// back, twice a second. Her arms are always in view when a hand is (forearms span ~200 px), so one grid hit is enough.
 struct P { float4 pos : SV_Position; float d : DIST; };
 P vs_contact(uint id : SV_VertexID) {
     P o;
     o.pos = float4(id == 0 ? -0.5 : 0.5, 0, 0, 1);
-    o.d = length(hand_offset(id));
+    bool marked = false;
+    [loop] for (int i = 0; i < 32 && !marked; ++i)
+        [loop] for (int j = 0; j < 18 && !marked; ++j)
+            marked = (scene_stencil.Load(int3((i + 0.5) * coll.x / 32, (j + 0.5) * coll.y / 18, 0)).g & 0x20) != 0;
+    o.d = marked ? length(hand_offset(id)) : -1;
     return o;
 }
 float ps_contact(P i) : SV_Target { return i.d; }
@@ -408,6 +416,7 @@ unsigned g_touch_frames[2] = {0, 0}, g_touch_starts[2] = {0, 0}, g_contact_frame
 float g_touch_max[2] = {0, 0};
 ULONGLONG g_touch_log = 0;
 unsigned g_presses[2] = {0, 0}, g_flicks[2] = {0, 0};
+unsigned g_unmarked_reads = 0;  // read-backs with no 0x20 in view (PLAYTEST-8k)
 bool g_pressing[2] = {false, false}, g_flicked[2] = {false, false};
 void note_contact(int h, float pushed) {
     // 5d: pressing in (over 1 cm) on something in front of you holds Interact; released when the hand comes away.
@@ -452,9 +461,11 @@ void note_contact(int h, float pushed) {
     if (h == 1) ++g_contact_frames;
     if (GetTickCount64() - g_touch_log < 10000) return;
     g_touch_log = GetTickCount64();
-    LOG_I("hands", "walls: left held back in %u of %u frames (max %.0f mm, %u touches, %u interact presses, %u flicks), right %u (max %.0f mm, %u touches, %u presses, %u flicks)",
+    LOG_I("hands", "walls: left held back in %u of %u frames (max %.0f mm, %u touches, %u interact presses, %u flicks), right %u (max %.0f mm, %u touches, %u presses, %u flicks); "
+          "off in %u frames (her body not marked in view)",
           g_touch_frames[0], g_contact_frames, g_touch_max[0] * 1000, g_touch_starts[0], g_presses[0], g_flicks[0],
-          g_touch_frames[1], g_touch_max[1] * 1000, g_touch_starts[1], g_presses[1], g_flicks[1]);
+          g_touch_frames[1], g_touch_max[1] * 1000, g_touch_starts[1], g_presses[1], g_flicks[1], g_unmarked_reads);
+    g_unmarked_reads = 0;
     g_presses[0] = g_presses[1] = g_flicks[0] = g_flicks[1] = 0;
     g_touch_frames[0] = g_touch_frames[1] = g_touch_starts[0] = g_touch_starts[1] = g_contact_frames = 0;
     g_touch_max[0] = g_touch_max[1] = 0;
@@ -630,9 +641,10 @@ void draw(ID3D11Device* dev, ID3D11DeviceContext* ctx, ID3D11Texture2D* scene_co
                     // a lone hit is most often her own body in a frame it wasn't stencil-marked (PLAYTEST-7j:
                     // "I would the arms to not have collision on the body"; 1-frame 70 mm pushes in fights).
                     static unsigned seen[2] = {0, 0};
+                    g_unmarked_reads += pushed[0] < 0;  // no 0x20 in view: walls and touch off (vs_contact)
                     for (int h = 0; h < 2; ++h) {
                         seen[h] = ((seen[h] << 1) | (pushed[h] > 0.004f ? 1u : 0u)) & 0x3Fu;
-                        g_push[h] = hands.valid[h] && __popcnt(seen[h]) >= 3 ? pushed[h] : 0.f;
+                        g_push[h] = hands.valid[h] && __popcnt(seen[h]) >= 3 ? std::fmax(0.f, pushed[h]) : 0.f;
                         note_contact(h, g_push[h]);
                     }
                 }
