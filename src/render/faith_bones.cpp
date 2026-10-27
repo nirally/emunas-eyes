@@ -611,10 +611,13 @@ int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) 
         // A piece that is mostly copies of arm bones (her glove, wrist wrap) can have bones of its own riding with
         // them (her right glove: a helper 6 mm from her hand bone, rigid with it within 3 mm over 1500 frames -
         // left in the game's pose it pulled the palm): such a row within 3 cm of a copied bone moves with it. Torso
-        // and leg pieces copy fewer than half their rows from the arms and are left alone.
+        // and leg pieces copy fewer than half their rows from the arms and are left alone. Not when her arms are learned
+        // over all her pieces (D-059): every row is then a solved bone (rigid helpers ride with their partner there),
+        // and in her jacket 13 rows of the hem came within 3 cm of her hands only in some frames (1-80 cm, desktop
+        // recording) - carried then, left the next: PLAYTEST-8o "the legs is gliching like crazy".
         int arm_hits = 0;
         for (const auto& h : hits) arm_hits += h.second->arm;
-        if (arm_hits && arm_hits * 2 >= bones) {
+        if (!g_multi && arm_hits && arm_hits * 2 >= bones) {
             for (int k = 0; k < bones; ++k) {
                 bool hit = false;
                 for (const auto& h : hits) hit |= h.first == k;
