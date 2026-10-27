@@ -143,7 +143,7 @@ void draw() {
     const int y0 = kTop + kRows * kRowH + 20;
     fill({40, y0 - 8, kWidth - 40, y0 - 6}, kDim);
     if (cur < n) text(lines[cur].text, {44, y0, kWidth - 44, kHeight - 64}, g_gdi.hint, kRow, DT_LEFT | DT_WORDBREAK);
-    text(g_menu->help(g_values) + "   Hold menu: close", {44, kHeight - 56, kWidth - 44, kHeight - 16}, g_gdi.hint, kDim,
+    text(g_menu->help(g_values) + "   Hold both sticks: close", {44, kHeight - 56, kWidth - 44, kHeight - 16}, g_gdi.hint, kDim,
          DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
     GdiFlush();
     // GDI's BGRX -> RGBA, opaque.
@@ -163,7 +163,7 @@ void init(const nlohmann::ordered_json& schema) {
         return;
     }
     auto items = settings_menu::items_from_schema(schema);
-    LOG_I("menu", "settings menu: %zu settings from the schema (hold the menu button 1 s to open)", items.size());
+    LOG_I("menu", "settings menu: %zu settings from the schema (click and hold both sticks 1 s to open)", items.size());
     g_menu = std::make_unique<settings_menu::Menu>(std::move(items));
     g_dirty = true;
 }

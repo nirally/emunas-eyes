@@ -1,6 +1,6 @@
 #pragma once
-// Stage 9: the in-VR settings menu (core/settings_menu.h for what it holds). Hold the menu button 1 s to open or
-// close it; either stick moves (up/down) and changes (left/right), A picks, B goes back. While it is open the game
+// Stage 9: the in-VR settings menu (core/settings_menu.h for what it holds). Click and hold both sticks 1 s to
+// open or close it; either stick moves (up/down) and changes (left/right), A picks, B goes back. While it is open the game
 // gets a neutral pad. Changes go to the main thread (take_changes), which writes them to config.json - applied live
 // like any other edit. The panel is drawn with GDI into a texture only when it changes; xr_session shows it as a
 // quad layer fixed in the room where you looked when it opened.

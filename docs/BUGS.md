@@ -260,3 +260,13 @@ Evidence: the BUG-020 carry (a row within 3 cm of an arm bone in a piece that is
 Fix: D-060 - no carry when her arms are learned over all her pieces. Desktop, same spot: 0 rows carried, arms posed every frame, hands and sleeves as before.
 PLAYTEST-8p: "no still same" (0 rows carried in the log - the carry was not it). Cause: the arm solve put 10 leg bones (of the 26- and 18-bone pieces) on the forearms - in bind space her hip and leg joints lie past the wrist along the forearm, and the 81-bone piece never had legs. They kept the elbow and wrist 24-67 cm off (desktop recording), and the IK swung her legs with your forearms; the user's headset shot (vrshot_20261027_200014) shows a dark mass of her hips between the hands.
 Fix 2: D-061 - an upper arm or forearm bone must keep one end of its segment within 10 cm of the segment's own bone. Desktop: 6 forearm bones per arm (as without the jacket, 10-13 before), the dark mass gone from the view, hands and sleeves as before.
+
+### BUG-035 — After aborting the first mission Faith's hands don't follow the controllers in free roam
+Status: fixed, hands fine in free roam (PLAYTEST-9b); the outfit-change re-learn itself not yet seen | Severity: 2 | Stage: 7/8 | Reported: PLAYTEST-9a ("when aborting the first mission and going back to free roam faith's hands did not show up at all on the controllers")
+Evidence: PLAYTEST-9a.log - the arms were learned in the jacket (5 pieces, 95 merged bones, 22:51:26) and posed every frame there. After the abort (~22:52:40) and ~20 s of free roam: 0 arms posed, "blocks looked for the arms weren't them" 156-448 per 5 s, "no hands" in nearly every frame, never re-learned. The outfit-change re-learn (D-059) needs 2700 frames (~30 s) in a row with the hands tracked at frame end, and was never tested.
+Fix: D-064 - also re-learn after 180 marked frames (~2 s) in a row in which none of her marked pieces has a size the arms were learned on. Not desktop-tested (needs a mission abort, which costs progress). Also fixed: the "without the N-bone arm piece" log printed 1431655762 in the jacket.
+
+### BUG-036 — The settings menu never opens: SteamVR keeps the menu button
+Status: closed (verified PLAYTEST-9b: opened with both sticks, text fine) | Severity: 2 | Stage: 9 | Reported: PLAYTEST-9a ("the menu didnt showed up")
+Evidence: PLAYTEST-9a.log - no "settings menu opened" line; session state 4 (focus lost, virtual pad OFF) at 22:51:53 and 22:51:57 = the SteamVR dashboard. Same as PLAYTEST-3a; D-063 chose the button anyway.
+Fix: D-064 - both stick clicks held 1 s open/close the menu (StickChord); the stick clicks' own tap/hold are cancelled while both are down. Unit-tested.

@@ -81,6 +81,11 @@ Layout g_layout, g_layout_next;
 bool g_multi = false;  // g_arms / g_learner are over g_layout's merged bones
 std::vector<std::vector<arm_solve::Bone>> g_layout_frames;  // g_layout_next's frames so far (each: its pieces' bones in a row)
 int g_gone_run = 0;  // frames in a row with her marked pieces and the hands tracked, but no arm block found (IK on)
+// BUG-035 (PLAYTEST-9a): after aborting the first mission her jacket was gone but g_gone_run never filled (no hands
+// tracked at frame end in most frames, ~20 s of free roam). So also: kOutfitFrames marked frames in a row where no
+// marked piece has a size the arms were learned on -> learned again.
+constexpr int kOutfitFrames = 180;  // ~2 s
+int g_outfit_run = 0;
 unsigned g_arms_at = 0;  // the last frame compute() found the arm block
 int g_left = -1;              // which solved arm is Faith's left (-1: still voting)
 bool g_hand_ok[2] = {};        // the hand turns with the controller (its bind-space frame is known)
@@ -1311,7 +1316,7 @@ void on_present() {
             for (unsigned i = 0; i < g_seen_n && len < sizeof(sizes) - 16; ++i)
                 len += snprintf(sizes + len, sizeof(sizes) - len, " %u", (g_seen_counts[i] - kHeaderRows) / 3);
             LOG_I("bones", "  frames not posed: %d no hands, %d bone block not written this frame, %d without the %u-bone arm piece (bones per piece then:%s)",
-                  g_no_hands, g_stale, g_no_arm_piece, (g_arm_count - kHeaderRows) / 3, sizes);
+                  g_no_hands, g_stale, g_no_arm_piece, g_arm_count ? (g_arm_count - kHeaderRows) / 3 : 0u, sizes);
         }
         if (g_unmarked_frames)
             LOG_I("bones", "  %d frames her body wasn't marked (ledge hang or other); IK before the arms' own draw from a piece's offset in %d frames",
@@ -1361,16 +1366,30 @@ void on_present() {
         const camera_override::Hands h = camera_override::rendered_hands();
         if (g_arms_at == g_frame) g_gone_run = 0;
         else if (!counts.empty() && (h.valid[0] || h.valid[1])) ++g_gone_run;
-        if (g_gone_run >= kRelearnFrames) {
+        if (!counts.empty()) {
+            bool known = false;
+            for (unsigned c : counts) {
+                if (g_multi)
+                    for (unsigned k : g_layout.counts) known |= c == k;
+                else
+                    known |= c == g_arm_count;
+            }
+            g_outfit_run = known ? 0 : g_outfit_run + 1;
+        }
+        if (g_gone_run >= kRelearnFrames || g_outfit_run >= kOutfitFrames) {
             char line[96] = "";
             size_t len = 0;
             for (size_t i = 0; i < counts.size() && len < sizeof(line) - 8; ++i)
                 len += snprintf(line + len, sizeof(line) - len, " %u", (counts[i] - kHeaderRows) / 3);
-            LOG_I("bones", "her arms weren't in her pieces for %d frames (bones per piece now:%s): learning them again", g_gone_run, line);
+            if (g_outfit_run >= kOutfitFrames)
+                LOG_I("bones", "her pieces are other sizes than the arms were learned on for %d frames (bones per piece now:%s): her outfit changed, learning them again",
+                      g_outfit_run, line);
+            else
+                LOG_I("bones", "her arms weren't in her pieces for %d frames (bones per piece now:%s): learning them again", g_gone_run, line);
             g_arms = {};
             g_ik_ready = false;
             g_learning = g_arms_on.load();
-            g_tries = g_refines = g_gone_run = 0;
+            g_tries = g_refines = g_gone_run = g_outfit_run = 0;
             g_learner.reset(0);
             g_multi = false;
             g_layout = g_layout_next = {};

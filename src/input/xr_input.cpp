@@ -47,7 +47,7 @@ std::atomic<bool> g_left_handed{false}, g_stick_pitch{false};
 bool g_pad_on = false;
 pad_map::TapHold g_stick_click;  // move-hand stick click: Pause / Map
 pad_map::TapHold g_turn_click{1.0, 0.15};  // turn-hand stick click: Runner's Vision / recentre (hold 1 s)
-pad_map::TapHold g_menu_button{1.0, 0.15};  // menu button: tap = Start (pause), hold 1 s = the settings menu (Stage 9)
+pad_map::StickChord g_sticks;  // both stick clicks held 1 s = the settings menu (Stage 9, PLAYTEST-9a)
 bool g_menu_held = false;
 bool g_recentred = false;
 ULONGLONG g_shot_since = 0;  // both top buttons (Y + B) held since; 0 = not held
@@ -409,19 +409,19 @@ void sync(XrTime time, bool focused) {
                 hand_pose::set_controls(h, hand[h].trigger, get_bool(kTriggerTouch, h), hand[h].grip, get_bool(kThumbTouch, h));
             }
             if (active) {
-                // Stage 9: the menu button no longer pauses at once - a tap does (on release), a 1 s hold opens or
-                // closes the settings menu.
-                const bool menu_button = hand[0].menu || hand[1].menu;
-                hand[0].menu = hand[1].menu = false;
-                constexpr uint16_t kSettings = 0x0800;  // internal, never sent to the game
-                const uint16_t mb = g_menu_button.update(menu_button, GetTickCount64() / 1000.0, pad_map::kStart, kSettings);
-                if ((mb & kSettings) && !g_menu_held) {
+                // Stage 9: both stick clicks held 1 s open or close the settings menu (the menu button first, but
+                // SteamVR keeps it for its dashboard - PLAYTEST-9a, as in 3a). Neither click's own tap or hold fires.
+                const bool menu_hold = g_sticks.update(hand[0].stick_click, hand[1].stick_click, GetTickCount64() / 1000.0);
+                if (menu_hold && !g_menu_held) {
                     settings_ui::toggle();
                     g_hello_until = GetTickCount64() + 120;
                 }
-                g_menu_held = (mb & kSettings) != 0;
+                g_menu_held = menu_hold;
+                if (g_sticks.on) {
+                    g_stick_click.cancel();
+                    g_turn_click.cancel();
+                }
                 pad_map::Pad pad = pad_map::map(hand[0], hand[1], g_left_handed.load(), g_stick_pitch.load());
-                pad.buttons |= mb & pad_map::kStart;
                 const float head_dy = head_pose::current().relative.position.y;
                 if (head_dy < g_head_dy_min) g_head_dy_min = head_dy;
                 const bool was_down = g_crouch.down;
@@ -448,12 +448,14 @@ void sync(XrTime time, bool focused) {
                 } else {
                     camera_override::set_turn_input(0);
                 }
-                pad.buttons |= g_stick_click.update(hand[move].stick_click, GetTickCount64() / 1000.0, pad_map::kStart,
-                                                    pad_map::kBack);  // tap: pause, hold: map
+                if (!g_sticks.on)
+                    pad.buttons |= g_stick_click.update(hand[move].stick_click, GetTickCount64() / 1000.0, pad_map::kStart,
+                                                        pad_map::kBack);  // tap: pause, hold: map
                 // Turn-hand stick click: tap = Runner's Vision, hold 1 s = recentre (+ a short buzz).
                 constexpr uint16_t kRecentre = 0x0400;  // internal, never sent to the game
-                const uint16_t r3 = g_turn_click.update(hand[turn].stick_click, GetTickCount64() / 1000.0,
-                                                        pad_map::kRightThumb, kRecentre);
+                const uint16_t r3 = g_sticks.on ? 0
+                                                : g_turn_click.update(hand[turn].stick_click, GetTickCount64() / 1000.0,
+                                                                      pad_map::kRightThumb, kRecentre);
                 pad.buttons |= r3 & pad_map::kRightThumb;
                 if ((r3 & kRecentre) && !g_recentred) {
                     head_pose::request_recenter();

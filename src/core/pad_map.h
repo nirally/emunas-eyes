@@ -77,6 +77,22 @@ struct TapHold {
         if (now < pulse_until) out |= tap;
         return out;
     }
+    // Forget the press: no tap on release, no hold.
+    void cancel() { was = holding = false; pulse_until = -1; }
+};
+
+// Both stick clicks together (PLAYTEST-9a: SteamVR keeps the Touch menu button, so this opens the settings menu).
+// `on` from the moment both are down until both are up: the stick clicks' own TapHolds are cancelled meanwhile.
+// update() is true once both have been held hold_s.
+struct StickChord {
+    double hold_s = 1.0;
+    bool on = false;
+    double since = 0;
+    bool update(bool a, bool b, double now) {
+        if (a && b && !on) { on = true; since = now; }
+        else if (!a && !b) on = false;
+        return on && a && b && now - since >= hold_s;
+    }
 };
 
 // Physical crouch (Stage 4): head height below standing (recentred, metres; negative = lower) holds

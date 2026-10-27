@@ -54,6 +54,33 @@ TEST(pad_map_stick_click_tap_pauses_hold_opens_map) {
     CHECK(th.update(false, 1.70, kStart, kBack) == 0);
 }
 
+TEST(pad_map_both_sticks_held_open_the_settings_menu) {
+    StickChord ch;
+    TapHold l, r{1.0, 0.15};
+    auto frame = [&](bool a, bool b, double t, uint16_t* lb, uint16_t* rb) {
+        const bool menu = ch.update(a, b, t);
+        if (ch.on) { l.cancel(); r.cancel(); *lb = *rb = 0; }
+        else { *lb = l.update(a, t, kStart, kBack); *rb = r.update(b, t, kRightThumb, 0x0400); }
+        return menu;
+    };
+    uint16_t lb, rb;
+    // left first, right 0.2 s later: no menu before 1 s of both
+    CHECK(!frame(true, false, 0.0, &lb, &rb) && lb == 0);
+    CHECK(!frame(true, true, 0.2, &lb, &rb));
+    CHECK(!frame(true, true, 1.1, &lb, &rb));
+    CHECK(frame(true, true, 1.25, &lb, &rb) && lb == 0 && rb == 0);
+    // releasing one, then the other: no pause, no Runner's Vision, no menu
+    CHECK(!frame(false, true, 1.4, &lb, &rb) && lb == 0 && rb == 0);
+    CHECK(!frame(false, false, 1.5, &lb, &rb) && lb == 0 && rb == 0);
+    CHECK(!frame(false, false, 1.6, &lb, &rb) && lb == 0 && rb == 0);
+    // a quick both-click (under 1 s) does nothing either
+    CHECK(!frame(true, true, 2.0, &lb, &rb));
+    CHECK(!frame(false, false, 2.3, &lb, &rb) && lb == 0 && rb == 0);
+    // a lone left tap still pauses afterwards
+    CHECK(!frame(true, false, 3.0, &lb, &rb));
+    CHECK(!frame(false, false, 3.1, &lb, &rb) && lb == kStart);
+}
+
 TEST(pad_map_stick_click_no_longer_maps_back_directly) {
     Hand l, r;
     l.stick_click = true;
