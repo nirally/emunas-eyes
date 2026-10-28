@@ -208,25 +208,6 @@ TEST(arm_ik_share_twist_moves_twist_into_forearm) {
     CHECK(std::fabs(arm_ik::twist_angle(r.fore.q.conjugate() * r.hand.q, u0)) < 0.01f);
 }
 
-TEST(arm_ik_fore_twisted_turns_about_the_forearm_and_keeps_the_elbow) {
-    // BUG-037: each forearm bone takes its own share of the twist; any share keeps the elbow and the wrist in place.
-    auto r = arm_ik::solve(kS, kE, kW, {0.30f, 1.30f, -0.35f}, kPole);
-    const Vec3 u0 = (kW - kE).normalized();
-    r.hand.q = (r.fore.q * Quat::axis_angle(u0, 1.2f)).normalized();
-    float t = 0;
-    CHECK(!arm_ik::hand_twist(r, kE, kW, t));
-    CHECK(std::fabs(t - 1.2f) < 0.01f);
-    for (float k : {0.f, 0.3f, 1.f}) {
-        const auto c = arm_ik::fore_twisted(r, kE, kW, t * k);
-        CHECK(near3(c.apply(kE), r.elbow));
-        CHECK(near3(c.apply(kW), r.wrist));
-        CHECK(std::fabs(arm_ik::twist_angle(r.fore.q.conjugate() * c.q, u0) - t * k) < 0.01f);
-    }
-    CHECK(std::fabs(arm_ik::bone_share(0.3f, 0.5f) - 0.3f) < 1e-6f);  // body.forearm_twist 0.5: the share as learned
-    CHECK(std::fabs(arm_ik::bone_share(0.8f, 1.f) - 1.f) < 1e-6f);    // capped at the hand's
-    CHECK(arm_ik::bone_share(0.8f, 0.f) == 0.f);                      // 0: the forearm takes none
-}
-
 TEST(arm_ik_unwrap_near_keeps_a_twist_on_its_side) {
     // 170 deg last frame, -175 deg (= 185) now: stays 185, not -175.
     CHECK(std::fabs(arm_ik::unwrap_near(-3.054f, 2.967f) - 3.229f) < 1e-3f);

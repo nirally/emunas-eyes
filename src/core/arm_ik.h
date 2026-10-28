@@ -199,36 +199,16 @@ inline float twist_reliability(vm::Quat q, vm::Vec3 axis) {
     return std::sqrt(s * s + q.w * q.w);
 }
 
-// The hand's twist about the game's forearm against r.fore, in t (unwrapped against / held at *prev as above).
-// Returns true if held.
-inline bool hand_twist(const Result& r, vm::Vec3 e0, vm::Vec3 w0, float& t, float* prev = nullptr) {
+inline bool share_twist(Result& r, vm::Vec3 e0, vm::Vec3 w0, float k, float* prev = nullptr) {
     const vm::Vec3 u0 = (w0 - e0).normalized();
     const vm::Quat d = (r.fore.q.conjugate() * r.hand.q).normalized();
     const bool held = prev && twist_reliability(d, u0) < kTwistReliable;
-    t = held ? *prev : twist_angle(d, u0);
+    float t = held ? *prev : twist_angle(d, u0);
     if (prev && !held) t = *prev = unwrap_near(t, *prev);
+    const float a = t * k;
+    r.fore.q = (r.fore.q * vm::Quat::axis_angle(u0, a)).normalized();  // turn about the game's forearm first
+    r.fore.t = r.elbow - r.fore.q.rotate(e0);
     return held;
-}
-
-// r.fore turned by `a` about the game's forearm first; the elbow stays.
-inline Rigid fore_twisted(const Result& r, vm::Vec3 e0, vm::Vec3 w0, float a) {
-    const vm::Quat q = (r.fore.q * vm::Quat::axis_angle((w0 - e0).normalized(), a)).normalized();
-    return {q, r.elbow - q.rotate(e0)};
-}
-
-inline bool share_twist(Result& r, vm::Vec3 e0, vm::Vec3 w0, float k, float* prev = nullptr) {
-    float t = 0;
-    const bool held = hand_twist(r, e0, w0, t, prev);
-    r.fore = fore_twisted(r, e0, w0, t * k);
-    return held;
-}
-
-// BUG-037 (2026-10-28, her bare left arm raised: a crease at the elbow, the forearm wrung below it): with one
-// share for the whole forearm, its elbow end turned ~45 deg against the upper arm. Per forearm bone, its share
-// (twist_shares, 0 at the elbow -> 1 at the wrist for k = 0.5) scaled by 2k; k is the share at mid-forearm.
-inline float bone_share(float share, float k) {
-    const float s = share * 2.f * k;
-    return s < 0.f ? 0.f : s > 1.f ? 1.f : s;
 }
 
 // Apply a correction to a 3x4 row-major skinning matrix (world = R x + t): R' = Q R, t' = Q t + c.t.

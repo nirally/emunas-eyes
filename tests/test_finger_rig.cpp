@@ -177,50 +177,6 @@ TEST(finger_rig_curl_bends_to_the_palm_and_keeps_joints) {
     }
 }
 
-TEST(finger_rig_twist_shares_grow_from_elbow_to_wrist) {
-    // BUG-037: an upper arm, a forearm of three bones (a third each, blending half and half at their borders) and a
-    // hand. Each forearm bone should take about the twist of the middle of its skin, so the elbow's skin barely turns.
-    arm_solve::Result arms;
-    arms.ok = true;
-    auto bone = [&](int side, int seg) { arms.side.push_back(side); arms.segment.push_back(seg); return int(arms.side.size()) - 1; };
-    bone(-1, arm_solve::kNone);
-    const int up = bone(0, arm_solve::kUpper), f[3] = {bone(0, arm_solve::kFore), bone(0, arm_solve::kFore), bone(0, arm_solve::kFore)},
-              hand = bone(0, arm_solve::kHand), other = bone(1, arm_solve::kFore);
-    arms.arm[0].elbow = {0.34f, 1.17f, 0.f};
-    arms.arm[0].wrist = {0.46f, 1.03f, 0.17f};
-    const Vec3 e = arms.arm[0].elbow, d = arms.arm[0].wrist - e;
-    std::vector<finger_rig::Vertex> verts;
-    auto vert = [&](float t, int a, int b, float wa) {
-        finger_rig::Vertex v{};
-        v.pos = e + d * t + Vec3{0, 0.02f, 0};
-        v.bone[0] = uint8_t(a);
-        v.weight[0] = uint8_t(std::lround(wa * 255));
-        v.bone[1] = uint8_t(b);
-        v.weight[1] = uint8_t(255 - v.weight[0]);
-        verts.push_back(v);
-    };
-    for (int i = -5; i <= 105; ++i) {
-        const float t = i / 100.f;
-        const int seg = t < 0 ? 0 : t >= 1 ? 2 : int(t * 3);
-        const float into = t * 3 - seg;  // 0..1 within the bone's third
-        if (t < 0.03f) vert(t, up, f[0], 0.5f);
-        else if (t > 0.97f) vert(t, f[2], hand, 0.5f);
-        else if (into < 0.05f && seg > 0) vert(t, f[seg - 1], f[seg], 0.5f);
-        else vert(t, f[seg], f[seg], 1.f);
-    }
-    const auto s = finger_rig::twist_shares(verts, arms, 0);
-    CHECK(s.size() == arms.side.size());
-    CHECK(s[up] < 0 && s[hand] < 0 && s[other] < 0);  // only arm 0's forearm bones
-    CHECK(s[f[0]] < s[f[1]] && s[f[1]] < s[f[2]]);
-    CHECK(std::fabs(s[f[0]] - 1 / 6.f) < 0.08f);
-    CHECK(std::fabs(s[f[1]] - 0.5f) < 0.08f);
-    CHECK(std::fabs(s[f[2]] - 5 / 6.f) < 0.08f);
-    // The skin at the elbow turns by under a fifth of the hand's twist (one share for all: half).
-    CHECK(0.5f * s[f[0]] < 0.2f);
-    arms.arm[1] = arms.arm[0];
-    CHECK(std::fabs(finger_rig::twist_shares(verts, arms, 1)[other] - 0.5f) < 1e-4f);  // a bone with no skin: mid-forearm
-}
-
 TEST(finger_rig_compose_is_matrix_after_transform) {
     const Quat q = Quat::axis_angle(Vec3{0.3f, 1, -0.2f}.normalized(), 0.8f), r = Quat::axis_angle({1, 0, 0}, -0.5f);
     const Vec3 t{550.f, 67.f, 23.f};

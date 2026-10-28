@@ -47,8 +47,6 @@ bool arms_known();
 bool body_marked();
 // body.forearm_twist (7B): the forearm's share of the hand's twist about it (arm_ik::share_twist).
 void set_forearm_twist(float k);
-// diagnostics.twist_uniform: every forearm bone takes body.forearm_twist, not its own share (BUG-037 A/B).
-void set_twist_uniform(bool on);
 // body.elbow_follow_hand (PLAYTEST-7i): the elbow's side from the controller's angle (1) or the body rule (0).
 void set_elbow_follow_hand(float k);
 // body.turn_back_in_attacks (BUG-024/025): during an attack her whole body turns back to the way it faced the view

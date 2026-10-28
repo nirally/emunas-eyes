@@ -253,9 +253,7 @@ DWORD WINAPI main_thread(LPVOID) {
                 faith_bones::set_game_when_hanging(g_config.get_bool("body.arms_game_when_hanging"));
                 faith_bones::set_fingers(g_config.get_bool("body.fingers"));
                 hand_pose::set_sim_closeup(g_config.get_bool("diagnostics.hand_sim_closeup"));
-                hand_pose::set_sim_roll(static_cast<float>(g_config.get_number("diagnostics.hand_sim_roll")));
-                faith_bones::set_twist_uniform(g_config.get_bool("diagnostics.twist_uniform"));
-                hand_pose::set_sim_raise(g_config.get_bool("diagnostics.hand_sim_raise"));
+                hand_pose::set_sim_roll(static_cast<float>(g_config.get_number("diagnostics.hand_sim_roll")));                hand_pose::set_sim_raise(g_config.get_bool("diagnostics.hand_sim_raise"));
                 camera_override::set_room_sim(g_config.get_bool("diagnostics.room_sim"));
                 camera_override::set_room_explain(g_config.get_bool("diagnostics.room_explain"));
                 camera_override::set_turning_sim(g_config.get_bool("diagnostics.mod_turning_sim"));
@@ -347,8 +345,6 @@ DWORD WINAPI main_thread(LPVOID) {
             hand_pose::set_sim_closeup(new_v["diagnostics.hand_sim_closeup"].get<bool>());
         if (old_v["diagnostics.hand_sim_roll"] != new_v["diagnostics.hand_sim_roll"])
             hand_pose::set_sim_roll(new_v["diagnostics.hand_sim_roll"].get<float>());
-        if (old_v["diagnostics.twist_uniform"] != new_v["diagnostics.twist_uniform"])
-            faith_bones::set_twist_uniform(new_v["diagnostics.twist_uniform"].get<bool>());
         if (old_v["diagnostics.hand_sim_raise"] != new_v["diagnostics.hand_sim_raise"])
             hand_pose::set_sim_raise(new_v["diagnostics.hand_sim_raise"].get<bool>());
         if (old_v["comfort.roomscale"] != new_v["comfort.roomscale"])

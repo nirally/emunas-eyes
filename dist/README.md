@@ -58,11 +58,8 @@ Click both sticks in and hold them for 1 second to open the menu.
 - Changes apply at once and are saved.
 - Every section has *Reset this section to defaults*, and the first page has *Reset all to defaults*. Both ask twice.
 
-**Profiles** (on the first page) hold 4 saved copies of your settings, for example one for standing, one for seated, and one for someone else sharing the headset.
+**Profiles** (on the first page) hold 4 saved copies of your settings, for example one for you and one for someone else sharing the headset.
 *Save your settings as profile N* stores your settings as they are now, and *Load profile N* puts them back.
-
-**Playing seated:** sit down, look straight ahead and hold the right stick click for 1 s to recentre.
-Then raise Calibration > *Extra eye height* until Faith's view feels right, and save it as a profile.
 
 **Comfort:** Comfort > *Feel the game's camera motion* (or F5) adds the game's rolls, wall-run tilt and landing dips to your view. It's intense, so leave it off unless you're used to VR. If you feel warm, sweaty or dizzy, stop at once and take a break.
 
@@ -72,7 +69,7 @@ With a keyboard: F2 / F3 lower / raise your eye height, and F7 turns the VR came
 ## Known issues
 
 - Faith's body is sometimes briefly out of place relative to your head.
-- In her jacket (the first mission), her fingers keep the game's pose instead of following yours.
+- In her jacket (the first mission), Faith's hands keep the game's animation instead of following your controllers.
 - Runner Vision, the objective and enemy markers, and subtitle size haven't been fully checked in the headset.
 - Performance hasn't been tuned. Expect to need a strong GPU for a sharp, smooth picture.
 - Controllers other than Meta Touch haven't been tested.

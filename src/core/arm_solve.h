@@ -60,9 +60,8 @@ inline const char* implausible(const Result& r) {
         int hand = 0;
         for (size_t b = 0; b < r.side.size(); ++b) hand += r.side[b] == a && r.segment[b] == kHand;
         if (hand < 6) return "too few hand bones";
-        // PLAYTEST-10a (2026-10-28, "the hands are glitching so much"): of 3 chains the best-mirrored pair took a
-        // right "wrist" 2 cm up the forearm (forearm 0.239 m, the left 0.261) that no hand bone turns on: her hand kept
-        // the game's turn and her fingers were posed from the row before the bones.
+        // PLAYTEST-10a (BUG-038): of 3 chains the best-mirrored pair took a right "wrist" 2 cm up the forearm that no
+        // hand bone turns on (her hand kept the game's turn). Also before the jacket work (desktop, raised hands).
         if (r.arm[a].hand_bone < 0) return "a wrist no hand bone turns on";
     }
     if (std::fabs(up[0] - up[1]) > 0.03f || std::fabs(fore[0] - fore[1]) > 0.03f) return "the two arms differ";
@@ -324,25 +323,6 @@ inline Result Learner::solve() const {
                 for (int jk : of_bone[b]) only_shoulder &= (joints[jk].x - arm.shoulder).length() < 0.03f;
                 if (only_shoulder && apart(b, main_upper, arm.elbow) > 0.02) not_arm[b] = true;
             }
-        // PLAYTEST-8p (her jacket, the arms learned over all her pieces: legs included, "the legs is gliching like
-        // crazy"): a hip, leg or hem joint can lie beside the arm in bind space, so leg bones were put on the forearm and
-        // swung with it (desktop recording: 10 of them, keeping the elbow and wrist 24-67 cm off). An upper arm or
-        // forearm bone must keep one of its segment's ends within kRideM of where the segment's own bone does (her
-        // sleeves' cloth bones: 5 cm).
-        constexpr double kRideM = 0.10;
-        int main_fore = -1;  // the forearm itself: touches the elbow and the wrist
-        for (int x : joints[c.e].bones)
-            for (int y : joints[c.w].bones)
-                if (x == y && res.side[x] == a && res.segment[x] == kFore) main_fore = x;
-        for (int b = 0; b < n_; ++b) {
-            if (res.side[b] != a || b == main_upper || b == main_fore) continue;
-            if (res.segment[b] == kUpper && main_upper >= 0 &&
-                std::fmin(apart(b, main_upper, arm.shoulder), apart(b, main_upper, arm.elbow)) > kRideM)
-                not_arm[b] = true;
-            if (res.segment[b] == kFore && main_fore >= 0 &&
-                std::fmin(apart(b, main_fore, arm.elbow), apart(b, main_fore, arm.wrist)) > kRideM)
-                not_arm[b] = true;
-        }
     }
     for (int b = 0; b < n_; ++b)
         if (not_arm[b]) { res.side[b] = -1; res.segment[b] = kNone; }
@@ -404,39 +384,6 @@ inline int adopt_new_bones(Result& cur, const Result& next, float agree = 0.9f, 
         ++taken;
     }
     return taken;
-}
-
-// PLAYTEST-8n (her jacket, first mission: "not having hands that follow the controllers"): there her arms are in no
-// one piece - 5 pieces of 3, 51, 26, 42 and 18 bones, hands in the 51, sleeves in the 26 and 42, forearm bones in all
-// five - and each piece carries its own copies of the skeleton's matrices. One skeleton from them: a piece's bone that
-// equals an earlier piece's bone in every frame given is that bone (desktop recording: 140 rows -> 95 bones, and the
-// solve on them found both arms as without the jacket, upper 0.283 m, forearm 0.245 m).
-// frames[f][p] = piece p's bones in frame f (bones[p] of them).
-struct Merge {
-    std::vector<std::pair<int, int>> src;  // per merged bone: (piece, bone) it is read from
-    std::vector<std::vector<int>> of;      // per piece, per bone: its merged bone
-};
-inline Merge merge_pieces(const std::vector<std::vector<const Bone*>>& frames, const std::vector<int>& bones) {
-    Merge m;
-    m.of.resize(bones.size());
-    auto same = [&](int p, int b, int q, int c) {
-        for (const auto& f : frames)
-            for (int k = 0; k < 12; ++k)
-                if (f[p][b].m[k] != f[q][c].m[k]) return false;
-        return true;
-    };
-    for (int p = 0; p < int(bones.size()); ++p)
-        for (int b = 0; b < bones[p]; ++b) {
-            int hit = -1;
-            for (int u = 0; u < int(m.src.size()) && hit < 0; ++u)
-                if (same(p, b, m.src[u].first, m.src[u].second)) hit = u;
-            if (hit < 0) {
-                hit = int(m.src.size());
-                m.src.push_back({p, b});
-            }
-            m.of[p].push_back(hit);
-        }
-    return m;
 }
 
 }  // namespace mecvr::arm_solve

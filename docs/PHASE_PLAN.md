@@ -38,7 +38,7 @@ Mode: agentic | Gate: hard | Stage 10 of 10 — Sweep and package
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
 ⬜ Not started: packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-10a (left-handed, then seated, ~15 min)
+❓ Need from you: PLAYTEST-10c, the opening hour (2-3 sessions)
 🐞 Open bugs: BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
 ⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
 ⚠ 8B menus on a big flat screen (D-050): PLAYTEST-8b - showed a still image (BUG-029, fixed); hands at rest "much better" (BUG-027 closed); kicks glitch (BUG-028, fixed); comfort 5
@@ -72,9 +72,10 @@ Mode: agentic | Gate: hard | Stage 10 of 10 — Sweep and package
 ✅ 9A settings menu (D-063/D-064): both sticks held 1 s (the menu button is SteamVR's); every setting from the schema, live apply, saved, resets; PLAYTEST-9b: opens, text fine, gloves toggle, comfort 5 (eye height not actually changed - recheck in 9c)
 ✅ 9B profiles (D-065): 4 slots on a Profiles page, save/load ask twice; PLAYTEST-9c: saved, loaded back, eye height live, section reset used, comfort 5
 ✅ Stage 9 passed (D-066): every setting in the menu, live, saved, resets, profiles, both-sticks binding; no pause-menu entry (not hookable)
-🔧 10A handedness audit: only pad_map / xr_input's move-turn indices depend on it (unit-tested mirror); punches, Disruptor, MAG Rope, hand walls, arm IK and the menu chord are per hand or both hands - no fixes needed, headset to confirm
+🔧 10A handedness audit: only pad_map / xr_input's move-turn indices depend on it (unit-tested mirror); punches, Disruptor, MAG Rope, hand walls, arm IK and the menu chord are per hand or both hands - no fixes needed; PLAYTEST-10a: left-handed worked
 🔧 10E package (D-068): tools/package.ps1 -> out/RunnersSight-0.1.0.zip (our 4 files + install/uninstall + README + licences); round trip on this PC: uninstall -KeepSettings put the game's own DLL back (same hash), install found the game through Steam, settings and profiles kept
-▶ Next: You: PLAYTEST-10a. Then PLAYTEST-10c, the opening hour (BUG-035 in the jacket mission, BUG-032 F5). Parked: her fingers in the jacket (40-byte hand mesh)
+✅ 10B PLAYTEST-10a: hands good after D-071 (hand code back to before the jacket work), left-handed worked. 10C seated dropped (user: not needed - seated is only eye height + recentre)
+▶ Next: You: PLAYTEST-10c, the opening hour (BUG-032 F5). Known: in the first mission's jacket her hands keep the game's animation (BUG-033, reopened by D-071)
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git
@@ -291,13 +292,13 @@ Risk: the injected "VR" entry in the game's pause menu (Frostbite UI, one shader
 
 ### Stage 10 — Sweep and package (M)
 #### Stage 10 brief
-Goal: the mod as a finished, shareable release named **Runner's Sight** (D-067): the opening hour plays end to end in the headset, left-handed and seated play confirmed across Stages 4-9, no open sev-1/sev-2 bugs, and a `dist/` package another person can install, use and remove.
+Goal: the mod as a finished, shareable release named **Runner's Sight** (D-067): the opening hour plays end to end in the headset, left-handed play confirmed across Stages 4-9, no open sev-1/sev-2 bugs, and a `dist/` package another person can install, use and remove.
 Known: tools/deploy.ps1 / undeploy.ps1 already install and remove the mod (the game's NvCameraSDK64.dll kept and put back); safe mode (SAFE_MODE file, version mismatch, bad schema) and the SMOKE line exist; bindings for Touch, Index and the simple controller; input.left_handed swaps move/turn hands; seated = recentre while seated + Calibration > Extra eye height (no seated mode: D-030, the user chose only the recentre button); bug_report writes a report on a trigger.
-Unknowns: whether left-handed holds beyond the sticks (punches, Disruptor, MAG Rope throw, hand walls, IK arm/side vote, settings menu); whether physical crouch misfires seated; whether the installer can find the game folder on another PC (deploy.ps1 hard-codes E:\SteamLibrary); Index/simple bindings never run on real hardware (the user has Touch only).
+Unknowns: whether left-handed holds beyond the sticks (punches, Disruptor, MAG Rope throw, hand walls, IK arm/side vote, settings menu); whether the installer can find the game folder on another PC (deploy.ps1 hard-codes E:\SteamLibrary); Index/simple bindings never run on real hardware (the user has Touch only).
 Hypotheses: H1 handedness is mostly in xr_input (move/turn indices) - a code audit for hand[0]/hand[1] and "right"/"left" assumptions finds the rest before any headset time. H2 the installer can read the Steam library folders (libraryfolders.vdf) to find the game.
-Plan: 10A (me) handedness audit + fixes, unit tests; desktop regression of the drivable stage checks (tools/drive); release build smoke + safe mode check. 10B (you) PLAYTEST-10a left-handed. 10C (you) PLAYTEST-10b seated. 10D (you, 2-3 sessions) PLAYTEST-10c the opening hour end to end (incl. BUG-035 in the jacket mission, BUG-032 F5). 10E (me) dist/: install.ps1 / uninstall.ps1 (find the game, keep and restore the game's DLL, refuse files that aren't ours), README (requirements, install, controls per controller family, the settings menu, profiles, known issues, reporting a bug), a zip with only our files. 10F (you, optional) a second person installs from the zip and plays 15 min.
-Verify: PLAYTEST-10a/10b/10c; a clean install + uninstall from the zip on this PC (game folder back to stock, Steam verify passes).
+Plan: 10A (me) handedness audit + fixes, unit tests; desktop regression of the drivable stage checks (tools/drive); release build smoke + safe mode check. 10B (you) PLAYTEST-10a left-handed. 10C seated - dropped (user, 2026-10-28). 10D (you, 2-3 sessions) PLAYTEST-10c the opening hour end to end (incl. BUG-032 F5). 10E (me) dist/: install.ps1 / uninstall.ps1 (find the game, keep and restore the game's DLL, refuse files that aren't ours), README (requirements, install, controls per controller family, the settings menu, profiles, known issues, reporting a bug), a zip with only our files. 10F (you, optional) a second person installs from the zip and plays 15 min.
+Verify: PLAYTEST-10a/10c; a clean install + uninstall from the zip on this PC (game folder back to stock, Steam verify passes).
 Risk: left-handed problems deep in the arm IK (Stage 7) - fixes there have taken several rounds before. Performance stays out of scope: framerate notes go in as sev-4 bugs.
-- [ ] Opening hour end to end, left-handed and seated pass, simulator regression
+- [ ] Opening hour end to end, left-handed pass, simulator regression
 - [ ] dist/: installer, README, uninstall; no game files redistributed
 
