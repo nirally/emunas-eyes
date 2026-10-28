@@ -200,3 +200,54 @@ TEST(arm_solve_rejects_arms_that_cannot_be_hers) {
         if (r.side[b] == 0 && r.segment[b] == arm_solve::kHand) r.side[b] = -1;
     CHECK(arm_solve::implausible(r) != nullptr);
 }
+
+TEST(arm_solve_merges_pieces_that_copy_bones) {
+    // PLAYTEST-8n: her arms spread over pieces that each copy some of the skeleton's matrices.
+    Rig rig;
+    const int n = int(rig.bones.size());
+    std::vector<std::vector<Bone>> all;
+    for (int f = 0; f < 120; ++f) all.push_back(frame(rig));
+    // Piece 0: the first half of the bones; piece 1: the second half plus copies of bones 0-4.
+    std::vector<int> p0, p1;
+    for (int b = 0; b < n; ++b) (b < n / 2 ? p0 : p1).push_back(b);
+    for (int b = 0; b < 5; ++b) p1.push_back(b);
+    std::vector<std::vector<Bone>> piece[2];
+    std::vector<std::vector<const Bone*>> frames;
+    for (auto& fr : all) {
+        piece[0].emplace_back();
+        piece[1].emplace_back();
+        for (int b : p0) piece[0].back().push_back(fr[b]);
+        for (int b : p1) piece[1].back().push_back(fr[b]);
+    }
+    for (size_t f = 0; f < all.size(); ++f) frames.push_back({piece[0][f].data(), piece[1][f].data()});
+    const auto m = arm_solve::merge_pieces(frames, {int(p0.size()), int(p1.size())});
+    CHECK(int(m.src.size()) == n);
+    for (int b = 0; b < 5; ++b) CHECK(m.of[1][int(p1.size()) - 5 + b] == m.of[0][b]);
+    // The merged skeleton solves like the one piece.
+    arm_solve::Learner l;
+    l.reset(int(m.src.size()));
+    std::vector<Bone> g(m.src.size());
+    for (size_t f = 0; f < all.size(); ++f) {
+        for (size_t u = 0; u < m.src.size(); ++u) g[u] = frames[f][m.src[u].first][m.src[u].second];
+        l.add(g.data());
+    }
+    CHECK(l.solve().ok);
+}
+
+TEST(arm_solve_leaves_off_bones_that_do_not_keep_the_arm_joints) {
+    // PLAYTEST-8p: over all her pieces her hips and legs come in too; a joint of theirs can lie beside the arm in bind
+    // space (here a hem bone hanging from the chest, pivot beside the right upper arm) without moving with it.
+    Rig rig;
+    const int hem = rig.add(0, {0.38f, 1.2f, 0}, 1.0f);
+    arm_solve::Learner l;
+    l.ride_check = true;  // D-072: on for her merged pieces only
+    l.reset(int(rig.bones.size()));
+    for (int f = 0; f < 120; ++f) l.add(frame(rig).data());
+    const auto r = l.solve();
+    CHECK(r.ok);
+    CHECK(r.side[hem] == -1 && r.segment[hem] == arm_solve::kNone);
+    int wrong = 0;  // the arms' own bones are all still on them
+    for (size_t b = 0; b < rig.bones.size(); ++b)
+        if (rig.bones[b].seg >= 0 && r.segment[b] != rig.bones[b].seg) ++wrong;
+    CHECK(wrong == 0);
+}

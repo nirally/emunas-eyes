@@ -69,7 +69,7 @@ With a keyboard: F2 / F3 lower / raise your eye height, and F7 turns the VR came
 ## Known issues
 
 - Faith's body is sometimes briefly out of place relative to your head.
-- In her jacket (the first mission), Faith's hands keep the game's animation instead of following your controllers.
+- In her jacket (the first mission), her fingers keep the game's pose instead of following yours.
 - Runner Vision, the objective and enemy markers, and subtitle size haven't been fully checked in the headset.
 - Performance hasn't been tuned. Expect to need a strong GPU for a sharp, smooth picture.
 - Controllers other than Meta Touch haven't been tested.

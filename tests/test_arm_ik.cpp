@@ -208,6 +208,22 @@ TEST(arm_ik_share_twist_moves_twist_into_forearm) {
     CHECK(std::fabs(arm_ik::twist_angle(r.fore.q.conjugate() * r.hand.q, u0)) < 0.01f);
 }
 
+TEST(arm_ik_unmarked_hold_needs_a_run_each_way) {
+    arm_ik::UnmarkedHold h;
+    CHECK(!h.frame(false) && !h.frame(false));  // two unmarked frames: a blip
+    CHECK(!h.frame(true));
+    CHECK(!h.frame(false) && !h.frame(false) && h.frame(false));  // three in a row: held
+    for (int i = 0; i < 29; ++i) CHECK(h.frame(true));             // marked again, but not yet for 30 frames
+    CHECK(!h.frame(true));
+    h.frame(false);
+    h.frame(false);
+    CHECK(h.frame(false));
+    for (int i = 0; i < 20; ++i) h.frame(true);
+    CHECK(h.frame(false));  // an unmarked frame restarts the count of marked ones
+    for (int i = 0; i < 29; ++i) CHECK(h.frame(true));
+    CHECK(!h.frame(true));
+}
+
 TEST(arm_ik_unwrap_near_keeps_a_twist_on_its_side) {
     // 170 deg last frame, -175 deg (= 185) now: stays 185, not -175.
     CHECK(std::fabs(arm_ik::unwrap_near(-3.054f, 2.967f) - 3.229f) < 1e-3f);

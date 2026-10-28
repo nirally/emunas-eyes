@@ -270,4 +270,20 @@ inline void blend(const float* game, float* now, vm::Vec3 pivot, float w) {
     apply(cw, now);
 }
 
+// BUG-039 (PLAYTEST-10b, her jacket: "in wallruns faith jacket body glitch"): while her body isn't marked (wall-runs)
+// the arms read over her pieces jump up to 1 m against the view between frames (free roam: under 0.2). Held to the
+// game's animation then: on after `on` unmarked frames in a row, off after `off` marked ones. Feed one frame at a time.
+struct UnmarkedHold {
+    int on = 3, off = 30;
+    int unmarked_run = 0, marked_run = 0;
+    bool held = false;
+    bool frame(bool marked) {
+        unmarked_run = marked ? 0 : unmarked_run + 1;
+        marked_run = marked ? marked_run + 1 : 0;
+        if (!held && unmarked_run >= on) held = true;
+        else if (held && marked_run >= off) held = false;
+        return held;
+    }
+};
+
 }  // namespace mecvr::arm_ik

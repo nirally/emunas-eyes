@@ -284,3 +284,11 @@ Evidence: docs/playtests/PLAYTEST-10a-glitch.log, shot vrshot_20261028_180656 (g
 Fix: D-070 - arm_solve::implausible rejects a solve with an arm whose wrist no hand bone turns on (the arms are learned again from new frames, as for other bad solves; test); the finger pose needs the hand bone.
 
 BUG-033/035/037 after D-071 (2026-10-28): the user asked for the hands as before the jacket work - BUG-033 reopened (in her jacket the hands don't follow the controllers); BUG-035 moot (no jacket arms to lose); BUG-037 back to the one-share twist the user had before (fix reverted on request); BUG-038's rejection kept.
+
+BUG-033 after D-072 (2026-10-28): the jacket support is back (free roam kept as D-071), headset check PLAYTEST-10b (also the outfit re-learn after an abort, BUG-035).
+
+### BUG-039 — In her jacket, wall-runs make her body glitch
+Status: closed (PLAYTEST-10b2: "2 no" - no glitch in wall-runs, hands back after them) | Severity: 2 | Stage: 7/8 (found in Stage 10) | Reported: PLAYTEST-10b ("3 in wallruns faith jacket body glitch")
+Evidence: docs/playtests/PLAYTEST-10b.log - in the mission (arms over her 5 pieces, 94 bones) her shoulders against the view jumped up to 0.81-1.07 m between frames (143 jumps in one 5 s window) exactly in the windows where her body wasn't marked (54-386 frames per 5 s; the IK then ran from a piece's offset); marked windows: 0-8 jumps, under 0.11 m. Free roam's arm piece: under 0.2 m (9c, 10a). PLAYTEST-8q/9a (jacket) had the same, smaller (up to 0.66 m). Unmarked frames are wall-runs (like ledge hangs, ref 0x02): over her pieces the arms are then read from blocks that can't be told to be this frame's.
+Fix: D-073 - in her jacket only, her arms fade to the game's animation (the hanging fade) after 3 unmarked frames in a row, and back after 30 marked ones (arm_ik::UnmarkedHold, test). Log: "her jacket isn't marked ... / ... marked again", "N frames her jacket unmarked (game's arms)".
+BUG-035 after PLAYTEST-10b2 (2026-10-28): "4 no the hands dont follow the controllers" after aborting the mission - the log has no free roam after the abort (the game process ended ~10 s after it, no crash event), so the re-learn is still unseen; asked for a 30 s free-roam stay with a Y+B shot.
