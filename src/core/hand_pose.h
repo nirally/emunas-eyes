@@ -14,6 +14,11 @@ void set_sim(bool on);
 bool simulated();
 // diagnostics.hand_sim_closeup: simulated hands raised close in front of the eyes and turned inwards (screenshots).
 void set_sim_closeup(bool on);
+// diagnostics.hand_sim_roll: simulated hands rolled about the handle, degrees (+ = the left hand's thumb outwards,
+// mirrored on the right), to twist Faith's forearms on the desktop (BUG-037).
+void set_sim_roll(float deg);
+// diagnostics.hand_sim_raise: simulated hands reaching forward and up, her elbows in view (BUG-037).
+void set_sim_raise(bool on);
 
 // How each hand holds the controller (Stage 5b), 0 = open .. 1 = closed, smoothed. index: from the trigger
 // (lifted off = pointing); others (middle, ring, pinky): from the grip; thumb: 1 = resting on the stick or

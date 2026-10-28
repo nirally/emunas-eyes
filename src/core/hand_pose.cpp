@@ -12,7 +12,8 @@ namespace mecvr::hand_pose {
 namespace {
 std::mutex g_mutex;
 head_pose::Pose g_hand[2];
-std::atomic<bool> g_sim{false}, g_closeup{false};
+std::atomic<bool> g_sim{false}, g_closeup{false}, g_raise{false};
+std::atomic<float> g_sim_roll{0.f};  // radians
 // Hand speed relative to the head (5d flick): last offset, and the fastest sample of the last 0.2 s.
 vm::Vec3 g_last_off[2];
 double g_last_t[2] = {0, 0}, g_peak_t[2] = {0, 0};
@@ -61,6 +62,12 @@ head_pose::Pose get(int hand) {
         p.rotation = (q * vm::Quat::axis_angle({0, 1, 0}, hand ? 0.5f : -0.5f) * vm::Quat::axis_angle({1, 0, 0}, 2.4f)).normalized();
         p.position = s.relative.position + q.rotate({hand ? 0.11f : -0.11f, -0.12f, -0.32f});
     }
+    if (g_raise.load()) {  // arms reaching forward and up, elbows in view (BUG-037: her bare left arm raised)
+        p.rotation = (q * vm::Quat::axis_angle({1, 0, 0}, 1.6f)).normalized();
+        p.position = s.relative.position + q.rotate({hand ? 0.24f : -0.24f, 0.10f, -0.50f});
+    }
+    if (const float roll = g_sim_roll.load())  // about the handle (grip -Z)
+        p.rotation = (p.rotation * vm::Quat::axis_angle({0, 0, -1}, hand ? -roll : roll)).normalized();
     p.valid = true;
     return p;
 }
@@ -68,6 +75,8 @@ head_pose::Pose get(int hand) {
 void set_sim(bool on) { g_sim = on; }
 bool simulated() { return g_sim.load(); }
 void set_sim_closeup(bool on) { g_closeup = on; }
+void set_sim_roll(float deg) { g_sim_roll = deg * 0.01745329f; }
+void set_sim_raise(bool on) { g_raise = on; }
 
 namespace {
 Fingers g_fingers[2];

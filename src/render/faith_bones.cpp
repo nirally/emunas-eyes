@@ -91,6 +91,7 @@ int g_left = -1;              // which solved arm is Faith's left (-1: still vot
 bool g_hand_ok[2] = {};        // the hand turns with the controller (its bind-space frame is known)
 vm::Quat g_hand_bind[2];
 std::atomic<float> g_forearm_twist{0.5f};
+std::atomic<bool> g_twist_uniform{false};  // diagnostics.twist_uniform: one share for the whole forearm (before BUG-037)
 std::atomic<float> g_elbow_follow_hand{0.f};  // PLAYTEST-7j: 1 looked "worse"
 // 7D fingers (finger_rig, docs/recon/STAGE7D-RECON.md): built once from the arm piece's mesh, read back at its draw
 // once her arms and her left are known; per arm. The fits are each bone's joint with the hand bone (first solve).
@@ -98,6 +99,7 @@ std::atomic<bool> g_fingers_on{true};
 int g_finger_state = 0;  // 0 not yet, 1 built, -1 couldn't (logged)
 finger_rig::Hand g_rig[2];
 finger_rig::Fits g_fits[2];
+std::vector<float> g_twist_share[2];  // per bone: a forearm bone's share of the hand's twist (BUG-037), -1 none; empty: g_forearm_twist for all
 vm::Vec3 g_front;                     // her front in bind space (set with g_left)
 std::vector<signed char> g_finger_of;  // per bone: finger * 3 + joint (index 0-2 ... pinky 9-11), -1 none
 float g_curl_sum[2] = {};              // 5 s log: index, others
@@ -517,6 +519,9 @@ bool compute_rows(const float* src, int bones) {
                 ++g_sec_arms;
                 g_sec_clamped += r.clamped;
             }
+            float twist = 0;                 // the hand's twist about the game's forearm
+            const arm_ik::Result swing = r;  // the forearm before it takes a share of that
+            bool per_bone = false;
             if (g_hand_ok[a]) {  // the hand takes the controller's turn (the glove's hand space)
                 const float* m = &rows[g_arms.arm[a].hand_bone * 12];
                 vm::LinearTransform lt{};  // basis = the matrix's columns
@@ -532,7 +537,9 @@ bool compute_rows(const float* src, int bones) {
                 if (g_twist_at[a] + 1 < g_frame) g_twist_prev[a] = 0.f;  // not posed last frame: start fresh
                 const float before = g_twist_prev[a];
                 const float raw = arm_ik::twist_angle(r.fore.q.conjugate() * r.hand.q, (w[a] - e[a]).normalized());
-                const bool twist_held = arm_ik::share_twist(r, e[a], w[a], g_forearm_twist.load(), &g_twist_prev[a]);
+                const bool twist_held = arm_ik::hand_twist(r, e[a], w[a], twist, &g_twist_prev[a]);
+                r.fore = arm_ik::fore_twisted(swing, e[a], w[a], twist * g_forearm_twist.load());
+                per_bone = int(g_twist_share[a].size()) == bones && !g_twist_uniform.load();
                 g_twist_held += twist_held;
                 g_twist_kept += !twist_held && std::fabs(g_twist_prev[a] - raw) > 1.f && std::fabs(raw - before) > 3.14159265f;
                 g_twist_at[a] = g_frame;
@@ -566,6 +573,8 @@ bool compute_rows(const float* src, int bones) {
                 if (g_body_on) arm_ik::apply(g_body, f.now);
                 if (fingers && g_finger_of[k] >= 0)
                     finger_rig::compose(hand_now, pose[g_finger_of[k] / 3][g_finger_of[k] % 3], f.now);
+                else if (seg == arm_solve::kFore && per_bone && g_twist_share[a][k] >= 0)
+                    arm_ik::apply(arm_ik::fore_twisted(swing, e[a], w[a], twist * arm_ik::bone_share(g_twist_share[a][k], g_forearm_twist.load())), f.now);
                 else
                     arm_ik::apply(seg == arm_solve::kUpper ? r.upper : seg == arm_solve::kFore ? r.fore : r.hand, f.now);
                 arm_ik::blend(f.game, f.now, s[a], g_ik_weight);
@@ -684,6 +693,7 @@ int patch(ID3D11DeviceContext* ctx, ID3D11Resource* buf, size_t off, int bones) 
 }  // namespace
 
 void set_forearm_twist(float k) { g_forearm_twist = k; }
+void set_twist_uniform(bool on) { g_twist_uniform = on; }
 void set_elbow_follow_hand(float k) { g_elbow_follow_hand = k; }
 void set_reach_scale(bool on) { g_reach_scale = on; }
 void set_turn_back(bool on) { g_turn_back = on; }
@@ -838,6 +848,16 @@ void build_fingers(ID3D11DeviceContext* ctx, unsigned index_count, unsigned star
         for (auto& x : verts)
             for (auto& b : x.bone) b = b < to.size() ? uint8_t(to[b]) : 0;
         bones = int(g_layout.merge.src.size());
+    }
+    for (int a = 0; a < 2; ++a) {  // BUG-037: the forearm's twist spread along its skin
+        g_twist_share[a] = finger_rig::twist_shares(verts, g_arms, a);
+        char line[256];
+        int len = 0;
+        for (int k = 0; k < bones && k < int(g_twist_share[a].size()) && len < 220; ++k)
+            if (g_twist_share[a][k] >= 0) len += snprintf(line + len, sizeof(line) - len, " %d:%.2f", k, g_twist_share[a][k]);
+        line[len] = 0;
+        LOG_I("bones", "forearm twist of arm %d (her %s): bone:share%s (x %.1f)", a, a == g_left ? "left" : "right", len ? line : " none",
+              2.f * g_forearm_twist.load());
     }
     g_finger_of.assign(bones, -1);
     int built = 0;
@@ -1405,6 +1425,8 @@ void on_present() {
             g_finger_of.clear();
             g_rig[0] = g_rig[1] = {};
             g_fits[0] = g_fits[1] = {};
+            g_twist_share[0].clear();
+            g_twist_share[1].clear();
             g_pending.clear();
             g_fixes.clear();
             g_hanging = false;

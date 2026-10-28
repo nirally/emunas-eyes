@@ -2,6 +2,11 @@
 
 Stage 10 checks that everything also works left-handed and sitting down. Stop at once if you feel warm, sweaty or dizzy.
 
+## Part 0 - Faith's left arm (BUG-037, 2 min, normal right-handed)
+In free roam, raise both arms and turn your wrists (palms up, palms down, reach up like in your screenshot). Hold Y + B once with her bare left arm in view.
+
+0. Her left elbow and forearm: still twisted or creased, or smooth now?
+
 ## Part 1 - left-handed (standing)
 Settings menu (both sticks, hold 1 s) > Controls > "Left-handed" On. The layout mirrors at once:
 - RIGHT hand: stick = move, grip = Up actions (jump), trigger = Down actions (slide), A = light attack, B = heavy attack, stick click = tap pause / hold map.
@@ -24,4 +29,4 @@ Sit down, look straight ahead, hold the right stick click 1 s (recentre). Then C
 9. Profiles > "Save your settings as profile 2" (your seated setup). Then load profile 1 again (your standing one) and stand up.
 10. Comfort, 5 = very comfortable (one number for each part if they differ).
 
-Reply example: "1 yes, 2 yes, 3 yes, 4 yes, 5 no, 6 0.40, 7 no, 8 yes, 9 done, 10 5".
+Reply example: "0 smooth, 1 yes, 2 yes, 3 yes, 4 yes, 5 no, 6 0.40, 7 no, 8 yes, 9 done, 10 5".
