@@ -1,10 +1,10 @@
-# Runner's Sight
+# Emuna's Eyes
 
 **A full VR mod for Mirror's Edge Catalyst:** true 3D, 6DoF head tracking and motion controls.
 Faith's arms follow your hands, and you can punch, push with the Disruptor and throw the MAG Rope with your own arms.
 Free-roam crouching and real steps also work.
 
-Runner's Sight is a fan-made mod. It is not made, endorsed or supported by EA or DICE.
+Emuna's Eyes is a fan-made mod. It is not made, endorsed or supported by EA or DICE.
 It only adds its own files to the game folder. No game files are included or changed, and uninstalling puts the game back as it was.
 
 ## Requirements

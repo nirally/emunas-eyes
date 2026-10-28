@@ -1,4 +1,4 @@
-# Runner's Sight - removes the mod and puts the game's own NvCameraSDK64.dll back.
+# Emuna's Eyes - removes the mod and puts the game's own NvCameraSDK64.dll back.
 # Usage: double-click Uninstall.bat, or: powershell -ExecutionPolicy Bypass -File uninstall.ps1 [-GameDir <folder>] [-KeepSettings]
 # -KeepSettings keeps mecvr\config.json and mecvr\profiles\ for a later reinstall. Afterwards Steam's
 # "Verify integrity of game files" confirms the game is back to stock.
@@ -48,4 +48,4 @@ if (Test-Path $modDir) {
         'removed mecvr\'
     }
 }
-"Runner's Sight is uninstalled. The game folder has only the game's own files again$(if ($KeepSettings) {' (plus your saved settings in mecvr\)'})."
+"Emuna's Eyes is uninstalled. The game folder has only the game's own files again$(if ($KeepSettings) {' (plus your saved settings in mecvr\)'})."

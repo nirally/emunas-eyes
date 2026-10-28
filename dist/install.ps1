@@ -1,4 +1,4 @@
-# Runner's Sight - a VR mod for Mirror's Edge Catalyst. Installs the mod into the game folder.
+# Emuna's Eyes - a VR mod for Mirror's Edge Catalyst. Installs the mod into the game folder.
 # Usage: double-click Install.bat, or: powershell -ExecutionPolicy Bypass -File install.ps1 [-GameDir <folder>]
 # The game's own NvCameraSDK64.dll is kept in mecvr\ and put back by uninstall.ps1. Your settings
 # (mecvr\config.json) and profiles (mecvr\profiles\) are kept when installing over an older version.
@@ -32,7 +32,7 @@ if (-not $GameDir -or -not (Test-Path (Join-Path $GameDir 'MirrorsEdgeCatalyst.e
 if (Get-Process MirrorsEdgeCatalyst -ErrorAction SilentlyContinue) { throw 'Close the game first.' }
 $exeVersion = (Get-Item (Join-Path $GameDir 'MirrorsEdgeCatalyst.exe')).VersionInfo.FileVersion -replace ',', '.' -replace ' ', ''
 if ($exeVersion -ne $targetVersion) {
-    Write-Warning "The game is version $exeVersion; Runner's Sight was made for $targetVersion. It will start in safe mode (flat, mod inactive) and say so in mecvr\mecvr.log."
+    Write-Warning "The game is version $exeVersion; Emuna's Eyes was made for $targetVersion. It will start in safe mode (flat, mod inactive) and say so in mecvr\mecvr.log."
 }
 
 $files = Join-Path $here 'files'
@@ -62,5 +62,5 @@ $config = Join-Path $modDir 'config.json'
 if (-not (Test-Path $config)) { Copy-Item (Join-Path $files 'mecvr\defaults.json') $config }
 Remove-Item (Join-Path $modDir 'SAFE_MODE') -ErrorAction SilentlyContinue
 
-"Runner's Sight installed in $GameDir"
+"Emuna's Eyes installed in $GameDir"
 'Start SteamVR, put the headset on, then start the game from Steam. Settings in VR: click both sticks in and hold 1 s.'

@@ -73,7 +73,7 @@ Mode: agentic | Gate: hard | Stage 10 of 10 — Sweep and package
 ✅ 9B profiles (D-065): 4 slots on a Profiles page, save/load ask twice; PLAYTEST-9c: saved, loaded back, eye height live, section reset used, comfort 5
 ✅ Stage 9 passed (D-066): every setting in the menu, live, saved, resets, profiles, both-sticks binding; no pause-menu entry (not hookable)
 🔧 10A handedness audit: only pad_map / xr_input's move-turn indices depend on it (unit-tested mirror); punches, Disruptor, MAG Rope, hand walls, arm IK and the menu chord are per hand or both hands - no fixes needed; PLAYTEST-10a: left-handed worked
-🔧 10E package (D-068): tools/package.ps1 -> out/RunnersSight-0.1.0.zip (our 4 files + install/uninstall + README + licences); round trip on this PC: uninstall -KeepSettings put the game's own DLL back (same hash), install found the game through Steam, settings and profiles kept
+🔧 10E package (D-068): tools/package.ps1 -> out/EmunasEyes-0.1.0.zip (our 4 files + install/uninstall + README + licences); round trip on this PC: uninstall -KeepSettings put the game's own DLL back (same hash), install found the game through Steam, settings and profiles kept
 ✅ 10B PLAYTEST-10a: hands good after D-071 (hand code back to before the jacket work), left-handed worked. 10C seated dropped (user: not needed - seated is only eye height + recentre)
 ▶ Next: You: PLAYTEST-10c, the opening hour (BUG-032 F5). Done before it: jacket hands back (D-072), wall-runs (D-073), back to free roam after an abort (D-074) - PLAYTEST-10b/10b2/10b4 passed, comfort 5
 
@@ -292,7 +292,7 @@ Risk: the injected "VR" entry in the game's pause menu (Frostbite UI, one shader
 
 ### Stage 10 — Sweep and package (M)
 #### Stage 10 brief
-Goal: the mod as a finished, shareable release named **Runner's Sight** (D-067): the opening hour plays end to end in the headset, left-handed play confirmed across Stages 4-9, no open sev-1/sev-2 bugs, and a `dist/` package another person can install, use and remove.
+Goal: the mod as a finished, shareable release named **Emuna's Eyes** (D-075; was Runner's Sight, D-067): the opening hour plays end to end in the headset, left-handed play confirmed across Stages 4-9, no open sev-1/sev-2 bugs, and a `dist/` package another person can install, use and remove.
 Known: tools/deploy.ps1 / undeploy.ps1 already install and remove the mod (the game's NvCameraSDK64.dll kept and put back); safe mode (SAFE_MODE file, version mismatch, bad schema) and the SMOKE line exist; bindings for Touch, Index and the simple controller; input.left_handed swaps move/turn hands; seated = recentre while seated + Calibration > Extra eye height (no seated mode: D-030, the user chose only the recentre button); bug_report writes a report on a trigger.
 Unknowns: whether left-handed holds beyond the sticks (punches, Disruptor, MAG Rope throw, hand walls, IK arm/side vote, settings menu); whether the installer can find the game folder on another PC (deploy.ps1 hard-codes E:\SteamLibrary); Index/simple bindings never run on real hardware (the user has Touch only).
 Hypotheses: H1 handedness is mostly in xr_input (move/turn indices) - a code audit for hand[0]/hand[1] and "right"/"left" assumptions finds the rest before any headset time. H2 the installer can read the Steam library folders (libraryfolders.vdf) to find the game.

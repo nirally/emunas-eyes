@@ -1,4 +1,4 @@
-# Runner's Sight
+# Emuna's Eyes
 
 A full 6DoF motion-controller VR mod for Mirror's Edge Catalyst (Steam, v1.0.3.47248).
 

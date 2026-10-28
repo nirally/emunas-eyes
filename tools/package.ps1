@@ -1,4 +1,4 @@
-# Builds the release zip: out\RunnersSight-<version>.zip with only our own files (no game files).
+# Builds the release zip: out\EmunasEyes-<version>.zip with only our own files (no game files).
 # Usage: powershell -File tools\package.ps1 -Version 0.1.0   (build Release first)
 param([Parameter(Mandatory)][string]$Version)
 $ErrorActionPreference = 'Stop'
@@ -7,7 +7,7 @@ $dll = Join-Path $root 'build\Release\mecvr.dll'
 if (-not (Test-Path $dll)) { throw "Build first: $dll not found" }
 if (-not (Select-String -Path $dll -Pattern 'MEC VR' -SimpleMatch -Quiet)) { throw 'mecvr.dll lacks the MEC VR marker the install scripts look for.' }
 
-$name = "RunnersSight-$Version"
+$name = "EmunasEyes-$Version"
 $stage = Join-Path $root "out\$name"
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 $files = Join-Path $stage 'files'
@@ -26,7 +26,7 @@ $parts = @(
     @('nlohmann/json 3.12.0 (compiled in) - MIT', 'third_party\nlohmann\LICENSE.MIT'),
     @('OpenXR SDK loader 1.1.63 (mecvr\openxr_loader.dll) - Apache-2.0, Copyright The Khronos Group Inc.', 'third_party\openxr\LICENSE.txt')
 )
-$text = "Runner's Sight includes the following third-party software.`r`n"
+$text = "Emuna's Eyes includes the following third-party software.`r`n"
 foreach ($p in $parts) { $text += "`r`n==== $($p[0]) ====`r`n`r`n" + (Get-Content (Join-Path $root $p[1]) -Raw) + "`r`n" }
 Set-Content -Path $notices -Value $text -Encoding utf8
 
