@@ -199,6 +199,10 @@ TEST(arm_solve_rejects_arms_that_cannot_be_hers) {
     for (size_t b = 0; b < r.side.size(); ++b)
         if (r.side[b] == 0 && r.segment[b] == arm_solve::kHand) r.side[b] = -1;
     CHECK(arm_solve::implausible(r) != nullptr);
+    r = good;  // PLAYTEST-10a: a wrist no hand bone turns on
+    CHECK(good.arm[0].hand_bone >= 0 && good.arm[1].hand_bone >= 0);
+    r.arm[0].hand_bone = -1;
+    CHECK(arm_solve::implausible(r) != nullptr);
 }
 
 TEST(arm_solve_merges_pieces_that_copy_bones) {

@@ -60,6 +60,10 @@ inline const char* implausible(const Result& r) {
         int hand = 0;
         for (size_t b = 0; b < r.side.size(); ++b) hand += r.side[b] == a && r.segment[b] == kHand;
         if (hand < 6) return "too few hand bones";
+        // PLAYTEST-10a (2026-10-28, "the hands are glitching so much"): of 3 chains the best-mirrored pair took a
+        // right "wrist" 2 cm up the forearm (forearm 0.239 m, the left 0.261) that no hand bone turns on: her hand kept
+        // the game's turn and her fingers were posed from the row before the bones.
+        if (r.arm[a].hand_bone < 0) return "a wrist no hand bone turns on";
     }
     if (std::fabs(up[0] - up[1]) > 0.03f || std::fabs(fore[0] - fore[1]) > 0.03f) return "the two arms differ";
     return nullptr;

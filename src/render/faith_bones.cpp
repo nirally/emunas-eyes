@@ -551,7 +551,8 @@ bool compute_rows(const float* src, int bones) {
             ++g_ik_arms;
             // 7D: her fingers from yours - each finger bone = her (corrected) hand bone * the finger's pose from the
             // bind hand, instead of riding with the hand in the game's finger pose.
-            const bool fingers = g_finger_state == 1 && g_fingers_on.load() && g_rig[a].ok && int(g_finger_of.size()) == bones;
+            const bool fingers = g_finger_state == 1 && g_fingers_on.load() && g_rig[a].ok && int(g_finger_of.size()) == bones &&
+                                 g_arms.arm[a].hand_bone >= 0;  // PLAYTEST-10a: else posed from the row before the bones
             arm_ik::Rigid pose[4][3];
             float hand_now[12];
             if (fingers) {
