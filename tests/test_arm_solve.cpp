@@ -201,6 +201,37 @@ TEST(arm_solve_rejects_arms_that_cannot_be_hers) {
     CHECK(arm_solve::implausible(r) != nullptr);
 }
 
+TEST(arm_solve_puts_a_cuff_bone_that_rides_with_the_hand_on_the_hand) {
+    // 2026-10-28 (her right glove torn at the wrist; that solve put bones 4 and 5 on the forearm): two glove helpers
+    // ride with the hand, moving a little against it, and the joint between them lies 3 cm up the forearm - both
+    // touched it and went on the forearm.
+    Rig rig;
+    int cuff[2][2];
+    for (int s = 0; s < 2; ++s) {
+        const float x = s ? -1.f : 1.f;
+        int hand = -1;
+        for (size_t b = 0; b < rig.bones.size(); ++b)
+            if (rig.bones[b].seg == arm_solve::kHand && rig.bones[b].side == s && hand < 0) hand = int(b);
+        cuff[s][0] = rig.add(hand, {0.74f * x, 1.45f, 0.02f}, 0.1f, arm_solve::kHand, s);
+        cuff[s][1] = rig.add(cuff[s][0], {0.67f * x, 1.45f, 0.02f}, 0.1f, arm_solve::kHand, s);
+    }
+    arm_solve::Learner l;
+    l.reset(int(rig.bones.size()));
+    for (int f = 0; f < 200; ++f) l.add(frame(rig).data());
+    const auto r = l.solve();
+    CHECK(r.ok);
+    if (!r.ok) { printf("    %s\n", r.why); return; }
+    for (int s = 0; s < 2; ++s)
+        for (int c = 0; c < 2; ++c) {
+            CHECK(r.segment[cuff[s][c]] == arm_solve::kHand);
+            if (r.segment[cuff[s][c]] != arm_solve::kHand) printf("    arm side %d cuff %d: segment %d\n", s, c, r.segment[cuff[s][c]]);
+        }
+    int wrong = 0;  // and the forearm's own bones stay on it
+    for (size_t b = 0; b < rig.bones.size(); ++b)
+        if (rig.bones[b].seg >= 0 && r.segment[b] != rig.bones[b].seg) ++wrong;
+    CHECK(wrong == 0);
+}
+
 TEST(arm_solve_outfit_known_sees_free_roam_after_the_jacket) {
     // Sizes from PLAYTEST-10b/10b3 (bones per piece).
     const std::vector<int> jacket{3, 18, 26, 42, 51}, free_roam{9, 81, 78, 4, 3};

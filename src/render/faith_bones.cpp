@@ -1184,6 +1184,16 @@ void on_present() {
                         }
                         LOG_I("bones", "  arm %d: upper arm %.3f m, forearm %.3f m; bones upper %d (%s), forearm %d (%s), hand %d", a,
                               (s - e).length(), (e - w).length(), n[0], list[0] + (list[0][0] == ' '), n[1], list[1] + (list[1][0] == ' '), n[2]);
+                        if (arm.hand_bone >= 0 && arm.fore_bone >= 0) {  // 2026-10-28 (right glove torn): how each forearm bone carries a palm point
+                            char fl[256] = "";
+                            size_t len = 0;
+                            const vm::Vec3 palm = arm.wrist + (arm.wrist - arm.elbow).normalized() * 0.08f;
+                            for (int k = 0; k < bones && len < sizeof(fl) - 16; ++k)
+                                if (g_arms.side[k] == a && g_arms.segment[k] == arm_solve::kFore)
+                                    len += snprintf(fl + len, sizeof(fl) - len, " %d:%.0f/%.0f", k, 1000 * g_learner.apart(k, arm.fore_bone, palm),
+                                                    1000 * g_learner.apart(k, arm.hand_bone, palm));
+                            LOG_I("bones", "    its forearm bones, a palm point against forearm bone %d / hand bone %d (mm):%s", arm.fore_bone, arm.hand_bone, fl);
+                        }
                         // 7D: each bone's joint with the hand bone, for the fingers' first knuckles (finger_rig).
                         g_fits[a].at.assign(bones, {});
                         g_fits[a].rms.assign(bones, -1);

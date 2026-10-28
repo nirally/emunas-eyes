@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Static CRT so users don't need a redistributable installed.
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-set(MECVR_VERSION "0.0.1")
+set(MECVR_VERSION "0.1.0")  # tools/package.ps1 names the zip from this
 
 # --- third party -------------------------------------------------------------
 add_library(minhook STATIC
@@ -77,3 +77,5 @@ add_executable(finger_recon tools/finger_recon.cpp)  # Stage 7D recon (finger ch
 target_include_directories(finger_recon PRIVATE src)
 add_executable(audio_balance tools/audio_balance.cpp)  # Stage 8F recon (left/right loudness of what the PC plays)
 target_link_libraries(audio_balance PRIVATE ole32)
+add_executable(forearm_check tools/forearm_check.cpp)  # Stage 10 recon (forearm bones riding with the hand)
+target_include_directories(forearm_check PRIVATE src)

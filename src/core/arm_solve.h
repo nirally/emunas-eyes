@@ -33,6 +33,7 @@ enum Segment { kNone = -1, kUpper = 0, kFore = 1, kHand = 2 };
 struct Arm {
     vm::Vec3 shoulder, elbow, wrist;  // bind space; world = S(x) of any bone touching that joint
     int shoulder_bone = -1, elbow_bone = -1, wrist_bone = -1;  // a bone that touches each joint (to place it)
+    int fore_bone = -1;  // the forearm's own bone (keeps both its ends best), for the hand-rider check (log)
     std::vector<vm::Vec3> hand_joints;  // bind space: the other joints hand bones touch (finger roots, knuckles)
     int hand_bone = -1;                 // a hand bone touching the wrist (the hand's rotation)
 };
@@ -358,6 +359,31 @@ inline Result Learner::solve() const {
             for (int b : joints[k].bones)
                 if (res.side[b] == a && res.segment[b] == kHand) { res.arm[a].hand_joints.push_back(joints[k].x); break; }
         }
+    // 2026-10-28 (her right glove torn at the wrist, "faith's right arms it looks broken"): that solve put bones 4 and 5
+    // on the forearm (8 forearm bones, 23 hand; good solves 6 and 25) - they touched a stray joint 2+ cm up the forearm,
+    // but ride with the hand, so the glove's cuff stayed with the forearm while the rest turned with the hand. A forearm
+    // bone that carries a point in the palm (on the forearm's line, 8 cm past the wrist: twist bones turn about it) far
+    // closer to where the hand bone does than the forearm does goes on the hand. Recorded 81-bone sessions: forearm
+    // bones 0 mm from the forearm and 17-19 from the hand, cloth bones ~equal both ways (tools/forearm_check).
+    for (int a = 0; a < 2; ++a) {
+        const Arm& arm = res.arm[a];
+        if (arm.hand_bone < 0 || arm.wrist_bone < 0 || arm.elbow_bone < 0) continue;
+        int main_fore = -1;
+        double best = 1e9;
+        for (int b = 0; b < n_; ++b)
+            if (res.side[b] == a && res.segment[b] == kFore) {
+                const double d = apart(b, arm.elbow_bone, arm.elbow) + apart(b, arm.wrist_bone, arm.wrist);
+                if (d < best) { best = d; main_fore = b; }
+            }
+        if (main_fore < 0) continue;
+        res.arm[a].fore_bone = main_fore;
+        const Vec3 palm = arm.wrist + (arm.wrist - arm.elbow).normalized() * 0.08f;
+        for (int b = 0; b < n_; ++b) {
+            if (b == main_fore || res.side[b] != a || res.segment[b] != kFore) continue;
+            const double to_fore = apart(b, main_fore, palm), to_hand = apart(b, arm.hand_bone, palm);
+            if (to_fore > 0.005 && to_hand * 3 < to_fore) res.segment[b] = kHand;
+        }
+    }
     // Bones that touch no joint (real fingertips fit only 2-5 mm, STAGE7-RECON) ride with their best partner,
     // repeated so chains of them follow.
     for (bool changed = true; changed;) {

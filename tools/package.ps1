@@ -1,8 +1,13 @@
 # Builds the release zip: out\EmunasEyes-<version>.zip with only our own files (no game files).
-# Usage: powershell -File tools\package.ps1 -Version 0.1.0   (build Release first)
-param([Parameter(Mandatory)][string]$Version)
+# Usage: powershell -File tools\package.ps1 [-Version x.y.z]   (build Release first; the version is CMakeLists.txt's
+# MECVR_VERSION, which the mod logs - a -Version that differs is refused)
+param([string]$Version)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
+$built = (Select-String -Path (Join-Path $root 'CMakeLists.txt') -Pattern 'set\(MECVR_VERSION "([^"]+)"\)').Matches[0].Groups[1].Value
+if (-not $built) { throw 'MECVR_VERSION not found in CMakeLists.txt' }
+if (-not $Version) { $Version = $built }
+if ($Version -ne $built) { throw "-Version $Version but the mod is $built (CMakeLists.txt MECVR_VERSION)" }
 $dll = Join-Path $root 'build\Release\mecvr.dll'
 if (-not (Test-Path $dll)) { throw "Build first: $dll not found" }
 if (-not (Select-String -Path $dll -Pattern 'MEC VR' -SimpleMatch -Quiet)) { throw 'mecvr.dll lacks the MEC VR marker the install scripts look for.' }
