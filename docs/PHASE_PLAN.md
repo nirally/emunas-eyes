@@ -38,7 +38,7 @@ Mode: agentic | Gate: hard | Stage 10 of 10 — Sweep and package
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
 ⬜ Not started: packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: PLAYTEST-10b2, wall-runs in her jacket (~10 min); then PLAYTEST-10c
+❓ Need from you: PLAYTEST-10c, the opening hour (2-3 sessions)
 🐞 Open bugs: BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
 ⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
 ⚠ 8B menus on a big flat screen (D-050): PLAYTEST-8b - showed a still image (BUG-029, fixed); hands at rest "much better" (BUG-027 closed); kicks glitch (BUG-028, fixed); comfort 5
@@ -75,7 +75,7 @@ Mode: agentic | Gate: hard | Stage 10 of 10 — Sweep and package
 🔧 10A handedness audit: only pad_map / xr_input's move-turn indices depend on it (unit-tested mirror); punches, Disruptor, MAG Rope, hand walls, arm IK and the menu chord are per hand or both hands - no fixes needed; PLAYTEST-10a: left-handed worked
 🔧 10E package (D-068): tools/package.ps1 -> out/RunnersSight-0.1.0.zip (our 4 files + install/uninstall + README + licences); round trip on this PC: uninstall -KeepSettings put the game's own DLL back (same hash), install found the game through Steam, settings and profiles kept
 ✅ 10B PLAYTEST-10a: hands good after D-071 (hand code back to before the jacket work), left-handed worked. 10C seated dropped (user: not needed - seated is only eye height + recentre)
-▶ Next: You: PLAYTEST-10c, the opening hour (BUG-032 F5). Before it: PLAYTEST-10b - D-072 brings the jacket hands back, free roam unchanged (desktop-checked)
+▶ Next: You: PLAYTEST-10c, the opening hour (BUG-032 F5). Done before it: jacket hands back (D-072), wall-runs (D-073), back to free roam after an abort (D-074) - PLAYTEST-10b/10b2/10b4 passed, comfort 5
 
 ## Prerequisites
 - [x] Toolchain: VS 2026 C++, Windows SDK 10.0.26100, CMake 4.4, git

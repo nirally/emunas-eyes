@@ -1383,13 +1383,13 @@ void on_present() {
         if (g_arms_at == g_frame) g_gone_run = 0;
         else if (!counts.empty() && (h.valid[0] || h.valid[1])) ++g_gone_run;
         if (!counts.empty()) {
-            bool known = false;
-            for (unsigned c : counts) {
-                if (g_multi)
-                    for (unsigned k : g_layout.counts) known |= c == k;
-                else
-                    known |= c == g_arm_count;
-            }
+            std::vector<int> bones, learned;
+            for (unsigned c : counts) bones.push_back(int(c - kHeaderRows) / 3);
+            if (g_multi)
+                for (unsigned k : g_layout.counts) learned.push_back(int(k - kHeaderRows) / 3);
+            else
+                learned.push_back(int(g_arm_count - kHeaderRows) / 3);
+            const bool known = arm_solve::outfit_known(bones, learned, g_multi, kOnePieceBones);
             g_outfit_run = known ? 0 : g_outfit_run + 1;
         }
         if (g_gone_run >= kRelearnFrames || g_outfit_run >= kOutfitFrames) {

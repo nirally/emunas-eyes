@@ -406,6 +406,20 @@ inline int adopt_new_bones(Result& cur, const Result& next, float agree = 0.9f, 
     return taken;
 }
 
+// Whether her marked pieces this frame (bones per piece) still fit the arms as learned: over one piece, that piece's
+// size is among them; over her pieces (`multi`), one of their sizes is and none is big enough for both arms on its own
+// (one_piece_bones). PLAYTEST-10b3 (BUG-035, "after I pressed abort mission and got back to freeroam the hands did not
+// worked"): free roam's pieces (81 4 3 ...) share the 3-bone size with her jacket's (3 18 26 42 51), so any size
+// matching was never "changed" and the arms weren't learned again.
+inline bool outfit_known(const std::vector<int>& bones, const std::vector<int>& learned, bool multi, int one_piece_bones) {
+    bool any = false;
+    for (int b : bones) {
+        if (multi && b >= one_piece_bones) return false;
+        for (int l : learned) any |= b == l;
+    }
+    return any;
+}
+
 // PLAYTEST-8n (her jacket, first mission: "not having hands that follow the controllers"): there her arms are in no
 // one piece - 5 pieces of 3, 51, 26, 42 and 18 bones, hands in the 51, sleeves in the 26 and 42, forearm bones in all
 // five - and each piece carries its own copies of the skeleton's matrices. One skeleton from them: a piece's bone that

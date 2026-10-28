@@ -201,6 +201,17 @@ TEST(arm_solve_rejects_arms_that_cannot_be_hers) {
     CHECK(arm_solve::implausible(r) != nullptr);
 }
 
+TEST(arm_solve_outfit_known_sees_free_roam_after_the_jacket) {
+    // Sizes from PLAYTEST-10b/10b3 (bones per piece).
+    const std::vector<int> jacket{3, 18, 26, 42, 51}, free_roam{9, 81, 78, 4, 3};
+    CHECK(arm_solve::outfit_known(jacket, jacket, true, 64));         // still in her jacket
+    CHECK(!arm_solve::outfit_known(free_roam, jacket, true, 64));     // back in free roam: shares the 3, has the 81
+    CHECK(arm_solve::outfit_known({4, 3}, jacket, true, 64));         // only small pieces drawn: one matches, kept
+    CHECK(arm_solve::outfit_known(free_roam, {81}, false, 64));       // free roam as learned
+    CHECK(!arm_solve::outfit_known(jacket, {81}, false, 64));         // into the jacket
+    CHECK(!arm_solve::outfit_known({9, 4}, jacket, true, 64));        // no size of hers: changed
+}
+
 TEST(arm_solve_merges_pieces_that_copy_bones) {
     // PLAYTEST-8n: her arms spread over pieces that each copy some of the skeleton's matrices.
     Rig rig;
