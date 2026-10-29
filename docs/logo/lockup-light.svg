@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260" width="900" height="260">
+  <rect width="900" height="260" fill="#F4F4F2"/>
+  <g transform="translate(36,22)"><g fill="#E1191E">
+    <path d="M10,104 Q80,36 186,86 L188,92 Q96,62 30,104 Z"/>
+    <path d="M26,110 Q100,164 182,98 Q110,150 26,110 Z"/>
+    <path d="M100,80 L124,104 L100,128 L76,104 Z"/>
+    <path d="M190,90 Q176,150 120,174 Q90,186 64,196 Q116,168 140,150 Q172,124 190,90 Z"/>
+  </g></g>
+  <g font-family="Bahnschrift">
+    <text x="262" y="136" font-size="74" font-weight="300" letter-spacing="10" fill="#141414">EMUNA’S EYES</text>
+    <rect x="265" y="158" width="40" height="4" fill="#E1191E"/>
+    <text x="320" y="167" font-size="20" letter-spacing="9" fill="#6A6A68">MIRROR’S EDGE CATALYST · VR</text>
+  </g>
+</svg>

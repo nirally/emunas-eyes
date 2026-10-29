@@ -6,3 +6,4 @@ out/
 *.log
 docs/playtests/reports/*
 !docs/playtests/reports/.gitkeep
+docs/recon/
