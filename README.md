@@ -11,6 +11,11 @@
   Version 0.1.0 · Steam build 1.0.3.47248 · Windows · OpenXR (SteamVR) · MIT
 </p>
 
+<p align="center">
+  <img src="docs/playtests/shots/vr_181033.png" alt="In the headset: Faith's own arms reach out where the player's hands are" width="720"><br>
+  <sub>In the headset: Faith's own arms reach out where your hands are.</sub>
+</p>
+
 ---
 
 Emuna's Eyes is a fan-made mod. It is not made, endorsed or supported by EA or DICE.
