@@ -106,7 +106,7 @@ TEST(vmath_game_motion_strips_heading_and_look_pitch) {
 }
 
 TEST(vmath_invert4_game_view_projection) {
-    // Current (unjittered) view-projection from a real view-constant dump (docs/recon/taa/viewcb_1.txt, 72..87).
+    // Current (unjittered) view-projection from a real view-constant dump (72..87; layout in docs/recon/taa/README.md).
     const float vp[16] = {0.523161f, 0.000126f, 0.206660f, 4.546785f,  0.001131f, 0.999993f, -0.003473f, -47.414555f,
                           -0.000001f, 0.0f,      0.000002f, 0.059927f,  0.367394f, -0.003646f, -0.930058f, 30.860641f};
     float inv[16];

@@ -6,4 +6,8 @@ out/
 *.log
 docs/playtests/reports/*
 !docs/playtests/reports/.gitkeep
-docs/recon/
+# docs/recon: only the write-ups and screenshots are published; raw captures and game code dumps stay local
+docs/recon/**
+!docs/recon/**/
+!docs/recon/**/*.md
+!docs/recon/**/*.png

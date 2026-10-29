@@ -1,6 +1,6 @@
 // Per-eye TAA history (D-023). See taa_eyes.h.
 //
-// Frame trace (1.0.3.47248, 2880x1620; docs/recon/taa/trace_1.txt): the TAA draw reads
+// Frame trace (1.0.3.47248, 2880x1620; docs/recon/taa/README.md): the TAA draw reads
 //   slot 0 depth, slot 1 motion vectors (RG16F), slot 2 R8 history A, slot 4 colour history (RGBA16F),
 //   slot 6 R8 history B
 // and writes
@@ -84,7 +84,7 @@ float g_draw_vp[16];
 bool g_draw_ok = false;
 uint64_t g_passes = 0, g_swapped = 0, g_skipped = 0, g_fixed = 0;
 
-// Per-view constant buffer (284 floats; docs/recon/taa/viewcb_1.txt): 40..55 the frame's jittered
+// Per-view constant buffer (284 floats; docs/recon/taa/README.md): 40..55 the frame's jittered
 // view-projection (rows; clip = M * world), 24..39 its projection with the jitter at [26], [30]; 72..87 is
 // the PREVIOUS frame's unjittered view-projection - in alternate-eye rendering the other eye's camera
 // (BUG-013: hands drawn from the wrong eye; BUG-012). This frame's unjittered one is rebuilt from 40..55.
