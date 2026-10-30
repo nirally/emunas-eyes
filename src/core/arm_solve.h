@@ -365,15 +365,18 @@ inline Result Learner::solve() const {
     // bone that carries a point in the palm (on the forearm's line, 8 cm past the wrist: twist bones turn about it) far
     // closer to where the hand bone does than the forearm does goes on the hand. Recorded 81-bone sessions: forearm
     // bones 0 mm from the forearm and 17-19 from the hand, cloth bones ~equal both ways (tools/forearm_check).
+    // 2026-10-30 ("faith's right hand palm looks wrong"): the bad pick came back with bones 4/5 at 10/6 and 13/7 mm
+    // (forearm / hand) - under the 3x first used, so they stayed. "Closer" is now 1.25x: forearm bones are always
+    // nearer the forearm (live 0-15 / 10-25 mm), the nearest call is cloth bone 23 at 158/153 (bones_rec_4).
     for (int a = 0; a < 2; ++a) {
         const Arm& arm = res.arm[a];
         if (arm.hand_bone < 0 || arm.wrist_bone < 0 || arm.elbow_bone < 0) continue;
         int main_fore = -1;
-        double best = 1e9;
+        double best_d = 1e9;
         for (int b = 0; b < n_; ++b)
             if (res.side[b] == a && res.segment[b] == kFore) {
                 const double d = apart(b, arm.elbow_bone, arm.elbow) + apart(b, arm.wrist_bone, arm.wrist);
-                if (d < best) { best = d; main_fore = b; }
+                if (d < best_d) { best_d = d; main_fore = b; }
             }
         if (main_fore < 0) continue;
         res.arm[a].fore_bone = main_fore;
@@ -381,7 +384,7 @@ inline Result Learner::solve() const {
         for (int b = 0; b < n_; ++b) {
             if (b == main_fore || res.side[b] != a || res.segment[b] != kFore) continue;
             const double to_fore = apart(b, main_fore, palm), to_hand = apart(b, arm.hand_bone, palm);
-            if (to_fore > 0.005 && to_hand * 3 < to_fore) res.segment[b] = kHand;
+            if (to_fore > 0.005 && to_hand * 1.25 < to_fore) res.segment[b] = kHand;
         }
     }
     // Bones that touch no joint (real fingertips fit only 2-5 mm, STAGE7-RECON) ride with their best partner,

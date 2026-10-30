@@ -38,7 +38,7 @@ Mode: agentic | Gate: hard | Stage 10 of 10 — Sweep and package
 ✅ Stage 7 passed (D-047/D-048): Faith's arms, hands and fingers follow yours; body holds in fights; comfort 5 (PLAYTEST-7l/7m)
 ⬜ Not started: packaging (10)
 ❌ Won't be in Phase 1: teleport movement (D-003), online features (servers shut down)
-❓ Need from you: optional 10F - a second person installs from the zip; then the Stage 10 gate (your call). PLAYTEST-10g passed (BUG-040)
+❓ Need from you: optional 10F - a second person installs from the zip; then the Stage 10 gate (your call). PLAYTEST-10g passed (BUG-040); BUG-040 back 2026-10-30, D-079 -> PLAYTEST-10h
 🐞 Open bugs: BUG-032 sev-3 (F5 also hit F4: stereo off - fixed, to confirm); BUG-018 sev-3 (body sometimes disconnects from the head); BUG-001 sev-4 (not a mod bug)
 ⚠ 8A HUD and menus pulled in from the edges (D-049, ui.scale 0.4): PLAYTEST-8a - Options "really hard to see", map icons move with the head
 ⚠ 8B menus on a big flat screen (D-050): PLAYTEST-8b - showed a still image (BUG-029, fixed); hands at rest "much better" (BUG-027 closed); kicks glitch (BUG-028, fixed); comfort 5

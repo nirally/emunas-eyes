@@ -201,10 +201,12 @@ TEST(arm_solve_rejects_arms_that_cannot_be_hers) {
     CHECK(arm_solve::implausible(r) != nullptr);
 }
 
-TEST(arm_solve_puts_a_cuff_bone_that_rides_with_the_hand_on_the_hand) {
-    // 2026-10-28 (her right glove torn at the wrist; that solve put bones 4 and 5 on the forearm): two glove helpers
-    // ride with the hand, moving a little against it, and the joint between them lies 3 cm up the forearm - both
-    // touched it and went on the forearm.
+namespace {
+
+// 2026-10-28 (her right glove torn at the wrist; that solve put bones 4 and 5 on the forearm): two glove helpers
+// ride with the hand, moving against it by `range`, and the joint between them lies 3 cm up the forearm - both
+// touched it and went on the forearm.
+void check_cuff_on_hand(float range) {
     Rig rig;
     int cuff[2][2];
     for (int s = 0; s < 2; ++s) {
@@ -212,8 +214,8 @@ TEST(arm_solve_puts_a_cuff_bone_that_rides_with_the_hand_on_the_hand) {
         int hand = -1;
         for (size_t b = 0; b < rig.bones.size(); ++b)
             if (rig.bones[b].seg == arm_solve::kHand && rig.bones[b].side == s && hand < 0) hand = int(b);
-        cuff[s][0] = rig.add(hand, {0.74f * x, 1.45f, 0.02f}, 0.1f, arm_solve::kHand, s);
-        cuff[s][1] = rig.add(cuff[s][0], {0.67f * x, 1.45f, 0.02f}, 0.1f, arm_solve::kHand, s);
+        cuff[s][0] = rig.add(hand, {0.74f * x, 1.45f, 0.02f}, range, arm_solve::kHand, s);
+        cuff[s][1] = rig.add(cuff[s][0], {0.67f * x, 1.45f, 0.02f}, range, arm_solve::kHand, s);
     }
     arm_solve::Learner l;
     l.reset(int(rig.bones.size()));
@@ -230,6 +232,13 @@ TEST(arm_solve_puts_a_cuff_bone_that_rides_with_the_hand_on_the_hand) {
     for (size_t b = 0; b < rig.bones.size(); ++b)
         if (rig.bones[b].seg >= 0 && r.segment[b] != rig.bones[b].seg) ++wrong;
     CHECK(wrong == 0);
+}
+
+}  // namespace
+
+TEST(arm_solve_puts_a_cuff_bone_that_rides_with_the_hand_on_the_hand) {
+    // 0.1: ~26/2-6 mm (forearm / hand); 0.3: ~30/16, like 2026-10-30's bones 4/5 (13/7, failed the first 3x rule).
+    for (float range : {0.1f, 0.2f, 0.3f, 0.4f}) check_cuff_on_hand(range);
 }
 
 TEST(arm_solve_outfit_known_sees_free_roam_after_the_jacket) {
