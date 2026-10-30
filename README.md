@@ -77,6 +77,7 @@ It is single-player only. It doesn't touch the game's DRM, the license token or 
 - **SteamVR** set as the OpenXR runtime.
 - **A PC VR headset with two tracked controllers.** It was developed on a Meta Quest 2 with Touch controllers over Steam Link. Valve Index controllers have bindings but haven't been tested.
 - **A strong GPU.** It was tested on a GTX 1080 Ti at 2880x1620 (NVIDIA DSR).
+- **Motion blur OFF in the game (required).** Options > Video > Motion blur: Off. With it on, the two eyes' images get mixed and Faith's body looks see-through and glitchy. If the game's graphics settings ever reset, check this first.
 
 ## Install
 

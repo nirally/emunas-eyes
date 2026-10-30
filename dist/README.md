@@ -14,6 +14,7 @@ It only adds its own files to the game folder. No game files are included or cha
 - **A PC VR headset with two tracked controllers.** It was developed and tested on a Meta Quest 2 with Touch controllers over Steam Link. Valve Index controllers have bindings but haven't been tried.
 - **A GPU that can run the game at a high resolution.** It was tested on a GTX 1080 Ti at 2880x1620 (NVIDIA DSR) for a sharp picture.
 - **Single-player only.** The game's online features were shut down by EA, and the mod doesn't touch the DRM.
+- **Motion blur OFF in the game (required).** Options > Video > Motion blur: Off. With it on, the two eyes' images get mixed and Faith's body looks see-through and glitchy. If the game's graphics settings ever reset, check this first.
 
 **Tip:** turn off automatic updates for the game in Steam (Properties > Updates). A game update makes the mod step aside until it's updated too.
 
@@ -24,6 +25,7 @@ It only adds its own files to the game folder. No game files are included or cha
 3. Double-click **Install.bat**. It finds the game through Steam.
    - If it can't find the game, open PowerShell in the extracted folder and run: `powershell -ExecutionPolicy Bypass -File install.ps1 -GameDir "D:\path\to\Mirrors Edge Catalyst"`
 4. Start SteamVR, put the headset on, then start the game from Steam.
+5. In the game, open Options > Video and make sure **Motion blur is Off**. The mod doesn't work correctly with it on.
 
 Installing a newer version over an older one keeps your settings and profiles.
 
